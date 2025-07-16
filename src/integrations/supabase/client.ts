@@ -5,6 +5,14 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://nsxwbqjldefepebiuqdg.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeHdicWpsZGVmZXBlYml1cWRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTQ4MzIsImV4cCI6MjA2ODI3MDgzMn0.iBvmz4O3_N4nQB4I42vXHEVoRG_gMy0j2Fa8JElfjJo";
 
+// Export the constants for components that need them
+export { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY };
+
+// Function to check if Supabase is configured
+export const isSupabaseConfigured = () => {
+  return true; // Always true since we have hardcoded values
+};
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
