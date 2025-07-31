@@ -65,7 +65,7 @@ jobs:
           echo "🆕 Fresh installation detected - applying all migrations..."
           
           # Reset and apply all migrations
-          supabase db reset --linked
+          supabase db reset --linked --no-verify-tokens
           
           echo "✅ Database reset and migrations applied"
         else
