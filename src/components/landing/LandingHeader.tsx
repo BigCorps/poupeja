@@ -1,4 +1,3 @@
-
 import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -42,9 +41,24 @@ const LandingHeader = () => {
         </div>
         
         <div className="flex items-center space-x-2 md:space-x-4">
+          {/* Novo botão de Contato */}
+          <Button variant="ghost" asChild>
+            <a 
+              href="https://vixusbr.com.br/#contato"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-semibold text-muted-foreground hover:text-accent-foreground"
+            >
+              Contato
+            </a>
+          </Button>
+
+          {/* Botão Entrar existente */}
           <Button variant="ghost" asChild>
             <Link to="/login">Entrar</Link>
           </Button>
+          
+          {/* Botões de planos existentes */}
           <Button 
             asChild={false} 
             onClick={scrollToPlans}
