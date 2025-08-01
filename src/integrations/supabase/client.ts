@@ -2,8 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://nsxwbqjldefepebiuqdg.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zeHdicWpsZGVmZXBlYml1cWRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTQ4MzIsImV4cCI6MjA2ODI3MDgzMn0.iBvmz4O3_N4nQB4I42vXHEVoRG_gMy0j2Fa8JElfjJo";
+const SUPABASE_URL = "https://duchahfvhvhbyagdslbz.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1Y2hhaGZ2aHZoYnlhZ2RzbGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwMDA1ODYsImV4cCI6MjA2OTU3NjU4Nn0.gVCDSD3Ml8kOGCoeRNnDqOaA-cJdfw7dl-j-p6boBrs";
 
 // Export the constants for components that need them
 export { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY };
