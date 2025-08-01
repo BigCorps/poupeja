@@ -1,5 +1,5 @@
 export default {
-  appName: "PoupeJá!",
+  appName: "App Vixus",
   common: {
     loading: 'Carregando...',
     error: 'Erro!',
