@@ -7,85 +7,85 @@
 
 @layer base {
   :root {
-    /* Light mode - Cores ajustadas para a VIXUS */
-    --background: #dcfef7; /* Verde bem claro para o fundo */
-    --foreground: #053c31; /* Verde escuro para o texto */
+    /* Dark mode por padrão - Verde escuro para fundo, verde claro para destaques, branco para textos */
+    --background: #053c31; /* Verde escuro principal para o fundo */
+    --foreground: #ffffff; /* Branco para textos normais */
 
-    --card: #ffffff; /* Fundo do card em branco */
-    --card-foreground: #053c31; /* Texto do card em verde escuro */
+    --card: #0a4f43; /* Verde um pouco mais claro para os cards */
+    --card-foreground: #ffffff; /* Texto do card em branco */
 
-    --popover: #ffffff;
-    --popover-foreground: #053c31;
+    --popover: #0a4f43;
+    --popover-foreground: #ffffff;
 
-    --primary: #f0ff3d; /* Verde claro/amarelo para os botões */
-    --primary-foreground: #053c31; /* Texto escuro sobre o botão */
+    --primary: #00ff88; /* Verde claro/neon para destaques principais */
+    --primary-foreground: #053c31; /* Verde escuro sobre botões primários */
 
-    --secondary: #0a4f43; /* Um tom mais escuro de verde */
-    --secondary-foreground: #f0ff3d; /* Texto claro */
+    --secondary: #dcfef7; /* Verde muito claro para elementos secundários */
+    --secondary-foreground: #053c31; /* Verde escuro para texto em elementos secundários */
 
-    --muted: #e0f8f3; /* Um tom suave de verde para elementos "muted" */
-    --muted-foreground: #0a4f43;
+    --muted: #0a4f43; /* Verde médio para elementos "muted" */
+    --muted-foreground: #a8e5da; /* Verde claro suave para texto muted */
 
-    --accent: #f0ff3d; /* Verde claro/amarelo para destaque */
+    --accent: #00ff88; /* Verde claro/neon para acentos */
     --accent-foreground: #053c31;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: #a8e5da; /* Borda em um tom de verde médio */
-    --input: #e0f8f3;
-    --ring: #f0ff3d; /* Anéis de foco em verde claro/amarelo */
+    --border: #00ff88; /* Bordas em verde claro */
+    --input: #0a4f43; /* Fundo dos inputs */
+    --ring: #00ff88; /* Anéis de foco em verde claro */
 
     --radius: 1rem;
 
-    --sidebar-background: #dcfef7;
-    --sidebar-foreground: #053c31;
-    --sidebar-primary: #f0ff3d;
-    --sidebar-primary-foreground: #053c31;
-    --sidebar-accent: #e0f8f3;
-    --sidebar-accent-foreground: #0a4f43;
-    --sidebar-border: #a8e5da;
-    --sidebar-ring: #f0ff3d;
-  }
-
-  .dark {
-    /* Dark mode - Invertendo as cores para o tema escuro */
-    --background: #053c31; /* Verde escuro principal para o fundo */
-    --foreground: #dcfef7; /* Verde claro para o texto */
-
-    --card: #0a4f43; /* Um verde um pouco mais claro para os cards */
-    --card-foreground: #dcfef7; /* Texto do card em verde claro */
-
-    --popover: #0a4f43;
-    --popover-foreground: #dcfef7;
-
-    --primary: #f0ff3d;
-    --primary-foreground: #053c31;
-
-    --secondary: #f0ff3d;
-    --secondary-foreground: #053c31;
-
-    --muted: #0a4f43;
-    --muted-foreground: #dcfef7;
-
-    --accent: #f0ff3d;
-    --accent-foreground: #053c31;
-
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: #f0ff3d;
-    --input: #0a4f43;
-    --ring: #f0ff3d;
-
     --sidebar-background: #053c31;
-    --sidebar-foreground: #dcfef7;
-    --sidebar-primary: #f0ff3d;
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #00ff88;
     --sidebar-primary-foreground: #053c31;
     --sidebar-accent: #0a4f43;
-    --sidebar-accent-foreground: #dcfef7;
-    --sidebar-border: #f0ff3d;
-    --sidebar-ring: #f0ff3d;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #00ff88;
+    --sidebar-ring: #00ff88;
+  }
+
+  .light {
+    /* Light mode - Apenas quando selecionado: fundo verde claro, destaques verde escuro, textos pretos */
+    --background: #dcfef7; /* Verde bem claro para o fundo */
+    --foreground: #000000; /* Preto para textos normais */
+
+    --card: #ffffff; /* Fundo do card em branco */
+    --card-foreground: #000000; /* Texto do card em preto */
+
+    --popover: #ffffff;
+    --popover-foreground: #000000;
+
+    --primary: #053c31; /* Verde escuro para destaques principais */
+    --primary-foreground: #ffffff; /* Branco sobre botões primários */
+
+    --secondary: #0a4f43; /* Verde médio escuro para elementos secundários */
+    --secondary-foreground: #ffffff; /* Branco para texto em elementos secundários */
+
+    --muted: #e0f8f3; /* Verde muito claro para elementos "muted" */
+    --muted-foreground: #053c31; /* Verde escuro para texto muted */
+
+    --accent: #053c31; /* Verde escuro para acentos */
+    --accent-foreground: #ffffff;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: #053c31; /* Bordas em verde escuro */
+    --input: #e0f8f3; /* Fundo dos inputs em verde claro */
+    --ring: #053c31; /* Anéis de foco em verde escuro */
+
+    --sidebar-background: #dcfef7;
+    --sidebar-foreground: #000000;
+    --sidebar-primary: #053c31;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #e0f8f3;
+    --sidebar-accent-foreground: #053c31;
+    --sidebar-border: #053c31;
+    --sidebar-ring: #053c31;
   }
 }
 
@@ -99,6 +99,8 @@
     height: 100%;
     margin: 0;
     padding: 0;
+    /* Força o tema escuro por padrão */
+    color-scheme: dark;
   }
 
   body {
@@ -145,7 +147,7 @@
 
   .progress-bar {
     @apply h-2 rounded-full overflow-hidden;
-    background-color: var(--muted-foreground);
+    background-color: var(--muted);
   }
 
   .progress-bar-value {
@@ -153,17 +155,17 @@
     background-color: var(--primary);
   }
   
-  /* Glass effect */
+  /* Glass effect - Ajustado para tema escuro */
   .glass {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(10, 79, 67, 0.3); /* Verde escuro com transparência */
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(0, 255, 136, 0.2); /* Borda verde claro */
     border-radius: 1rem;
   }
   
-  .dark .glass {
-    background-color: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  .light .glass {
+    background-color: rgba(255, 255, 255, 0.7); /* Branco transparente no modo claro */
+    border: 1px solid rgba(5, 60, 49, 0.2); /* Borda verde escuro */
   }
   
   /* Hover effects */
@@ -172,8 +174,12 @@
   }
   
   .hover-card:hover {
-    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 40px -10px rgba(0, 255, 136, 0.3), 0 20px 25px -5px rgba(0, 255, 136, 0.1);
     transform: translateY(-4px);
+  }
+
+  .light .hover-card:hover {
+    box-shadow: 0 10px 40px -10px rgba(5, 60, 49, 0.3), 0 20px 25px -5px rgba(5, 60, 49, 0.1);
   }
 
   /* Smooth animations */
@@ -223,20 +229,29 @@
   }
 }
 
-/* Custom hover color */
+/* Custom hover colors - Ajustados para os dois temas */
 .hover\:bg-accent:hover {
-  background-color: #f0ff3d;
+  background-color: var(--accent);
 }
 
 .hover\:bg-accent\/80:hover {
-  background-color: rgba(240, 255, 61, 0.8);
+  background-color: var(--accent);
+  opacity: 0.8;
 }
 
-/* Enhanced card shadows */
+/* Enhanced card shadows - Com efeito verde */
 .shadow-soft {
-  box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 15px -3px rgba(0, 255, 136, 0.1), 0 10px 20px -2px rgba(0, 255, 136, 0.05);
+}
+
+.light .shadow-soft {
+  box-shadow: 0 2px 15px -3px rgba(5, 60, 49, 0.1), 0 10px 20px -2px rgba(5, 60, 49, 0.05);
 }
 
 .shadow-card-hover {
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 40px -10px rgba(0, 255, 136, 0.2), 0 20px 25px -5px rgba(0, 255, 136, 0.1);
+}
+
+.light .shadow-card-hover {
+  box-shadow: 0 10px 40px -10px rgba(5, 60, 49, 0.2), 0 20px 25px -5px rgba(5, 60, 49, 0.1);
 }
