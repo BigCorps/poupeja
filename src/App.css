@@ -8,12 +8,12 @@
   transition: filter 300ms;
 }
 .logo:hover {
-  /* Cor ajustada para usar a variável --primary do index.css */
-  filter: drop-shadow(0 0 2em hsl(var(--primary)));
+  /* Cor ajustada para o amarelo da VIXUS usando código hexadecimal */
+  filter: drop-shadow(0 0 2em #ffeb3b);
 }
 .logo.react:hover {
-  /* Cor ajustada para usar a variável --secondary do index.css */
-  filter: drop-shadow(0 0 2em hsl(var(--secondary)));
+  /* Cor ajustada para o verde-claro da VIXUS usando código hexadecimal */
+  filter: drop-shadow(0 0 2em #8ae251);
 }
 
 @keyframes logo-spin {
