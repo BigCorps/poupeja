@@ -42,9 +42,9 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // Get request body
-    const { planType, successUrl, cancelUrl } = await req.json();
-    logStep("Received parameters", { planType, successUrl, cancelUrl });
+    // Obter parâmetros do corpo da requisição, incluindo trialPeriod
+    const { planType, successUrl, cancelUrl, trialPeriod } = await req.json();
+    logStep("Received parameters", { planType, successUrl, cancelUrl, trialPeriod });
     
     // Verificar header de autorização
     const authHeader = req.headers.get("Authorization");
@@ -64,7 +64,7 @@ serve(async (req) => {
       throw new Error("Token anônimo detectado. É necessário estar autenticado com uma conta válida para criar uma sessão de checkout.");
     }
     
-    // Initialize Supabase client with auth header for user operations
+    // Inicializar cliente Supabase com header de autenticação para operações do usuário
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -75,7 +75,7 @@ serve(async (req) => {
       }
     );
 
-    // Initialize Supabase service client for accessing settings
+    // Inicializar cliente de serviço Supabase para acessar configurações
     const supabaseService = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -228,7 +228,19 @@ serve(async (req) => {
       logStep("Saved customer to database");
     }
     
-    // Create checkout session
+    // Construir o objeto subscription_data com a opção de período de teste
+    const subscriptionData: any = {
+      metadata: {
+        user_id: user.id,
+      },
+    };
+
+    if (trialPeriod && trialPeriod > 0) {
+      subscriptionData.trial_period_days = trialPeriod;
+      logStep(`Applying a ${trialPeriod}-day trial period.`);
+    }
+
+    // Criar a sessão de checkout
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: [
@@ -243,16 +255,12 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
       },
-      subscription_data: {
-        metadata: {
-          user_id: user.id,
-        },
-      },
+      subscription_data: subscriptionData,
     });
     
     logStep("Checkout session created successfully", { sessionId: session.id, url: session.url });
     
-    // Return the checkout URL
+    // Retornar a URL de checkout
     return new Response(
       JSON.stringify({ url: session.url }),
       {
