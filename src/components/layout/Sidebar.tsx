@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -8,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -22,9 +21,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
   const { companyName, logoUrl, logoAltText } = useBrandingConfig();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // NOVO ESTADO: Controla a expansão do menu de perfil
+  const [isProfileMenuExpanded, setIsProfileMenuExpanded] = useState(false);
   
-  // Verificar se estamos na página de administração
-  const isAdminPage = location.pathname === '/admin';
+  const toggleProfileMenu = () => {
+    setIsProfileMenuExpanded(!isProfileMenuExpanded);
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -32,7 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
   };
 
   const handleProfileClick = () => {
-    if (isAdmin && isAdminPage && onProfileClick) {
+    if (isAdmin && location.pathname === '/admin' && onProfileClick) {
       onProfileClick();
     } else {
       navigate('/profile');
@@ -40,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
   };
 
   // Se for admin na página de admin, mostrar apenas menu administrativo
-  if (isAdmin && isAdminPage) {
+  if (isAdmin && location.pathname === '/admin') {
     const adminMenuItems = [
       {
         icon: Settings,
@@ -145,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
 
   // Adicionar item admin apenas se o usuário for admin e não estiver na página admin
   let menuItems = [...defaultMenuItems];
-  if (isAdmin && !isAdminPage) {
+  if (isAdmin && location.pathname !== '/admin') {
     const adminMenuItem = {
       icon: Shield,
       label: 'Admin',
@@ -153,19 +156,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     };
     menuItems.push(adminMenuItem);
   }
-
-  const bottomMenuItems = [
-    {
-      icon: User,
-      label: t('nav.profile'),
-      href: '/profile'
-    },
-    {
-      icon: Settings,
-      label: t('nav.settings'),
-      href: '/settings'
-    },
-  ];
 
   if (!user) return null;
 
@@ -175,12 +165,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       <div className="p-6 border-b flex-shrink-0">
         <div className="flex items-center space-x-3">
           {logoUrl && (
-            <img 
-              src={logoUrl} 
+            <img
+              src={logoUrl}
               alt={logoAltText}
               className="h-8 w-8 object-contain"
               onError={(e) => {
-                // Fallback para primeira letra do nome da empresa se a logo falhar
                 const target = e.currentTarget as HTMLImageElement;
                 target.style.display = 'none';
                 const nextSibling = target.nextElementSibling as HTMLElement;
@@ -212,8 +201,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
                 cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
                   "hover:bg-accent hover:text-accent-foreground",
-                  isActive 
-                    ? "bg-primary text-primary-foreground" 
+                  isActive
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground"
                 )
               }
@@ -224,27 +213,63 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
           ))}
         </nav>
 
-        {/* Bottom Navigation - Always visible */}
+        {/* Bottom Navigation - Com o menu de perfil agrupado */}
         <div className="p-4 border-t space-y-2 flex-shrink-0 bg-background">
-          {bottomMenuItems.map((item) => (
-            <NavLink
-              key={item.href}
-              to={item.href}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  isActive 
-                    ? "bg-primary text-primary-foreground" 
-                    : "text-muted-foreground"
-                )
-              }
-            >
-              <item.icon className="h-5 w-5" />
-              {item.label}
-            </NavLink>
-          ))}
-          
+          {/* Botão de Perfil que agora é um dropdown */}
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              isProfileMenuExpanded && "bg-accent text-accent-foreground"
+            )}
+            onClick={toggleProfileMenu}
+          >
+            <User className="h-5 w-5" />
+            Perfil
+            {isProfileMenuExpanded ? (
+              <ChevronUp className="h-4 w-4 ml-auto" />
+            ) : (
+              <ChevronDown className="h-4 w-4 ml-auto" />
+            )}
+          </Button>
+
+          {/* Itens do dropdown, exibidos condicionalmente */}
+          {isProfileMenuExpanded && (
+            <div className="pl-6 space-y-2">
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground"
+                  )
+                }
+              >
+                <User className="h-5 w-5" />
+                {t('nav.profile')}
+              </NavLink>
+
+              <NavLink
+                to="/settings"
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground"
+                  )
+                }
+              >
+                <Settings className="h-5 w-5" />
+                {t('nav.settings')}
+              </NavLink>
+            </div>
+          )}
+
           {/* Theme Toggle */}
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm text-muted-foreground">Tema</span>
