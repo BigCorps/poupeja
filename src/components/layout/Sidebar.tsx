@@ -7,7 +7,23 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, ChevronDown, ChevronUp, Palette } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Receipt, 
+  BarChart3, 
+  Target, 
+  User, 
+  Settings, 
+  FolderOpen, 
+  Calendar, 
+  Crown, 
+  LogOut, 
+  Shield, 
+  ChevronDown, 
+  ChevronUp, 
+  Palette,
+  Landmark // NOVO: Importando o ícone para Saldo
+} from 'lucide-react';
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -113,6 +129,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       icon: LayoutDashboard,
       label: t('nav.dashboard'),
       href: '/dashboard'
+    },
+    {
+      icon: Landmark, // NOVO: Ícone para Saldo
+      label: 'Saldo', // NOVO: Label para Saldo
+      href: '/dashboard/saldo' // NOVO: Rota para Saldo
     },
     {
       icon: Receipt,
