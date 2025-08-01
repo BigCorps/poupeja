@@ -33,7 +33,6 @@ import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
 import SaldoDashboard from "./components/dashboard/SaldoDashboard";
-import DashboardContentMain from "./components/dashboard/DashboardContentMain"; // NOVO: Componente para o conteúdo principal do dashboard
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -64,8 +63,7 @@ function App() {
                         {/* Rota principal do Dashboard com rotas aninhadas */}
                         {/* O Index.tsx se torna o componente de layout que renderiza o Sidebar */}
                         <Route path="/dashboard" element={<Index />}>
-                          {/* A rota "index" sem caminho renderiza o conteúdo principal do dashboard */}
-                          <Route index element={<DashboardContentMain />} />
+                          {/* A rota "index" sem caminho renderiza a página do dashboard principal */}
                           <Route path="saldo" element={<SaldoDashboard />} />
                           <Route path="transactions" element={<TransactionsPage />} />
                           <Route path="expenses" element={<ExpensesPage />} />
@@ -77,8 +75,10 @@ function App() {
                           <Route path="plans" element={<PlansPage />} />
                           <Route path="profile" element={<ProfilePage />} />
                           <Route path="achievements" element={<AchievementsPage />} />
+                          {/* Esta rota renderizará o conteúdo original do dashboard no path /dashboard */}
+                          <Route index element={<DashboardContent />} />
                         </Route>
-
+                        
                         <Route
                           path="/admin"
                           element={
