@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -7,23 +8,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { 
-  LayoutDashboard, 
-  Receipt, 
-  BarChart3, 
-  Target, 
-  User, 
-  Settings, 
-  FolderOpen, 
-  Calendar, 
-  Crown, 
-  LogOut, 
-  Shield, 
-  ChevronDown, 
-  ChevronUp, 
-  Palette,
-  Landmark // NOVO: Importando o ícone para Saldo
-} from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield } from 'lucide-react';
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -37,13 +22,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
   const { companyName, logoUrl, logoAltText } = useBrandingConfig();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // NOVO ESTADO: Controla a expansão do menu de configurações
-  const [isSettingsMenuExpanded, setIsSettingsMenuExpanded] = useState(false);
   
-  const toggleSettingsMenu = () => {
-    setIsSettingsMenuExpanded(!isSettingsMenuExpanded);
-  };
+  // Verificar se estamos na página de administração
+  const isAdminPage = location.pathname === '/admin';
 
   const handleLogout = async () => {
     await logout();
@@ -51,7 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
   };
 
   const handleProfileClick = () => {
-    if (isAdmin && location.pathname === '/admin' && onProfileClick) {
+    if (isAdmin && isAdminPage && onProfileClick) {
       onProfileClick();
     } else {
       navigate('/profile');
@@ -59,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
   };
 
   // Se for admin na página de admin, mostrar apenas menu administrativo
-  if (isAdmin && location.pathname === '/admin') {
+  if (isAdmin && isAdminPage) {
     const adminMenuItems = [
       {
         icon: Settings,
@@ -130,12 +111,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: t('nav.dashboard'),
       href: '/dashboard'
     },
-    // Adicionando o item 'Saldo' na estrutura original
-    {
-      icon: Landmark,
-      label: 'Saldo',
-      href: '/dashboard/saldo'
-    },
     {
       icon: Receipt,
       label: t('nav.transactions'),
@@ -170,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
 
   // Adicionar item admin apenas se o usuário for admin e não estiver na página admin
   let menuItems = [...defaultMenuItems];
-  if (isAdmin && location.pathname !== '/admin') {
+  if (isAdmin && !isAdminPage) {
     const adminMenuItem = {
       icon: Shield,
       label: 'Admin',
@@ -178,6 +153,19 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     };
     menuItems.push(adminMenuItem);
   }
+
+  const bottomMenuItems = [
+    {
+      icon: User,
+      label: t('nav.profile'),
+      href: '/profile'
+    },
+    {
+      icon: Settings,
+      label: t('nav.settings'),
+      href: '/settings'
+    },
+  ];
 
   if (!user) return null;
 
@@ -187,11 +175,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       <div className="p-6 border-b flex-shrink-0">
         <div className="flex items-center space-x-3">
           {logoUrl && (
-            <img
-              src={logoUrl}
+            <img 
+              src={logoUrl} 
               alt={logoAltText}
               className="h-8 w-8 object-contain"
               onError={(e) => {
+                // Fallback para primeira letra do nome da empresa se a logo falhar
                 const target = e.currentTarget as HTMLImageElement;
                 target.style.display = 'none';
                 const nextSibling = target.nextElementSibling as HTMLElement;
@@ -223,8 +212,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
                 cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
                   "hover:bg-accent hover:text-accent-foreground",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
+                  isActive 
+                    ? "bg-primary text-primary-foreground" 
                     : "text-muted-foreground"
                 )
               }
@@ -235,81 +224,42 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
           ))}
         </nav>
 
-        {/* Bottom Navigation - Com o menu de configurações agrupado */}
+        {/* Bottom Navigation - Always visible */}
         <div className="p-4 border-t space-y-2 flex-shrink-0 bg-background">
-          {/* Botão de Configurações que agora é um dropdown */}
+          {bottomMenuItems.map((item) => (
+            <NavLink
+              key={item.href}
+              to={item.href}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  isActive 
+                    ? "bg-primary text-primary-foreground" 
+                    : "text-muted-foreground"
+                )
+              }
+            >
+              <item.icon className="h-5 w-5" />
+              {item.label}
+            </NavLink>
+          ))}
+          
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-sm text-muted-foreground">Tema</span>
+            <ThemeToggle variant="ghost" size="sm" />
+          </div>
+          
+          {/* Logout Button */}
           <Button
             variant="ghost"
-            className={cn(
-              "w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              isSettingsMenuExpanded && "bg-accent text-accent-foreground"
-            )}
-            onClick={toggleSettingsMenu}
+            className="w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            onClick={handleLogout}
           >
-            <Settings className="h-5 w-5" />
-            Configurações
-            {isSettingsMenuExpanded ? (
-              <ChevronUp className="h-4 w-4 ml-auto" />
-            ) : (
-              <ChevronDown className="h-4 w-4 ml-auto" />
-            )}
+            <LogOut className="h-5 w-5" />
+            {t('settings.logout')}
           </Button>
-
-          {/* Itens do dropdown, exibidos condicionalmente */}
-          {isSettingsMenuExpanded && (
-            <div className="pl-6 space-y-2">
-              <NavLink
-                to="/profile"
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                    "hover:bg-accent hover:text-accent-foreground",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground"
-                  )
-                }
-              >
-                <User className="h-5 w-5" />
-                {t('nav.profile')}
-              </NavLink>
-
-              <NavLink
-                to="/settings"
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                    "hover:bg-accent hover:text-accent-foreground",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground"
-                  )
-                }
-              >
-                <Settings className="h-5 w-5" />
-                Preferências
-              </NavLink>
-
-              {/* Opção de Tema dentro do dropdown */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-sm text-muted-foreground flex items-center gap-3">
-                  <Palette className="h-5 w-5" />
-                  Tema
-                </span>
-                <ThemeToggle variant="ghost" size="sm" />
-              </div>
-              
-              {/* Opção de Sair dentro do dropdown */}
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-5 w-5" />
-                {t('settings.logout')}
-              </Button>
-            </div>
-          )}
         </div>
       </div>
     </div>
