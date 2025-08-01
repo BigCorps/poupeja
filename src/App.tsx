@@ -6,7 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
-import { BrandingProvider } from "@/contexts/BrandingContext";
+import { BrandingProvider } from "@/contexts/BrandingProvider";
 import { AppProvider } from "@/contexts/AppContext";
 import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
 import Index from "./pages/Index";
@@ -32,7 +32,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
-import SaldoDashboard from "./components/dashboard/SaldoDashboard"; // A importação para o componente correto
+import SaldoDashboard from "./components/dashboard/SaldoDashboard";
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -50,27 +50,32 @@ function App() {
                     <BrowserRouter>
                       <Routes>
                         <Route path="/" element={<LandingPage />} />
-                        <Route path="/dashboard" element={<Index />} />
                         <Route path="/landing" element={<LandingPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/register/:planType" element={<RegisterWithPlanPage />} />
                         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                         <Route path="/reset-password" element={<ResetPasswordPage />} />
-                        <Route path="/profile" element={<ProfilePage />} />
-                        <Route path="/transactions" element={<TransactionsPage />} />
-                        <Route path="/expenses" element={<ExpensesPage />} />
-                        <Route path="/goals" element={<GoalsPage />} />
-                        <Route path="/reports" element={<ReportsPage />} />
-                        <Route path="/schedule" element={<SchedulePage />} />
-                        <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="/categories" element={<CategoriesPage />} />
-                        <Route path="/plans" element={<PlansPage />} />
+                        
+                        {/* Rota principal do Dashboard com rotas aninhadas */}
+                        <Route path="/dashboard" element={<Index />}>
+                          <Route path="saldo" element={<SaldoDashboard />} />
+                          <Route path="transactions" element={<TransactionsPage />} />
+                          <Route path="expenses" element={<ExpensesPage />} />
+                          <Route path="goals" element={<GoalsPage />} />
+                          <Route path="reports" element={<ReportsPage />} />
+                          <Route path="schedule" element={<SchedulePage />} />
+                          <Route path="settings" element={<SettingsPage />} />
+                          <Route path="categories" element={<CategoriesPage />} />
+                          <Route path="plans" element={<PlansPage />} />
+                          <Route path="profile" element={<ProfilePage />} />
+                          <Route path="achievements" element={<AchievementsPage />} />
+                          {/* Rotas adicionais do dashboard aqui */}
+                        </Route>
+
                         <Route path="/checkout/:planType" element={<CheckoutPage />} />
                         <Route path="/payment-success" element={<PaymentSuccessPage />} />
                         <Route path="/thank-you" element={<ThankYouPage />} />
-                        <Route path="/achievements" element={<AchievementsPage />} />
-                        <Route path="/dashboard/saldo" element={<SaldoDashboard />} />
                         <Route
                           path="/admin"
                           element={
