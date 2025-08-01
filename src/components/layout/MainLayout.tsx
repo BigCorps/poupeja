@@ -1,51 +1,62 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Plus, LayoutDashboard, Wallet, PiggyBank, Landmark } from 'lucide-react';
-import { usePreferences } from '@/contexts/PreferencesContext';
-import { Button } from '@/components/ui/button';
 
-interface MobileNavBarProps {
-  onAddTransaction: (type: 'income' | 'expense') => void;
+import React from 'react';
+import Sidebar from './Sidebar';
+import MobileNavBar from './MobileNavBar';
+import MobileHeader from './MobileHeader';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+import { useAppContext } from '@/contexts/AppContext';
+
+interface MainLayoutProps {
+  children: React.ReactNode;
+  title?: string;
+  onAddTransaction?: (type: 'income' | 'expense') => void;
+  onProfileClick?: () => void;
+  onConfigClick?: () => void;
 }
 
-const MobileNavBar: React.FC<MobileNavBarProps> = ({ onAddTransaction }) => {
-  const { t } = usePreferences();
+const MainLayout: React.FC<MainLayoutProps> = ({
+  children,
+  title,
+  onAddTransaction,
+  onProfileClick,
+  onConfigClick
+}) => {
+  const isMobile = useIsMobile();
+  const { hideValues, toggleHideValues } = useAppContext();
+  
+  const handleAddTransaction = (type: 'income' | 'expense') => {
+    if (onAddTransaction) {
+      onAddTransaction(type);
+    } else {
+      console.log(`Add ${type} transaction`);
+    }
+  };
+  
+  return <div className="min-h-screen bg-background w-full">
+      {isMobile ? <div className="flex flex-col h-screen w-full">
+          <MobileHeader hideValues={hideValues} toggleHideValues={toggleHideValues} />
+          <main className="flex-1 overflow-auto p-4 pb-20 pt-20 w-full">
+            {title && <div className="mb-6">
+                
+              </div>}
+            {children}
+          </main>
+          <MobileNavBar onAddTransaction={handleAddTransaction} />
+        </div> : <div className="flex h-screen w-full overflow-hidden">
+          <Sidebar onProfileClick={onProfileClick} onConfigClick={onConfigClick} />
+          <main className="flex-1 overflow-auto w-full min-w-0">
+            <div className="w-full p-4 lg:p-6 max-w-full">
+              {title && <div className="mb-6">
+                  
+                </div>}
+              {children}
+            </div>
+          </main>
+        </div>}
+      
 
-  const navLinks = [
-    { to: '/dashboard', label: t('sidebar.dashboard'), icon: <LayoutDashboard size={24} /> },
-    { to: '/dashboard/saldo', label: 'Saldo', icon: <Landmark size={24} /> }, // NOVO: Link para o Saldo
-    { to: '/transactions', label: t('sidebar.transactions'), icon: <Wallet size={24} /> },
-    { to: '/goals', label: t('sidebar.goals'), icon: <PiggyBank size={24} /> },
-  ];
-
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-inner z-50">
-      <nav className="flex justify-around items-center h-16 px-2">
-        {navLinks.map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-1 transition-colors ${
-                isActive ? 'text-primary' : 'text-muted-foreground'
-              }`
-            }
-          >
-            {link.icon}
-            <span className="text-xs font-medium">{link.label}</span>
-          </NavLink>
-        ))}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onAddTransaction('expense')}
-          className="relative top-[-20px] w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90"
-        >
-          <Plus size={32} />
-        </Button>
-      </nav>
-    </div>
-  );
+    </div>;
 };
 
-export default MobileNavBar;
+export default MainLayout;
