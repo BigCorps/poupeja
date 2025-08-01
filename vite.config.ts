@@ -19,8 +19,8 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'PoupeJá',
-        short_name: 'PoupeJá',
-        description: 'Gerencie suas finanças com PoupeJá',
+        short_name: 'App Vixus',
+        description: 'Gerencie suas finanças com IA',
         theme_color: '#005C6E',
         background_color: '#ffffff',
         icons: [
