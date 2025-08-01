@@ -1,4 +1,3 @@
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -48,6 +47,7 @@ export default defineConfig(({ mode }) => ({
         categories: ['finance', 'productivity']
       },
       workbox: {
+        globDirectory: 'dist', // <<<<<<<<<< CORREÇÃO AQUI
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,ttf,woff,woff2}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB limit
         runtimeCaching: [
@@ -63,10 +63,7 @@ export default defineConfig(({ mode }) => ({
             }
           }
         ],
-        // Adicionar esta configuração para lidar com todas as rotas de navegação
         navigateFallback: 'index.html',
-        // Opcionalmente, você pode excluir algumas rotas da navegação fallback
-        // navigateFallbackDenylist: [/^\/api\//]
       },
       devOptions: {
         enabled: true,
