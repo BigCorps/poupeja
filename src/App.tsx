@@ -32,7 +32,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
-import DashboardSaldo from "./pages/DashboardSaldo"; // A importação para o novo arquivo .tsx
+import SaldoDashboard from "./components/dashboard/SaldoDashboard"; // A importação para o componente correto
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -70,14 +70,14 @@ function App() {
                         <Route path="/payment-success" element={<PaymentSuccessPage />} />
                         <Route path="/thank-you" element={<ThankYouPage />} />
                         <Route path="/achievements" element={<AchievementsPage />} />
-                        <Route path="/dashboard/saldo" element={<DashboardSaldo />} />
-                        <Route 
-                          path="/admin" 
+                        <Route path="/dashboard/saldo" element={<SaldoDashboard />} />
+                        <Route
+                          path="/admin"
                           element={
                             <AdminRoute>
                               <AdminDashboard />
                             </AdminRoute>
-                          } 
+                          }
                         />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
