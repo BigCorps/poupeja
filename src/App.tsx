@@ -6,9 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
-import { BrandingProvider } from "@/contexts/BrandingProvider";
+import { BrandingProvider } from "@/contexts/BrandingContext"; // Linha corrigida
 import { AppProvider } from "@/contexts/AppContext";
 import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
+import MainLayout from '@/components/layout/MainLayout';
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -58,7 +59,9 @@ function App() {
                         <Route path="/reset-password" element={<ResetPasswordPage />} />
                         
                         {/* Rota principal do Dashboard com rotas aninhadas */}
-                        <Route path="/dashboard" element={<Index />}>
+                        <Route path="/dashboard" element={<MainLayout />}>
+                          {/* A rota "index" será a página inicial do dashboard */}
+                          <Route index element={<Index />} />
                           <Route path="saldo" element={<SaldoDashboard />} />
                           <Route path="transactions" element={<TransactionsPage />} />
                           <Route path="expenses" element={<ExpensesPage />} />
