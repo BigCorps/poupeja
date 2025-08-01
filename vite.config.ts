@@ -25,17 +25,17 @@ export default defineConfig(({ mode }) => ({
         background_color: '#ffffff',
         icons: [
           {
-            src: '/lovable-uploads/feb4b0d7-9e89-45bc-bae1-72b1af54eacd.png',
+            src: '/lovable-uploads/logo.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: '/lovable-uploads/feb4b0d7-9e89-45bc-bae1-72b1af54eacd.png',
+            src: '/lovable-uploads/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: '/lovable-uploads/feb4b0d7-9e89-45bc-bae1-72b1af54eacd.png',
+            src: '/lovable-uploads/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'
