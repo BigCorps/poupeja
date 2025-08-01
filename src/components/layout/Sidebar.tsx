@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate, useLocation, Outlet } from 'react-router-dom'; // Adicionado Outlet
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAppContext } from '@/contexts/AppContext';
@@ -18,27 +18,18 @@ import {
   Calendar, 
   Crown, 
   LogOut, 
-  Shield, 
-  ChevronDown, 
-  ChevronUp, 
-  Palette
+  Shield,
+  Landmark, // NOVO: Importando o ícone para Saldo
+  ChevronDown, // NOVO: Ícone para menu expansível
+  ChevronUp // NOVO: Ícone para menu expansível
 } from 'lucide-react';
 
-interface MainLayoutProps {
-  // Removido 'children' pois agora usaremos <Outlet />
-  title?: string;
-  onAddTransaction?: (type: 'income' | 'expense') => void;
+interface SidebarProps {
   onProfileClick?: () => void;
   onConfigClick?: () => void;
 }
 
-const Sidebar: React.FC<MainLayoutProps> = ({ 
-  // Removido 'children' da desestruturação
-  title,
-  onAddTransaction,
-  onProfileClick,
-  onConfigClick
-}) => {
+const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
   const { user, logout } = useAppContext();
   const { t } = usePreferences();
   const { isAdmin } = useUserRole();
@@ -46,11 +37,15 @@ const Sidebar: React.FC<MainLayoutProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
 
+  // NOVO: Estado para controlar a expansão do menu de configurações
   const [isSettingsMenuExpanded, setIsSettingsMenuExpanded] = useState(false);
-  
+
   const toggleSettingsMenu = () => {
     setIsSettingsMenuExpanded(!isSettingsMenuExpanded);
   };
+  
+  // Verificar se estamos na página de administração
+  const isAdminPage = location.pathname === '/admin';
 
   const handleLogout = async () => {
     await logout();
@@ -58,14 +53,15 @@ const Sidebar: React.FC<MainLayoutProps> = ({
   };
 
   const handleProfileClick = () => {
-    if (isAdmin && location.pathname === '/admin' && onProfileClick) {
+    if (isAdmin && isAdminPage && onProfileClick) {
       onProfileClick();
     } else {
       navigate('/profile');
     }
   };
 
-  if (isAdmin && location.pathname === '/admin') {
+  // Se for admin na página de admin, mostrar apenas menu administrativo
+  if (isAdmin && isAdminPage) {
     const adminMenuItems = [
       {
         icon: Settings,
@@ -80,10 +76,12 @@ const Sidebar: React.FC<MainLayoutProps> = ({
 
     return (
       <div className="hidden md:flex h-screen w-64 lg:w-64 xl:w-72 flex-col bg-background border-r">
+        {/* Logo/Header */}
         <div className="p-6 border-b">
           <h1 className="text-2xl font-bold text-primary">Admin Panel</h1>
         </div>
 
+        {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
           {adminMenuItems.map((item, index) => (
             <Button
@@ -97,6 +95,7 @@ const Sidebar: React.FC<MainLayoutProps> = ({
             </Button>
           ))}
           
+          {/* Botão Perfil que executa função ao invés de navegar */}
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -107,6 +106,7 @@ const Sidebar: React.FC<MainLayoutProps> = ({
           </Button>
         </nav>
 
+        {/* Bottom Navigation - Theme Toggle e Logout */}
         <div className="p-4 border-t space-y-2">
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm text-muted-foreground">Tema</span>
@@ -125,46 +125,54 @@ const Sidebar: React.FC<MainLayoutProps> = ({
     );
   }
 
+  // Menu padrão para usuários normais
   const defaultMenuItems = [
     {
       icon: LayoutDashboard,
       label: t('nav.dashboard'),
       href: '/dashboard'
     },
+    // Adicionando o item 'Saldo' na estrutura original, após o dashboard
+    {
+      icon: Landmark,
+      label: 'Saldo',
+      href: '/dashboard/saldo'
+    },
     {
       icon: Receipt,
       label: t('nav.transactions'),
-      href: '/dashboard/transactions'
+      href: '/transactions'
     },
     {
       icon: FolderOpen,
       label: t('nav.categories'),
-      href: '/dashboard/categories'
+      href: '/categories'
     },
     {
       icon: Target,
       label: t('nav.goals'),
-      href: '/dashboard/goals'
+      href: '/goals'
     },
     {
       icon: Calendar,
       label: t('schedule.title'),
-      href: '/dashboard/schedule'
+      href: '/schedule'
     },
     {
       icon: BarChart3,
       label: t('nav.reports'),
-      href: '/dashboard/reports'
+      href: '/reports'
     },
     {
       icon: Crown,
       label: t('nav.plans'),
-      href: '/dashboard/plans'
+      href: '/plans'
     },
   ];
 
+  // Adicionar item admin apenas se o usuário for admin e não estiver na página admin
   let menuItems = [...defaultMenuItems];
-  if (isAdmin && location.pathname !== '/admin') {
+  if (isAdmin && !isAdminPage) {
     const adminMenuItem = {
       icon: Shield,
       label: 'Admin',
@@ -173,18 +181,21 @@ const Sidebar: React.FC<MainLayoutProps> = ({
     menuItems.push(adminMenuItem);
   }
 
+  // A estrutura do menu inferior foi modificada para ser expansível
   if (!user) return null;
 
   return (
     <div className="hidden md:flex h-screen w-64 lg:w-64 xl:w-72 flex-col bg-background border-r overflow-hidden">
+      {/* Logo/Header */}
       <div className="p-6 border-b flex-shrink-0">
         <div className="flex items-center space-x-3">
           {logoUrl && (
-            <img
-              src={logoUrl}
+            <img 
+              src={logoUrl} 
               alt={logoAltText}
               className="h-8 w-8 object-contain"
               onError={(e) => {
+                // Fallback para primeira letra do nome da empresa se a logo falhar
                 const target = e.currentTarget as HTMLImageElement;
                 target.style.display = 'none';
                 const nextSibling = target.nextElementSibling as HTMLElement;
@@ -205,6 +216,7 @@ const Sidebar: React.FC<MainLayoutProps> = ({
         </div>
       </div>
 
+      {/* Navigation - Scrollable content */}
       <div className="flex-1 flex flex-col min-h-0">
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => (
@@ -215,8 +227,8 @@ const Sidebar: React.FC<MainLayoutProps> = ({
                 cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
                   "hover:bg-accent hover:text-accent-foreground",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
+                  isActive 
+                    ? "bg-primary text-primary-foreground" 
                     : "text-muted-foreground"
                 )
               }
@@ -227,7 +239,9 @@ const Sidebar: React.FC<MainLayoutProps> = ({
           ))}
         </nav>
 
+        {/* Bottom Navigation - Com o menu de configurações agrupado */}
         <div className="p-4 border-t space-y-2 flex-shrink-0 bg-background">
+          {/* Botão de Configurações que agora é um dropdown */}
           <Button
             variant="ghost"
             className={cn(
@@ -280,10 +294,7 @@ const Sidebar: React.FC<MainLayoutProps> = ({
               </NavLink>
 
               <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-sm text-muted-foreground flex items-center gap-3">
-                  <Palette className="h-5 w-5" />
-                  Tema
-                </span>
+                <span className="text-sm text-muted-foreground">Tema</span>
                 <ThemeToggle variant="ghost" size="sm" />
               </div>
               
