@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'PoupeJá',
+        name: 'App Vixus',
         short_name: 'App Vixus',
         description: 'Gerencie suas finanças com IA',
         theme_color: '#005C6E',
