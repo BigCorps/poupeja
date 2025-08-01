@@ -1,6 +1,3 @@
-/* Note: As cores principais da aplicação são definidas no index.css.
-        Este arquivo ajusta apenas os estilos específicos do app. */
-
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -8,12 +5,10 @@
   transition: filter 300ms;
 }
 .logo:hover {
-  /* Cor ajustada para o amarelo da VIXUS usando código hexadecimal */
-  filter: drop-shadow(0 0 2em #ffeb3b);
+  filter: drop-shadow(0 0 2em #646cffaa);
 }
 .logo.react:hover {
-  /* Cor ajustada para o verde-claro da VIXUS usando código hexadecimal */
-  filter: drop-shadow(0 0 2em #8ae251);
+  filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
 @keyframes logo-spin {
