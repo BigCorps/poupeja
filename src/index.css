@@ -7,85 +7,85 @@
 
 @layer base {
   :root {
-    /* Dark mode por padrão - Verde escuro para fundo, verde claro para destaques, branco para textos */
-    --background: #053c31; /* Verde escuro principal para o fundo */
-    --foreground: #ffffff; /* Branco para textos normais */
+    /* Dark mode por padrão - Cores do logo VIXUS */
+    --background: 169 85% 12%; /* Verde escuro do logo #053c31 */
+    --foreground: 0 0% 100%; /* Branco para textos */
 
-    --card: #0a4f43; /* Verde um pouco mais claro para os cards */
-    --card-foreground: #ffffff; /* Texto do card em branco */
+    --card: 167 67% 18%; /* Verde um pouco mais claro #0a4f43 */
+    --card-foreground: 0 0% 100%; /* Branco para texto do card */
 
-    --popover: #0a4f43;
-    --popover-foreground: #ffffff;
+    --popover: 167 67% 18%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: #00ff88; /* Verde claro/neon para destaques principais */
-    --primary-foreground: #053c31; /* Verde escuro sobre botões primários */
+    --primary: 73 100% 73%; /* Amarelo/verde neon do logo #f0ff3d */
+    --primary-foreground: 169 85% 12%; /* Verde escuro sobre botões */
 
-    --secondary: #dcfef7; /* Verde muito claro para elementos secundários */
-    --secondary-foreground: #053c31; /* Verde escuro para texto em elementos secundários */
+    --secondary: 162 91% 92%; /* Verde muito claro #dcfef7 */
+    --secondary-foreground: 169 85% 12%; /* Verde escuro para contraste */
 
-    --muted: #0a4f43; /* Verde médio para elementos "muted" */
-    --muted-foreground: #a8e5da; /* Verde claro suave para texto muted */
+    --muted: 167 67% 18%; /* Verde médio */
+    --muted-foreground: 162 46% 71%; /* Verde claro suave #a8e5da */
 
-    --accent: #00ff88; /* Verde claro/neon para acentos */
-    --accent-foreground: #053c31;
+    --accent: 73 100% 73%; /* Amarelo/verde neon para acentos */
+    --accent-foreground: 169 85% 12%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: #00ff88; /* Bordas em verde claro */
-    --input: #0a4f43; /* Fundo dos inputs */
-    --ring: #00ff88; /* Anéis de foco em verde claro */
+    --border: 73 100% 73%; /* Bordas em amarelo/verde */
+    --input: 167 67% 18%; /* Fundo dos inputs */
+    --ring: 73 100% 73%; /* Anéis de foco */
 
     --radius: 1rem;
 
-    --sidebar-background: #053c31;
-    --sidebar-foreground: #ffffff;
-    --sidebar-primary: #00ff88;
-    --sidebar-primary-foreground: #053c31;
-    --sidebar-accent: #0a4f43;
-    --sidebar-accent-foreground: #ffffff;
-    --sidebar-border: #00ff88;
-    --sidebar-ring: #00ff88;
+    --sidebar-background: 169 85% 12%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 73 100% 73%;
+    --sidebar-primary-foreground: 169 85% 12%;
+    --sidebar-accent: 167 67% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 73 100% 73%;
+    --sidebar-ring: 73 100% 73%;
   }
 
   .light {
-    /* Light mode - Apenas quando selecionado: fundo verde claro, destaques verde escuro, textos pretos */
-    --background: #dcfef7; /* Verde bem claro para o fundo */
-    --foreground: #000000; /* Preto para textos normais */
+    /* Light mode - Apenas quando selecionado */
+    --background: 162 91% 92%; /* Verde bem claro #dcfef7 */
+    --foreground: 0 0% 0%; /* Preto para textos */
 
-    --card: #ffffff; /* Fundo do card em branco */
-    --card-foreground: #000000; /* Texto do card em preto */
+    --card: 0 0% 100%; /* Branco para cards */
+    --card-foreground: 0 0% 0%; /* Preto para texto do card */
 
-    --popover: #ffffff;
-    --popover-foreground: #000000;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: #053c31; /* Verde escuro para destaques principais */
-    --primary-foreground: #ffffff; /* Branco sobre botões primários */
+    --primary: 169 85% 12%; /* Verde escuro para destaques #053c31 */
+    --primary-foreground: 0 0% 100%; /* Branco sobre botões */
 
-    --secondary: #0a4f43; /* Verde médio escuro para elementos secundários */
-    --secondary-foreground: #ffffff; /* Branco para texto em elementos secundários */
+    --secondary: 167 67% 18%; /* Verde médio #0a4f43 */
+    --secondary-foreground: 0 0% 100%; /* Branco para contraste */
 
-    --muted: #e0f8f3; /* Verde muito claro para elementos "muted" */
-    --muted-foreground: #053c31; /* Verde escuro para texto muted */
+    --muted: 162 71% 88%; /* Verde muito claro #e0f8f3 */
+    --muted-foreground: 169 85% 12%; /* Verde escuro para texto */
 
-    --accent: #053c31; /* Verde escuro para acentos */
-    --accent-foreground: #ffffff;
+    --accent: 169 85% 12%; /* Verde escuro para acentos */
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: #053c31; /* Bordas em verde escuro */
-    --input: #e0f8f3; /* Fundo dos inputs em verde claro */
-    --ring: #053c31; /* Anéis de foco em verde escuro */
+    --border: 169 85% 12%; /* Bordas em verde escuro */
+    --input: 162 71% 88%; /* Fundo dos inputs claro */
+    --ring: 169 85% 12%; /* Anéis de foco escuros */
 
-    --sidebar-background: #dcfef7;
-    --sidebar-foreground: #000000;
-    --sidebar-primary: #053c31;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #e0f8f3;
-    --sidebar-accent-foreground: #053c31;
-    --sidebar-border: #053c31;
-    --sidebar-ring: #053c31;
+    --sidebar-background: 162 91% 92%;
+    --sidebar-foreground: 0 0% 0%;
+    --sidebar-primary: 169 85% 12%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 162 71% 88%;
+    --sidebar-accent-foreground: 169 85% 12%;
+    --sidebar-border: 169 85% 12%;
+    --sidebar-ring: 169 85% 12%;
   }
 }
 
@@ -104,9 +104,9 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
     font-family: 'Quicksand', sans-serif;
-    background: linear-gradient(135deg, var(--background) 0%, var(--muted) 100%);
+    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
     min-height: 100vh;
     width: 100%;
     margin: 0;
@@ -170,16 +170,7 @@
   
   /* Hover effects */
   .hover-card {
-    @apply transition-all duration-300;
-  }
-  
-  .hover-card:hover {
-    box-shadow: 0 10px 40px -10px rgba(0, 255, 136, 0.3), 0 20px 25px -5px rgba(0, 255, 136, 0.1);
-    transform: translateY(-4px);
-  }
-
-  .light .hover-card:hover {
-    box-shadow: 0 10px 40px -10px rgba(5, 60, 49, 0.3), 0 20px 25px -5px rgba(5, 60, 49, 0.1);
+    @apply transition-all duration-300 hover:shadow-card-hover hover:-translate-y-1;
   }
 
   /* Smooth animations */
@@ -229,29 +220,20 @@
   }
 }
 
-/* Custom hover colors - Ajustados para os dois temas */
+/* Custom hover colors */
 .hover\:bg-accent:hover {
-  background-color: var(--accent);
+  background-color: hsl(var(--accent));
 }
 
 .hover\:bg-accent\/80:hover {
-  background-color: var(--accent);
-  opacity: 0.8;
+  background-color: hsl(var(--accent) / 0.8);
 }
 
-/* Enhanced card shadows - Com efeito verde */
+/* Enhanced card shadows */
 .shadow-soft {
-  box-shadow: 0 2px 15px -3px rgba(0, 255, 136, 0.1), 0 10px 20px -2px rgba(0, 255, 136, 0.05);
-}
-
-.light .shadow-soft {
-  box-shadow: 0 2px 15px -3px rgba(5, 60, 49, 0.1), 0 10px 20px -2px rgba(5, 60, 49, 0.05);
+  box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
 }
 
 .shadow-card-hover {
-  box-shadow: 0 10px 40px -10px rgba(0, 255, 136, 0.2), 0 20px 25px -5px rgba(0, 255, 136, 0.1);
-}
-
-.light .shadow-card-hover {
-  box-shadow: 0 10px 40px -10px rgba(5, 60, 49, 0.2), 0 20px 25px -5px rgba(5, 60, 49, 0.1);
+  box-shadow: 0 10px 40px -10px hsla(var(--primary), 0.2), 0 20px 25px -5px hsla(var(--primary), 0.1);
 }
