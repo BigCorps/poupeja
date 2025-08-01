@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@12.0.0?target=deno";
@@ -189,10 +188,10 @@ serve(async (req) => {
       }
     }
     
-    // Initialize Stripe
+    // Initialize Stripe (CORRIGIDO: Removida a opção de httpClient)
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
-      httpClient: Stripe.createFetchHttpClient(),
+      // A biblioteca do Stripe para Deno utiliza a API fetch nativa por padrão
     });
     
     logStep("Stripe initialized successfully");
