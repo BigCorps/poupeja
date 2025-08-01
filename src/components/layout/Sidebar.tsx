@@ -132,32 +132,32 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     {
       icon: Receipt,
       label: t('nav.transactions'),
-      href: '/dashboard/transactions' // CORRIGIDO: Rota aninhada
+      href: '/dashboard/transactions'
     },
     {
       icon: FolderOpen,
       label: t('nav.categories'),
-      href: '/dashboard/categories' // CORRIGIDO: Rota aninhada
+      href: '/dashboard/categories'
     },
     {
       icon: Target,
       label: t('nav.goals'),
-      href: '/dashboard/goals' // CORRIGIDO: Rota aninhada
+      href: '/dashboard/goals'
     },
     {
       icon: Calendar,
       label: t('schedule.title'),
-      href: '/dashboard/schedule' // CORRIGIDO: Rota aninhada
+      href: '/dashboard/schedule'
     },
     {
       icon: BarChart3,
       label: t('nav.reports'),
-      href: '/dashboard/reports' // CORRIGIDO: Rota aninhada
+      href: '/dashboard/reports'
     },
     {
       icon: Crown,
       label: t('nav.plans'),
-      href: '/dashboard/plans' // CORRIGIDO: Rota aninhada
+      href: '/dashboard/plans'
     },
   ];
 
@@ -246,7 +246,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
           {isSettingsMenuExpanded && (
             <div className="pl-6 space-y-2">
               <NavLink
-                to="/dashboard/profile" // CORRIGIDO: Rota aninhada
+                to="/dashboard/profile"
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
@@ -262,7 +262,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
               </NavLink>
 
               <NavLink
-                to="/dashboard/settings" // CORRIGIDO: Rota aninhada
+                to="/dashboard/settings"
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
