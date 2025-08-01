@@ -32,7 +32,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
-import SaldoDashboard from "./components/dashboard/SaldoDashboard"; // A importação para o componente correto
+import SaldoDashboard from "./components/dashboard/SaldoDashboard";
+import DashboardContentMain from "./components/dashboard/DashboardContentMain"; // NOVO: Componente para o conteúdo principal do dashboard
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -50,27 +51,34 @@ function App() {
                     <BrowserRouter>
                       <Routes>
                         <Route path="/" element={<LandingPage />} />
-                        <Route path="/dashboard" element={<Index />} />
                         <Route path="/landing" element={<LandingPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<RegisterPage />} />
                         <Route path="/register/:planType" element={<RegisterWithPlanPage />} />
                         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                         <Route path="/reset-password" element={<ResetPasswordPage />} />
-                        <Route path="/profile" element={<ProfilePage />} />
-                        <Route path="/transactions" element={<TransactionsPage />} />
-                        <Route path="/expenses" element={<ExpensesPage />} />
-                        <Route path="/goals" element={<GoalsPage />} />
-                        <Route path="/reports" element={<ReportsPage />} />
-                        <Route path="/schedule" element={<SchedulePage />} />
-                        <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="/categories" element={<CategoriesPage />} />
-                        <Route path="/plans" element={<PlansPage />} />
                         <Route path="/checkout/:planType" element={<CheckoutPage />} />
                         <Route path="/payment-success" element={<PaymentSuccessPage />} />
                         <Route path="/thank-you" element={<ThankYouPage />} />
-                        <Route path="/achievements" element={<AchievementsPage />} />
-                        <Route path="/dashboard/saldo" element={<SaldoDashboard />} />
+                        
+                        {/* Rota principal do Dashboard com rotas aninhadas */}
+                        {/* O Index.tsx se torna o componente de layout que renderiza o Sidebar */}
+                        <Route path="/dashboard" element={<Index />}>
+                          {/* A rota "index" sem caminho renderiza o conteúdo principal do dashboard */}
+                          <Route index element={<DashboardContentMain />} />
+                          <Route path="saldo" element={<SaldoDashboard />} />
+                          <Route path="transactions" element={<TransactionsPage />} />
+                          <Route path="expenses" element={<ExpensesPage />} />
+                          <Route path="goals" element={<GoalsPage />} />
+                          <Route path="reports" element={<ReportsPage />} />
+                          <Route path="schedule" element={<SchedulePage />} />
+                          <Route path="settings" element={<SettingsPage />} />
+                          <Route path="categories" element={<CategoriesPage />} />
+                          <Route path="plans" element={<PlansPage />} />
+                          <Route path="profile" element={<ProfilePage />} />
+                          <Route path="achievements" element={<AchievementsPage />} />
+                        </Route>
+
                         <Route
                           path="/admin"
                           element={
