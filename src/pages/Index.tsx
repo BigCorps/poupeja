@@ -7,7 +7,6 @@ import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
 const Index = () => {
-  const navigate = useNavigate();
   const { t } = usePreferences();
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
@@ -25,7 +24,7 @@ const Index = () => {
   return (
     <MainLayout title={t('dashboard.title')} onAddTransaction={handleAddTransaction}>
       <SubscriptionGuard feature="o dashboard completo">
-        {/* O Outlet renderiza o conteúdo da rota aninhada */}
+        {/* O Outlet renderiza o conteúdo da rota aninhada, como SaldoDashboard ou DashboardContent */}
         <Outlet />
       </SubscriptionGuard>
 
