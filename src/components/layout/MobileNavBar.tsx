@@ -50,7 +50,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Receipt,
       label: 'Transações',
       action: () => {
-        navigate('/dashboard/transactions'); // CORRIGIDO: Rota aninhada
+        navigate('/dashboard/transactions');
         setIsQuickActionsOpen(false);
       },
       color: 'text-blue-600',
@@ -60,7 +60,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Target,
       label: t('nav.goals') || 'Metas',
       action: () => {
-        navigate('/dashboard/goals'); // CORRIGIDO: Rota aninhada
+        navigate('/dashboard/goals');
         setIsQuickActionsOpen(false);
       },
       color: 'text-blue-600',
@@ -70,7 +70,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Calendar,
       label: 'Agendamentos',
       action: () => {
-        navigate('/dashboard/schedule'); // CORRIGIDO: Rota aninhada
+        navigate('/dashboard/schedule');
         setIsQuickActionsOpen(false);
       },
       color: 'text-purple-600',
@@ -80,7 +80,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: FileText,
       label: 'Relatórios',
       action: () => {
-        navigate('/dashboard/reports'); // CORRIGIDO: Rota aninhada
+        navigate('/dashboard/reports');
         setIsQuickActionsOpen(false);
       },
       color: 'text-orange-600',
@@ -98,7 +98,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       {
         icon: User,
         label: t('nav.profile'),
-        href: '/dashboard/profile' // CORRIGIDO: Rota aninhada
+        href: '/dashboard/profile'
       }
     ];
 
@@ -135,7 +135,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     {
       icon: Receipt,
       label: t('nav.transactions'),
-      href: '/dashboard/transactions' // CORRIGIDO: Rota aninhada
+      href: '/dashboard/transactions'
     },
     {
       type: 'quick-actions',
@@ -146,12 +146,12 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     {
       icon: Crown,
       label: t('nav.plans'),
-      href: '/dashboard/plans' // CORRIGIDO: Rota aninhada
+      href: '/dashboard/plans'
     },
     {
       icon: Settings,
       label: t('nav.settings'),
-      href: '/dashboard/settings' // CORRIGIDO: Rota aninhada
+      href: '/dashboard/settings'
     }
   ];
   
