@@ -1,10 +1,21 @@
-
 import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Receipt,
+  Settings,
+  Crown,
+  Plus,
+  Target,
+  Calendar,
+  Shield,
+  User,
+  FileText,
+  Landmark, // NOVO: Importando o ícone para Saldo
+} from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,7 +36,18 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
   // Verificar se estamos na página de administração
   const isAdminPage = location.pathname === '/admin';
 
+  // NOVO: Adicionando o item de Saldo
   const quickActionItems = [
+    {
+      icon: Landmark, // Usando o ícone Landmark para Saldo
+      label: 'Saldo',
+      action: () => {
+        navigate('/dashboard/saldo');
+        setIsQuickActionsOpen(false);
+      },
+      color: 'text-green-600',
+      bgColor: 'bg-green-50 hover:bg-green-100'
+    },
     {
       icon: Receipt,
       label: 'Transações',
@@ -191,7 +213,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden">
       <nav className="flex items-center justify-around py-2">
-        {menuItems.map((item, index) => {
+        {menuItems.map((item) => {
           if (item.type === 'quick-actions') {
             return (
               <Popover key="quick-actions" open={isQuickActionsOpen} onOpenChange={setIsQuickActionsOpen}>
