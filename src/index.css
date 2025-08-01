@@ -18,7 +18,7 @@
     --popover-foreground: 0 0% 100%;
 
     --primary: 73 100% 73%; /* Amarelo/verde neon do logo #f0ff3d */
-    --primary-foreground: 169 85% 12%; /* Verde escuro sobre botões */
+    --primary-foreground: 169 85% 12%; /* Verde escuro sobre botões para melhor contraste */
 
     --secondary: 162 91% 92%; /* Verde muito claro #dcfef7 */
     --secondary-foreground: 169 85% 12%; /* Verde escuro para contraste */
