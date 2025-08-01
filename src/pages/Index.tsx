@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MainLayout from '@/components/layout/MainLayout';
 import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import TransactionForm from '@/components/common/TransactionForm';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -8,7 +7,7 @@ import DashboardStatCards from '@/components/dashboard/DashboardStatCards';
 import DashboardContent from '@/components/dashboard/DashboardContent';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { calculateTotalIncome, calculateTotalExpenses, calculateMonthlyFinancialData, getGoalsForMonth } from '@/utils/transactionUtils';
+import { calculateMonthlyFinancialData, getGoalsForMonth } from '@/utils/transactionUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { markAsPaid } from '@/services/scheduledTransactionService';
 import { ScheduledTransaction } from '@/types';
@@ -45,7 +44,6 @@ const Index = () => {
     scheduledTransactionsCount: scheduledTransactions.length
   });
   
-  // NEW: Calculate month-specific financial data using the new utility
   const monthlyData = calculateMonthlyFinancialData(transactions, currentMonth);
   const monthlyGoals = getGoalsForMonth(goals, currentMonth);
   
@@ -53,7 +51,6 @@ const Index = () => {
   const totalExpenses = monthlyData.monthlyExpenses;
   const balance = monthlyData.accumulatedBalance;
   
-  // Load initial data only once when component mounts
   useEffect(() => {
     const loadInitialData = async () => {
       console.log("Dashboard: Loading initial data...");
@@ -66,24 +63,18 @@ const Index = () => {
     };
     
     loadInitialData();
-  }, []); // ✅ Empty dependency array - runs only once
+  }, []);
 
-  // Update date range when month changes
   useEffect(() => {
     const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
     const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59);
     setCustomDateRange(firstDay, lastDay);
     console.log("Dashboard: Date range updated for month:", currentMonth.toDateString());
   }, [currentMonth, setCustomDateRange]);
-
-  // Removed auto-refresh to prevent performance issues
-  // Data will be refreshed when user performs actions (add/edit/delete transactions)
   
   const handleMonthChange = (date: Date) => {
     console.log("Dashboard: Month changed to:", date.toDateString());
     setCurrentMonth(date);
-    
-    // Update filtered transactions range to match the selected month
     const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
     const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
     setCustomDateRange(firstDay, lastDay);
@@ -109,8 +100,6 @@ const Index = () => {
         title: t('transactions.deleted'),
         description: t('transactions.deleteSuccess'),
       });
-      
-      // Refresh transactions and goals
       console.log("Dashboard: Refreshing data after delete...");
       await Promise.all([
         getTransactions(),
@@ -133,7 +122,6 @@ const Index = () => {
         title: t('schedule.marked_as_paid'),
         description: t('schedule.transaction_marked_as_paid')
       });
-      // Refresh data to update the alert
       console.log("Dashboard: Refreshing data after marking as paid...");
       await Promise.all([
         getTransactions(),
@@ -174,51 +162,45 @@ const Index = () => {
   };
   
   return (
-    <MainLayout title={t('dashboard.title')} onAddTransaction={handleAddTransaction}>
-      <SubscriptionGuard feature="o dashboard completo">
-        <motion.div 
-          className="space-y-8"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {/* Header com navegação de mês e toggle de visibilidade */}
-          <DashboardHeader
-            currentMonth={currentMonth}
-            onMonthChange={handleMonthChange}
+    <SubscriptionGuard feature="o dashboard completo">
+      <motion.div 
+        className="space-y-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <DashboardHeader
+          currentMonth={currentMonth}
+          onMonthChange={handleMonthChange}
+          hideValues={hideValues}
+          toggleHideValues={toggleHideValues}
+          onAddTransaction={handleAddTransaction}
+        />
+        
+        <motion.div variants={itemVariants}>
+          <DashboardStatCards
+            totalIncome={totalIncome}
+            totalExpenses={totalExpenses}
+            balance={balance}
             hideValues={hideValues}
-            toggleHideValues={toggleHideValues}
-            onAddTransaction={handleAddTransaction}
-          />
-          
-          {/* 3 Cards principais na mesma linha */}
-          <motion.div variants={itemVariants}>
-            <DashboardStatCards
-              totalIncome={totalIncome}
-              totalExpenses={totalExpenses}
-              balance={balance}
-              hideValues={hideValues}
-              onNavigateToTransactionType={navigateToTransactionType}
-            />
-          </motion.div>
-
-          {/* Conteúdo do dashboard */}
-          <DashboardContent
-            filteredTransactions={monthlyData.monthTransactions}
-            goals={monthlyGoals}
-            scheduledTransactions={scheduledTransactions}
-            currentGoalIndex={currentGoalIndex}
-            currentMonth={currentMonth}
-            hideValues={hideValues}
-            onGoalChange={setCurrentGoalIndex}
-            onEditTransaction={handleEditTransaction}
-            onDeleteTransaction={handleDeleteTransaction}
-            onMarkScheduledAsPaid={handleMarkScheduledAsPaid}
+            onNavigateToTransactionType={navigateToTransactionType}
           />
         </motion.div>
-      </SubscriptionGuard>
 
-      {/* Dialog do formulário de transação */}
+        <DashboardContent
+          filteredTransactions={monthlyData.monthTransactions}
+          goals={monthlyGoals}
+          scheduledTransactions={scheduledTransactions}
+          currentGoalIndex={currentGoalIndex}
+          currentMonth={currentMonth}
+          hideValues={hideValues}
+          onGoalChange={setCurrentGoalIndex}
+          onEditTransaction={handleEditTransaction}
+          onDeleteTransaction={handleDeleteTransaction}
+          onMarkScheduledAsPaid={handleMarkScheduledAsPaid}
+        />
+      </motion.div>
+
       <TransactionForm 
         open={transactionDialogOpen} 
         onOpenChange={setTransactionDialogOpen} 
@@ -226,7 +208,7 @@ const Index = () => {
         mode={formMode} 
         defaultType={transactionType} 
       />
-    </MainLayout>
+    </SubscriptionGuard>
   );
 };
 
