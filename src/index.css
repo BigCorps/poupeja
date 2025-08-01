@@ -220,13 +220,15 @@
   }
 }
 
-/* Custom hover colors */
+/* Custom hover colors - Azul claro no lugar do roxo */
 .hover\:bg-accent:hover {
-  background-color: hsl(var(--accent));
+  background-color: hsl(195 100% 75%); /* Azul claro */
+  color: hsl(169 85% 12%); /* Texto verde escuro */
 }
 
 .hover\:bg-accent\/80:hover {
-  background-color: hsl(var(--accent) / 0.8);
+  background-color: hsl(195 100% 75% / 0.8); /* Azul claro com transparência */
+  color: hsl(169 85% 12%);
 }
 
 /* Enhanced card shadows */
