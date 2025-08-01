@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, ChevronDown, ChevronUp, Palette } from 'lucide-react';
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -22,11 +22,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // NOVO ESTADO: Controla a expansão do menu de perfil
-  const [isProfileMenuExpanded, setIsProfileMenuExpanded] = useState(false);
+  // NOVO ESTADO: Controla a expansão do menu de configurações
+  const [isSettingsMenuExpanded, setIsSettingsMenuExpanded] = useState(false);
   
-  const toggleProfileMenu = () => {
-    setIsProfileMenuExpanded(!isProfileMenuExpanded);
+  const toggleSettingsMenu = () => {
+    setIsSettingsMenuExpanded(!isSettingsMenuExpanded);
   };
 
   const handleLogout = async () => {
@@ -213,20 +213,20 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
           ))}
         </nav>
 
-        {/* Bottom Navigation - Com o menu de perfil agrupado */}
+        {/* Bottom Navigation - Com o menu de configurações agrupado */}
         <div className="p-4 border-t space-y-2 flex-shrink-0 bg-background">
-          {/* Botão de Perfil que agora é um dropdown */}
+          {/* Botão de Configurações que agora é um dropdown */}
           <Button
             variant="ghost"
             className={cn(
               "w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              isProfileMenuExpanded && "bg-accent text-accent-foreground"
+              isSettingsMenuExpanded && "bg-accent text-accent-foreground"
             )}
-            onClick={toggleProfileMenu}
+            onClick={toggleSettingsMenu}
           >
-            <User className="h-5 w-5" />
-            Perfil
-            {isProfileMenuExpanded ? (
+            <Settings className="h-5 w-5" />
+            Configurações
+            {isSettingsMenuExpanded ? (
               <ChevronUp className="h-4 w-4 ml-auto" />
             ) : (
               <ChevronDown className="h-4 w-4 ml-auto" />
@@ -234,7 +234,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
           </Button>
 
           {/* Itens do dropdown, exibidos condicionalmente */}
-          {isProfileMenuExpanded && (
+          {isSettingsMenuExpanded && (
             <div className="pl-6 space-y-2">
               <NavLink
                 to="/profile"
@@ -265,26 +265,29 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
                 }
               >
                 <Settings className="h-5 w-5" />
-                {t('nav.settings')}
+                Preferências
               </NavLink>
+
+              {/* Opção de Tema dentro do dropdown */}
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-sm text-muted-foreground flex items-center gap-3">
+                  <Palette className="h-5 w-5" />
+                  Tema
+                </span>
+                <ThemeToggle variant="ghost" size="sm" />
+              </div>
+              
+              {/* Opção de Sair dentro do dropdown */}
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-5 w-5" />
+                {t('settings.logout')}
+              </Button>
             </div>
           )}
-
-          {/* Theme Toggle */}
-          <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-sm text-muted-foreground">Tema</span>
-            <ThemeToggle variant="ghost" size="sm" />
-          </div>
-          
-          {/* Logout Button */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-5 w-5" />
-            {t('settings.logout')}
-          </Button>
         </div>
       </div>
     </div>
