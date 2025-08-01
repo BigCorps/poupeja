@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Goal, ScheduledTransaction } from '@/types';
 import { motion } from 'framer-motion';
+import { Landmark } from 'lucide-react'; // Importe o ícone para Saldo
 
 interface DashboardContentProps {
   filteredTransactions: any[];
@@ -71,6 +71,23 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
           hideValues={hideValues}
           monthTransactions={filteredTransactions}
         />
+      </motion.div>
+      
+      {/* Link para a seção de Saldo */}
+      <motion.div variants={itemVariants}>
+        <Card className="shadow-lg border-0">
+          <CardContent className="p-6">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center">
+                <Landmark size={24} className="mr-4 text-purple-600" />
+                <h3 className="text-xl font-semibold">Saldo</h3>
+              </div>
+              <Button asChild>
+                <Link to="/dashboard/saldo">Ver Saldo</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Transações recentes */}
