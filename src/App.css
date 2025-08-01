@@ -8,12 +8,12 @@
   transition: filter 300ms;
 }
 .logo:hover {
-  /* Cor ajustada para o amarelo da VIXUS */
-  filter: drop-shadow(0 0 2em #ffeb3b);
+  /* Cor ajustada para usar a variável --primary do index.css */
+  filter: drop-shadow(0 0 2em hsl(var(--primary)));
 }
 .logo.react:hover {
-  /* Cor ajustada para o verde-claro da VIXUS */
-  filter: drop-shadow(0 0 2em #8ae251);
+  /* Cor ajustada para usar a variável --secondary do index.css */
+  filter: drop-shadow(0 0 2em hsl(var(--secondary)));
 }
 
 @keyframes logo-spin {
@@ -36,6 +36,5 @@
 }
 
 .read-the-docs {
-  /* Mantido cinza para contraste */
   color: #888;
 }
