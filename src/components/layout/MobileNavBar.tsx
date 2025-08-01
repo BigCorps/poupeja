@@ -14,7 +14,7 @@ import {
   Shield,
   User,
   FileText,
-  Landmark, // NOVO: Importando o ícone para Saldo
+  Landmark,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -33,13 +33,11 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
   const { isAdmin } = useUserRole();
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   
-  // Verificar se estamos na página de administração
   const isAdminPage = location.pathname === '/admin';
 
-  // NOVO: Adicionando o item de Saldo
   const quickActionItems = [
     {
-      icon: Landmark, // Usando o ícone Landmark para Saldo
+      icon: Landmark,
       label: 'Saldo',
       action: () => {
         navigate('/dashboard/saldo');
@@ -52,7 +50,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Receipt,
       label: 'Transações',
       action: () => {
-        navigate('/transactions');
+        navigate('/dashboard/transactions'); // CORRIGIDO: Rota aninhada
         setIsQuickActionsOpen(false);
       },
       color: 'text-blue-600',
@@ -62,7 +60,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Target,
       label: t('nav.goals') || 'Metas',
       action: () => {
-        navigate('/goals');
+        navigate('/dashboard/goals'); // CORRIGIDO: Rota aninhada
         setIsQuickActionsOpen(false);
       },
       color: 'text-blue-600',
@@ -72,7 +70,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Calendar,
       label: 'Agendamentos',
       action: () => {
-        navigate('/schedule');
+        navigate('/dashboard/schedule'); // CORRIGIDO: Rota aninhada
         setIsQuickActionsOpen(false);
       },
       color: 'text-purple-600',
@@ -82,7 +80,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: FileText,
       label: 'Relatórios',
       action: () => {
-        navigate('/reports');
+        navigate('/dashboard/reports'); // CORRIGIDO: Rota aninhada
         setIsQuickActionsOpen(false);
       },
       color: 'text-orange-600',
@@ -90,7 +88,6 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     }
   ];
 
-  // Se for admin na página de admin, mostrar apenas menu administrativo
   if (isAdmin && isAdminPage) {
     const adminMenuItems = [
       {
@@ -101,7 +98,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       {
         icon: User,
         label: t('nav.profile'),
-        href: '/profile'
+        href: '/dashboard/profile' // CORRIGIDO: Rota aninhada
       }
     ];
 
@@ -129,7 +126,6 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     );
   }
 
-  // Menu padrão para usuários normais
   const defaultMenuItems = [
     {
       icon: LayoutDashboard,
@@ -139,7 +135,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     {
       icon: Receipt,
       label: t('nav.transactions'),
-      href: '/transactions'
+      href: '/dashboard/transactions' // CORRIGIDO: Rota aninhada
     },
     {
       type: 'quick-actions',
@@ -150,19 +146,17 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     {
       icon: Crown,
       label: t('nav.plans'),
-      href: '/plans'
+      href: '/dashboard/plans' // CORRIGIDO: Rota aninhada
     },
     {
       icon: Settings,
       label: t('nav.settings'),
-      href: '/settings'
+      href: '/dashboard/settings' // CORRIGIDO: Rota aninhada
     }
   ];
   
-  // Determinar quais itens de menu mostrar
   let menuItems = defaultMenuItems;
   
-  // Se for admin mas não estiver na página de admin, adicionar o item admin ao menu
   if (isAdmin && !isAdminPage) {
     const adminMenuItem = {
       icon: Shield,
@@ -170,7 +164,6 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       href: '/admin'
     };
     
-    // Adicionar o item admin antes do último item (settings)
     menuItems = [...defaultMenuItems.slice(0, -1), adminMenuItem, defaultMenuItems[defaultMenuItems.length - 1]];
   }
 
