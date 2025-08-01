@@ -8,84 +8,84 @@
 @layer base {
   :root {
     /* Light mode - Cores ajustadas para a VIXUS */
-    --background: 78 40% 25%; /* Verde escuro do fundo da Vixus */
-    --foreground: 48 100% 90%; /* Amarelo claro para o texto */
+    --background: #dcfef7; /* Verde bem claro para o fundo */
+    --foreground: #053c31; /* Verde escuro para o texto */
 
-    --card: 78 40% 20%; /* Um verde escuro mais claro para cards */
-    --card-foreground: 48 100% 90%; /* Amarelo claro para o texto */
+    --card: #ffffff; /* Fundo do card em branco */
+    --card-foreground: #053c31; /* Texto do card em verde escuro */
 
-    --popover: 78 40% 20%;
-    --popover-foreground: 48 100% 90%;
+    --popover: #ffffff;
+    --popover-foreground: #053c31;
 
-    --primary: 61 100% 60%; /* Amarelo brilhante dos botões */
-    --primary-foreground: 78 40% 25%; /* Texto escuro sobre o botão amarelo */
+    --primary: #f0ff3d; /* Verde claro/amarelo para os botões */
+    --primary-foreground: #053c31; /* Texto escuro sobre o botão */
 
-    --secondary: 61 100% 60%; /* Amarelo brilhante para a cor secundária */
-    --secondary-foreground: 78 40% 25%; /* Texto escuro */
+    --secondary: #0a4f43; /* Um tom mais escuro de verde */
+    --secondary-foreground: #f0ff3d; /* Texto claro */
 
-    --muted: 78 40% 30%; /* Um tom de verde escuro para elementos "muted" */
-    --muted-foreground: 48 100% 90%;
+    --muted: #e0f8f3; /* Um tom suave de verde para elementos "muted" */
+    --muted-foreground: #0a4f43;
 
-    --accent: 61 100% 60%; /* Amarelo brilhante para a cor de destaque */
-    --accent-foreground: 78 40% 25%;
+    --accent: #f0ff3d; /* Verde claro/amarelo para destaque */
+    --accent-foreground: #053c31;
 
-    --destructive: 0 84% 60%; /* Mantido o vermelho padrão para destruição */
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 78 40% 35%; /* Borda mais clara */
-    --input: 78 40% 30%;
-    --ring: 61 100% 60%; /* Amarelo para anéis de foco */
+    --border: #a8e5da; /* Borda em um tom de verde médio */
+    --input: #e0f8f3;
+    --ring: #f0ff3d; /* Anéis de foco em verde claro/amarelo */
 
     --radius: 1rem;
 
-    --sidebar-background: 78 40% 25%; /* Verde escuro para o sidebar */
-    --sidebar-foreground: 48 100% 90%;
-    --sidebar-primary: 61 100% 60%;
-    --sidebar-primary-foreground: 78 40% 25%;
-    --sidebar-accent: 78 40% 30%;
-    --sidebar-accent-foreground: 48 100% 90%;
-    --sidebar-border: 78 40% 30%;
-    --sidebar-ring: 61 100% 60%;
+    --sidebar-background: #dcfef7;
+    --sidebar-foreground: #053c31;
+    --sidebar-primary: #f0ff3d;
+    --sidebar-primary-foreground: #053c31;
+    --sidebar-accent: #e0f8f3;
+    --sidebar-accent-foreground: #0a4f43;
+    --sidebar-border: #a8e5da;
+    --sidebar-ring: #f0ff3d;
   }
 
   .dark {
-    /* Dark mode - Cores ajustadas para a VIXUS (mantendo a mesma paleta) */
-    --background: 78 40% 25%;
-    --foreground: 48 100% 90%;
+    /* Dark mode - Invertendo as cores para o tema escuro */
+    --background: #053c31; /* Verde escuro principal para o fundo */
+    --foreground: #dcfef7; /* Verde claro para o texto */
 
-    --card: 78 40% 20%;
-    --card-foreground: 48 100% 90%;
+    --card: #0a4f43; /* Um verde um pouco mais claro para os cards */
+    --card-foreground: #dcfef7; /* Texto do card em verde claro */
 
-    --popover: 78 40% 25%;
-    --popover-foreground: 48 100% 90%;
+    --popover: #0a4f43;
+    --popover-foreground: #dcfef7;
 
-    --primary: 61 100% 60%;
-    --primary-foreground: 78 40% 25%;
+    --primary: #f0ff3d;
+    --primary-foreground: #053c31;
 
-    --secondary: 61 100% 60%;
-    --secondary-foreground: 78 40% 25%;
+    --secondary: #f0ff3d;
+    --secondary-foreground: #053c31;
 
-    --muted: 78 40% 30%;
-    --muted-foreground: 48 100% 90%;
+    --muted: #0a4f43;
+    --muted-foreground: #dcfef7;
 
-    --accent: 61 100% 60%;
-    --accent-foreground: 78 40% 25%;
+    --accent: #f0ff3d;
+    --accent-foreground: #053c31;
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 78 40% 35%;
-    --input: 78 40% 30%;
-    --ring: 61 100% 60%;
+    --border: #f0ff3d;
+    --input: #0a4f43;
+    --ring: #f0ff3d;
 
-    --sidebar-background: 78 40% 25%;
-    --sidebar-foreground: 48 100% 90%;
-    --sidebar-primary: 61 100% 60%;
-    --sidebar-primary-foreground: 78 40% 25%;
-    --sidebar-accent: 78 40% 30%;
-    --sidebar-accent-foreground: 48 100% 90%;
-    --sidebar-border: 78 40% 30%;
-    --sidebar-ring: 61 100% 60%;
+    --sidebar-background: #053c31;
+    --sidebar-foreground: #dcfef7;
+    --sidebar-primary: #f0ff3d;
+    --sidebar-primary-foreground: #053c31;
+    --sidebar-accent: #0a4f43;
+    --sidebar-accent-foreground: #dcfef7;
+    --sidebar-border: #f0ff3d;
+    --sidebar-ring: #f0ff3d;
   }
 }
 
@@ -103,8 +103,8 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Quicksand', sans-serif; /* Aplica a fonte Quicksand */
-    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
+    font-family: 'Quicksand', sans-serif;
+    background: linear-gradient(135deg, var(--background) 0%, var(--muted) 100%);
     min-height: 100vh;
     width: 100%;
     margin: 0;
@@ -129,97 +129,47 @@
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-metacash-gray/40 rounded-full hover:bg-metacash-gray/60 transition-colors;
+    background-color: var(--muted);
+    border-radius: 9999px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--primary);
   }
 
   /* Custom styles for VIXUS */
   .card-gradient {
-    @apply bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] text-white;
+    background-image: linear-gradient(to bottom right, var(--primary), var(--secondary));
+    color: var(--primary-foreground);
   }
 
   .progress-bar {
-    @apply h-2 rounded-full overflow-hidden bg-muted-foreground/20;
+    @apply h-2 rounded-full overflow-hidden;
+    background-color: var(--muted-foreground);
   }
 
   .progress-bar-value {
     @apply h-full animate-progress-fill;
+    background-color: var(--primary);
   }
   
   /* Glass effect */
   .glass {
-    @apply bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl;
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 1rem;
   }
   
   .dark .glass {
-    @apply bg-black/20 border-white/10;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   /* Hover effects */
   .hover-card {
-    @apply transition-all duration-300 hover:shadow-card-hover hover:-translate-y-1;
+    @apply transition-all duration-300;
   }
-
-  /* Smooth animations */
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-in-out;
-  }
-
-  .animate-slide-up {
-    animation: slideUp 0.6s ease-out;
-  }
-
-  .animate-scale-in {
-    animation: scaleIn 0.4s ease-out;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Custom hover color */
-.hover\:bg-accent:hover {
-  background-color: #06465f; /* Pode ser substituído por uma cor da VIXUS */
-}
-
-.hover\:bg-accent\/80:hover {
-  background-color: rgba(6, 70, 95, 0.8); /* Pode ser substituído por uma cor da VIXUS */
-}
-
-/* Enhanced card shadows */
-.shadow-soft {
-  box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
-}
-
-.shadow-card-hover {
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
+  
+  .hover-card:hover {
+    box-shadow: 0 1
