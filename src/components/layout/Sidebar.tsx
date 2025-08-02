@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot } from 'lucide-react'; // 👈 Adicionei o 'Bot' aqui
+import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot } from 'lucide-react';
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -141,16 +141,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: t('nav.reports'),
       href: '/reports'
     },
-    { // 👈 Aqui está a nova seção do Agente IA
+    {
       icon: Bot,
       label: 'Agente IA',
       href: '/agente-ia'
     },
-    {
-      icon: Crown,
-      label: t('nav.plans'),
-      href: '/plans'
-    },
+    // Removi o item "Planos" daqui
   ];
 
   // Adicionar item admin apenas se o usuário for admin e não estiver na página admin
@@ -164,19 +160,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     menuItems.push(adminMenuItem);
   }
 
-  const bottomMenuItems = [
-    {
-      icon: Settings,
-      label: t('nav.settings'),
-      href: '/settings'
-    },
-  ];
-
+  // Removi os itens de menu 'bottomMenuItems' e 'profileMenuItems' para simplificar o código
   const profileMenuItems = [
     {
       icon: User,
       label: 'Usuário',
       href: '/profile'
+    },
+    { // 👈 Aqui está a nova seção do menu expansível
+      icon: Crown,
+      label: t('nav.plans'),
+      href: '/plans'
     },
     {
       icon: Settings,
