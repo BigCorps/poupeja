@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/agente-ia",
-      "destination": "/api/agente-ia.cjs"
+      "destination": "/api/agente-ia.mjs"
     },
     {
       "source": "/(.*)",
