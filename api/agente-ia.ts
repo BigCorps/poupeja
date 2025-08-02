@@ -30,13 +30,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('Fetching data from Supabase for user:', userId);
 
     const { data: transactions, error: transactionsError } = await supabase
-      .from('transactions')
+      .from('poupeja_transactions')
       .select('*')
       .eq('user_id', userId)
       .limit(10);
 
     const { data: categories, error: categoriesError } = await supabase
-      .from('categories')
+      .from('poupeja_categories')
       .select('*')
       .eq('user_id', userId);
 
