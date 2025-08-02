@@ -3,15 +3,6 @@ export type TransactionType = 'income' | 'expense';
 
 export type TimeRange = 'today' | 'yesterday' | '7days' | '14days' | '30days' | 'custom';
 
-export interface Account {
-  id: string;
-  user_id: string;
-  name: string;
-  type: 'Conta Corrente' | 'Investimento' | 'Cartão de Crédito';
-  value: number;
-  created_at: string;
-}
-
 export interface Transaction {
   id: string;
   type: 'income' | 'expense';
