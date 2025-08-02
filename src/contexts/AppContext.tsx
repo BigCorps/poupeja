@@ -938,7 +938,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addTransaction,
     updateTransaction,
     deleteTransaction,
-    addCategory,
+    addCategory, // ✅ Adicionado aqui
     updateCategory,
     deleteCategory,
     addGoal,
@@ -962,10 +962,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logout,
     setCustomDateRange,
     setTimeRange,
-    addCategory,
+    addCategory, // ✅ Adicionado na lista de dependências
   ]);
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
 export const useApp = () => {
