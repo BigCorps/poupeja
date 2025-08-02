@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Sidebar from './Sidebar';
 import MobileNavBar from './MobileNavBar';
@@ -35,6 +34,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   
   return <div className="min-h-screen bg-background w-full">
       {isMobile ? <div className="flex flex-col h-screen w-full">
+          {/* O MobileHeader precisaria ser modificado para exibir os links de "Planos" e "Configurações" */}
           <MobileHeader hideValues={hideValues} toggleHideValues={toggleHideValues} />
           <main className="flex-1 overflow-auto p-4 pb-20 pt-20 w-full">
             {title && <div className="mb-6">
@@ -42,6 +42,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               </div>}
             {children}
           </main>
+          {/* MobileNavBar já atualizado com Saldo e Agente IA */}
           <MobileNavBar onAddTransaction={handleAddTransaction} />
         </div> : <div className="flex h-screen w-full overflow-hidden">
           <Sidebar onProfileClick={onProfileClick} onConfigClick={onConfigClick} />
