@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot } from 'lucide-react'; // 👈 Adicionei o 'Bot' aqui
+import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,27 +24,8 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
   // Verificar se estamos na página de administração
   const isAdminPage = location.pathname === '/admin';
 
+  // 1. Ações rápidas restantes no botão "+"
   const quickActionItems = [
-    {
-      icon: Wallet,
-      label: 'Saldo',
-      action: () => {
-        navigate('/saldo');
-        setIsQuickActionsOpen(false);
-      },
-      color: 'text-green-600',
-      bgColor: 'bg-green-50 hover:bg-green-100'
-    },
-    {
-      icon: Receipt,
-      label: 'Transações',
-      action: () => {
-        navigate('/transactions');
-        setIsQuickActionsOpen(false);
-      },
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50 hover:bg-blue-100'
-    },
     {
       icon: Target,
       label: t('nav.goals') || 'Metas',
@@ -74,26 +55,6 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       },
       color: 'text-orange-600',
       bgColor: 'bg-orange-50 hover:bg-orange-100'
-    },
-    { // 👈 Aqui está a nova seção do Agente IA
-      icon: Bot,
-      label: 'Agente IA',
-      action: () => {
-        navigate('/agente-ia');
-        setIsQuickActionsOpen(false);
-      },
-      color: 'text-violet-600',
-      bgColor: 'bg-violet-50 hover:bg-violet-100'
-    },
-    {
-      icon: Crown,
-      label: 'Planos',
-      action: () => {
-        navigate('/plans');
-        setIsQuickActionsOpen(false);
-      },
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50 hover:bg-yellow-100'
     }
   ];
 
@@ -136,7 +97,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     );
   }
 
-  // Menu padrão para usuários normais
+  // 2. Menu padrão atualizado para usuários normais
   const defaultMenuItems = [
     {
       icon: LayoutDashboard,
@@ -154,15 +115,15 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       label: '',
       href: '#'
     },
-    {
-      icon: Crown,
-      label: t('nav.plans'),
-      href: '/plans'
+    { // 👈 "Saldo" no lugar de "Planos"
+      icon: Wallet,
+      label: 'Saldo',
+      href: '/saldo'
     },
-    {
-      icon: Settings,
-      label: t('nav.settings'),
-      href: '/settings'
+    { // 👈 "Agente IA" no lugar de "Configurações"
+      icon: Bot,
+      label: 'Agente IA',
+      href: '/agente-ia'
     }
   ];
   
@@ -177,7 +138,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       href: '/admin'
     };
     
-    // Adicionar o item admin antes do último item (settings)
+    // Adicionar o item admin antes do último item (Agente IA)
     menuItems = [...defaultMenuItems.slice(0, -1), adminMenuItem, defaultMenuItems[defaultMenuItems.length - 1]];
   }
 
