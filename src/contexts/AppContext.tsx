@@ -1,8 +1,12 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Transaction, Goal, ScheduledTransaction } from '@/types';
+import { Transaction, Goal, ScheduledTransaction, User, TimeRange } from '@/types';
 import { setupAuthListener, getCurrentSession } from '@/services/authService';
 import { recalculateGoalAmounts as recalculateGoalAmountsService } from '@/services/goalService';
+
+// ===================================================
+// TIPOS E INTERFACES
+// ===================================================
 
 // Use database types directly from Supabase
 interface Category {
@@ -23,59 +27,23 @@ interface AppState {
   scheduledTransactions: ScheduledTransaction[];
   isLoading: boolean;
   error: string | null;
-  user: any;
+  user: User | null;
+  session: any | null; // ✅ Adicionado para armazenar a sessão do Supabase
   hideValues: boolean;
-  timeRange: string;
-  customStartDate: Date | null;
-  customEndDate: Date | null;
+  timeRange: TimeRange;
+  customStartDate: string | null;
+  customEndDate: string | null;
   filteredTransactions: Transaction[];
 }
 
-type AppAction = 
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_TRANSACTIONS'; payload: Transaction[] }
-  | { type: 'SET_CATEGORIES'; payload: Category[] }
-  | { type: 'SET_GOALS'; payload: Goal[] }
-  | { type: 'SET_SCHEDULED_TRANSACTIONS'; payload: ScheduledTransaction[] }
-  | { type: 'ADD_TRANSACTION'; payload: Transaction }
-  | { type: 'UPDATE_TRANSACTION'; payload: Transaction }
-  | { type: 'DELETE_TRANSACTION'; payload: string }
-  | { type: 'ADD_CATEGORY'; payload: Category }
-  | { type: 'UPDATE_CATEGORY'; payload: Category }
-  | { type: 'DELETE_CATEGORY'; payload: string }
-  | { type: 'ADD_GOAL'; payload: Goal }
-  | { type: 'UPDATE_GOAL'; payload: Goal }
-  | { type: 'DELETE_GOAL'; payload: string }
-  | { type: 'ADD_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
-  | { type: 'UPDATE_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
-  | { type: 'DELETE_SCHEDULED_TRANSACTION'; payload: string }
-  | { type: 'SET_USER'; payload: any }
-  | { type: 'TOGGLE_HIDE_VALUES' }
-  | { type: 'SET_TIME_RANGE'; payload: string }
-  | { type: 'SET_CUSTOM_DATE_RANGE'; payload: { start: Date | null; end: Date | null } }
-  | { type: 'SET_FILTERED_TRANSACTIONS'; payload: Transaction[] };
-
-interface AppContextType {
-  state: AppState;
+interface AppContextType extends AppState {
+  // Ações básicas
   dispatch: React.Dispatch<AppAction>;
-  user: any;
-  hideValues: boolean;
+  fetchUserData: () => void;
   toggleHideValues: () => void;
   logout: () => Promise<void>;
   setCustomDateRange: (start: Date | null, end: Date | null) => void;
-  // Data access
-  transactions: Transaction[];
-  categories: Category[];
-  goals: Goal[];
-  scheduledTransactions: ScheduledTransaction[];
-  filteredTransactions: Transaction[];
-  isLoading: boolean;
-  // Time range properties
-  timeRange: string;
   setTimeRange: (range: string) => void;
-  customStartDate: Date | null;
-  customEndDate: Date | null;
   // Data fetching methods
   getTransactions: () => Promise<Transaction[]>;
   getGoals: () => Promise<Goal[]>;
@@ -99,29 +67,62 @@ interface AppContextType {
   deleteScheduledTransaction: (id: string) => Promise<void>;
 }
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+type AppAction =
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_USER'; payload: User | null }
+  | { type: 'SET_TRANSACTIONS'; payload: Transaction[] }
+  | { type: 'SET_CATEGORIES'; payload: Category[] }
+  | { type: 'SET_GOALS'; payload: Goal[] }
+  | { type: 'SET_SCHEDULED_TRANSACTIONS'; payload: ScheduledTransaction[] }
+  | { type: 'SET_SESSION'; payload: any | null } // ✅ Adicionada nova ação
+  | { type: 'TOGGLE_HIDE_VALUES' }
+  | { type: 'SET_TIME_RANGE'; payload: TimeRange }
+  | { type: 'SET_CUSTOM_DATE_RANGE'; payload: { startDate: string | null; endDate: string | null } }
+  | { type: 'SET_FILTERED_TRANSACTIONS'; payload: Transaction[] }
+  | { type: 'ADD_TRANSACTION'; payload: Transaction }
+  | { type: 'UPDATE_TRANSACTION'; payload: Transaction }
+  | { type: 'DELETE_TRANSACTION'; payload: string }
+  | { type: 'ADD_CATEGORY'; payload: Category }
+  | { type: 'UPDATE_CATEGORY'; payload: Category }
+  | { type: 'DELETE_CATEGORY'; payload: string }
+  | { type: 'ADD_GOAL'; payload: Goal }
+  | { type: 'UPDATE_GOAL'; payload: Goal }
+  | { type: 'DELETE_GOAL'; payload: string }
+  | { type: 'ADD_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
+  | { type: 'UPDATE_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
+  | { type: 'DELETE_SCHEDULED_TRANSACTION'; payload: string };
 
-const initialState: AppState = {
+// ===================================================
+// ESTADO INICIAL E REDUCER
+// ===================================================
+
+const initialAppState: AppState = {
   transactions: [],
   categories: [],
   goals: [],
   scheduledTransactions: [],
-  isLoading: true, // Start with loading true
+  isLoading: true,
   error: null,
   user: null,
+  session: null, // ✅ Inicializamos a sessão como nula
   hideValues: false,
-  timeRange: '30days',
+  timeRange: 'last30days',
   customStartDate: null,
   customEndDate: null,
   filteredTransactions: [],
 };
 
-function appReducer(state: AppState, action: AppAction): AppState {
+const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
+    case 'SET_USER':
+      return { ...state, user: action.payload };
+    case 'SET_SESSION': // ✅ Tratamos a nova ação para a sessão
+      return { ...state, session: action.payload };
     case 'SET_TRANSACTIONS':
       return { ...state, transactions: action.payload };
     case 'SET_CATEGORIES':
@@ -130,14 +131,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, goals: action.payload };
     case 'SET_SCHEDULED_TRANSACTIONS':
       return { ...state, scheduledTransactions: action.payload };
-    case 'SET_USER':
-      return { ...state, user: action.payload };
     case 'TOGGLE_HIDE_VALUES':
       return { ...state, hideValues: !state.hideValues };
     case 'SET_TIME_RANGE':
-      return { ...state, timeRange: action.payload };
+      return { ...state, timeRange: action.payload, customStartDate: null, customEndDate: null };
     case 'SET_CUSTOM_DATE_RANGE':
-      return { ...state, customStartDate: action.payload.start, customEndDate: action.payload.end };
+      return { ...state, timeRange: 'custom', ...action.payload };
     case 'SET_FILTERED_TRANSACTIONS':
       return { ...state, filteredTransactions: action.payload };
     case 'ADD_TRANSACTION':
@@ -199,10 +198,16 @@ function appReducer(state: AppState, action: AppAction): AppState {
     default:
       return state;
   }
-}
+};
+
+// ===================================================
+// PROVEDOR DE CONTEXTO
+// ===================================================
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(appReducer, initialState);
+  const [state, dispatch] = useReducer(appReducer, initialAppState);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Helper function to get current user with better error handling
@@ -302,8 +307,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let endDate: Date | null = null;
     
     if (state.timeRange === 'custom' && state.customStartDate && state.customEndDate) {
-      startDate = state.customStartDate;
-      endDate = state.customEndDate;
+      startDate = new Date(state.customStartDate);
+      endDate = new Date(state.customEndDate);
     } else {
       switch (state.timeRange) {
         case 'today':
@@ -328,6 +333,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           startDate = fourteenDaysAgo;
           endDate = today;
           break;
+        case 'last30days':
         case '30days':
         default:
           const thirtyDaysAgo = new Date(today);
@@ -349,48 +355,58 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Update filtered transactions when transactions or time range changes
   useEffect(() => {
-    // console.log('[DEBUG] AppContext: Filtering transactions...', {
-    //   totalTransactions: state.transactions.length,
-    //   timeRange: state.timeRange,
-    //   customStartDate: state.customStartDate,
-    //   customEndDate: state.customEndDate
-    // });
-    
     const filtered = filterTransactionsByTimeRange(state.transactions);
-    
-    // console.log('[DEBUG] AppContext: Filtered transactions:', {
-    //   filteredCount: filtered.length,
-    //   transactions: filtered.map(t => ({ id: t.id, amount: t.amount, date: t.date, type: t.type }))
-    // });
-    
     dispatch({ type: 'SET_FILTERED_TRANSACTIONS', payload: filtered });
   }, [state.transactions, state.timeRange, state.customStartDate, state.customEndDate]);
+
+  const fetchUserData = async () => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+      const [{ data: transactions, error: transactionsError }, { data: categories, error: categoriesError }] =
+        await Promise.all([
+          supabase.from('poupeja_transactions').select(`
+            *,
+            category:poupeja_categories(id, name, icon, color, type)
+          `).eq('user_id', user.id),
+          supabase.from('poupeja_categories').select('*').eq('user_id', user.id)
+        ]);
+
+      if (transactionsError || categoriesError) {
+        dispatch({ type: 'SET_ERROR', payload: transactionsError?.message || categoriesError?.message || 'Erro ao buscar dados.' });
+      } else {
+        const transformedTransactions = (transactions || []).map(transformTransaction);
+        const transformedCategories = (categories || []).map(transformCategory);
+        dispatch({ type: 'SET_TRANSACTIONS', payload: transformedTransactions });
+        dispatch({ type: 'SET_CATEGORIES', payload: transformedCategories });
+      }
+    } else {
+      dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
+      dispatch({ type: 'SET_CATEGORIES', payload: [] });
+    }
+    dispatch({ type: 'SET_LOADING', payload: false });
+  };
 
   // Setup auth state listener and initial session check
   useEffect(() => {
     let mounted = true;
     
-    // console.log('AppContext: Setting up auth listener and checking session');
-    
     const handleAuthChange = async (session: any) => {
       if (!mounted) return;
       
-      // console.log('AppContext: Auth state changed', { 
-      //   hasSession: !!session, 
-      //   userEmail: session?.user?.email,
-      //   userId: session?.user?.id 
-      // });
-      
       if (session?.user) {
+        dispatch({ type: 'SET_SESSION', payload: session }); // ✅ Salva a sessão
         dispatch({ type: 'SET_USER', payload: session.user });
         
         // Only load data if we haven't initialized yet or user changed
         if (!isInitialized || state.user?.id !== session.user.id) {
-          // console.log('AppContext: Loading user data for:', session.user.email);
           await loadUserData(session.user);
         }
       } else {
-        // console.log('AppContext: No session, clearing user data');
+        dispatch({ type: 'SET_SESSION', payload: null }); // ✅ Atualiza a sessão
         dispatch({ type: 'SET_USER', payload: null });
         dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
         dispatch({ type: 'SET_CATEGORIES', payload: [] });
@@ -407,14 +423,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Check for existing session
     const checkInitialSession = async () => {
       try {
-        // console.log('AppContext: Checking initial session');
         const session = await getCurrentSession();
         
         if (session?.user) {
-          // console.log('AppContext: Found existing session for:', session.user.email);
           await handleAuthChange(session);
         } else {
-          // console.log('AppContext: No existing session found');
           await handleAuthChange(null);
         }
       } catch (error) {
@@ -429,7 +442,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return () => {
       mounted = false;
-      // console.log('AppContext: Cleaning up auth listener');
       subscription.unsubscribe();
     };
   }, []);
@@ -442,7 +454,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
     
     try {
-      // console.log('AppContext: Loading user data for:', user.email);
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       
@@ -524,14 +535,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
     dispatch({ type: 'SET_USER', payload: null });
+    dispatch({ type: 'SET_SESSION', payload: null }); // ✅ Limpa a sessão
   }, []);
 
   const setTimeRange = useCallback((range: string) => {
-    dispatch({ type: 'SET_TIME_RANGE', payload: range });
+    dispatch({ type: 'SET_TIME_RANGE', payload: range as TimeRange });
   }, []);
 
   const setCustomDateRange = useCallback((start: Date | null, end: Date | null) => {
-    dispatch({ type: 'SET_CUSTOM_DATE_RANGE', payload: { start, end } });
+    dispatch({ 
+      type: 'SET_CUSTOM_DATE_RANGE', 
+      payload: { 
+        startDate: start ? start.toISOString().split('T')[0] : null, 
+        endDate: end ? end.toISOString().split('T')[0] : null 
+      } 
+    });
   }, []);
 
   // Data fetching methods (memoized to prevent unnecessary re-renders)
@@ -558,7 +576,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('Error fetching transactions:', error);
       throw error;
     }
-  }, []); // Empty dependencies as this function is self-contained
+  }, []);
 
   const getGoals = useCallback(async (): Promise<Goal[]> => {
     try {
@@ -579,15 +597,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('Error fetching goals:', error);
       throw error;
     }
-  }, []); // Empty dependencies as this function is self-contained
+  }, []);
 
   const recalculateGoalAmounts = async (): Promise<boolean> => {
     try {
       console.log('Recalculating goal amounts...');
-      // Primeiro, recalcular os valores usando o serviço
       const success = await recalculateGoalAmountsService();
       if (success) {
-        // Depois, buscar as metas atualizadas
         await getGoals();
       }
       return success;
@@ -601,7 +617,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       console.log('AppContext: updateUserProfile called with data:', data);
       
-      // Import userService and use it for proper mapping
       const { updateUserProfile: updateUserProfileService } = await import('@/services/userService');
       const result = await updateUserProfileService(data);
       
@@ -643,7 +658,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.log('AppContext: Transaction added successfully:', transformedTransaction);
       dispatch({ type: 'ADD_TRANSACTION', payload: transformedTransaction });
       
-      // Se a transação estiver associada a uma meta, recalcular os valores das metas
       if (transaction.goalId) {
         console.log('AppContext: Recalculating goal amounts...');
         await recalculateGoalAmounts();
@@ -677,7 +691,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const transformedTransaction = transformTransaction(data);
       dispatch({ type: 'UPDATE_TRANSACTION', payload: transformedTransaction });
       
-      // Se a transação estiver associada a uma meta, recalcular os valores das metas
       if (transaction.goalId) {
         await recalculateGoalAmounts();
       }
@@ -689,7 +702,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   const deleteTransaction = async (id: string) => {
     try {
-      // Primeiro, obter a transação para verificar se está associada a uma meta
       const { data: transactionData } = await supabase
         .from('poupeja_transactions')
         .select('goal_id')
@@ -698,7 +710,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         
       const hasGoal = transactionData?.goal_id;
       
-      // Agora excluir a transação
       const { error } = await supabase
         .from('poupeja_transactions')
         .delete()
@@ -707,7 +718,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'DELETE_TRANSACTION', payload: id });
       
-      // Se a transação estava associada a uma meta, recalcular os valores das metas
       if (hasGoal) {
         await recalculateGoalAmounts();
       }
@@ -855,7 +865,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           status: transaction.status,
           user_id: user.id,
         })
-        .select()
+        .select(`
+          *,
+          category:poupeja_categories(id, name, icon, color, type)
+        `)
         .single();
   
       if (error) throw error;
@@ -882,7 +895,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           status: transaction.status,
         })
         .eq('id', id)
-        .select()
+        .select(`
+          *,
+          category:poupeja_categories(id, name, icon, color, type)
+        `)
         .single();
   
       if (error) throw error;
@@ -910,71 +926,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const value: AppContextType = useMemo(() => ({
-    state,
+    ...state,
     dispatch,
-    user: state.user,
-    hideValues: state.hideValues,
+    fetchUserData,
     toggleHideValues,
     logout,
     setCustomDateRange,
-    // Data access
-    transactions: state.transactions,
-    categories: state.categories,
-    goals: state.goals,
-    scheduledTransactions: state.scheduledTransactions,
-    filteredTransactions: state.filteredTransactions,
-    isLoading: state.isLoading,
-    // Time range
-    timeRange: state.timeRange,
     setTimeRange,
-    customStartDate: state.customStartDate,
-    customEndDate: state.customEndDate,
     // Data fetching methods
     getTransactions,
     getGoals,
     recalculateGoalAmounts,
     updateUserProfile,
-    // Actions
+    // Transaction actions
     addTransaction,
     updateTransaction,
     deleteTransaction,
-    addCategory, // ✅ Adicionado aqui
+    // Category actions
+    addCategory,
     updateCategory,
     deleteCategory,
+    // Goal actions
     addGoal,
     updateGoal,
     deleteGoal,
+    // Scheduled Transaction actions
     addScheduledTransaction,
     updateScheduledTransaction,
     deleteScheduledTransaction,
   }), [
-    state.user?.id,
-    state.isLoading,
-    state.transactions,
-    state.categories,
-    state.goals,
-    state.scheduledTransactions,
-    state.hideValues,
-    state.timeRange,
-    state.customStartDate,
-    state.customEndDate,
+    state,
     toggleHideValues,
     logout,
     setCustomDateRange,
     setTimeRange,
-    addCategory, // ✅ Adicionado na lista de dependências
+    getTransactions,
+    getGoals,
   ]);
 
-return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
-export const useApp = () => {
+export const useAppContext = () => {
   const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useApp must be used within an AppProvider');
+  if (!context) {
+    throw new Error('useAppContext must be used within an AppProvider');
   }
   return context;
 };
 
-// Export useAppContext as an alias for useApp for compatibility
-export const useAppContext = useApp;
+// Export useApp as an alias for useAppContext for compatibility
+export const useApp = useAppContext;
