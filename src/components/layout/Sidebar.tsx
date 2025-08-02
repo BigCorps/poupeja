@@ -135,8 +135,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     // Adicionando o item 'Saldo' na estrutura original, após o dashboard
     {
       icon: Landmark,
-      label: 'Saldo',
-      href: '/dashboard/saldo'
+      label: t('nav.saldo'),
+      href: '/saldo'
     },
     {
       icon: Receipt,
