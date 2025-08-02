@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction, Goal, ScheduledTransaction } from '@/types';
@@ -672,7 +671,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('Error adding transaction:', error);
       throw error;
     }
-  }, [updateAccountBalance, toast, t]);
+  }, [user, updateAccountBalance, toast, t]);
   
   const updateTransaction = useCallback(async (id: string, updatedFields: Partial<Transaction>) => {
     const originalTransaction = state.transactions.find(t => t.id === id);
