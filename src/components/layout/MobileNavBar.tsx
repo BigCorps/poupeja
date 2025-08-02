@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet } from 'lucide-react';
+import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot } from 'lucide-react'; // 👈 Adicionei o 'Bot' aqui
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -74,6 +74,26 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       },
       color: 'text-orange-600',
       bgColor: 'bg-orange-50 hover:bg-orange-100'
+    },
+    { // 👈 Aqui está a nova seção do Agente IA
+      icon: Bot,
+      label: 'Agente IA',
+      action: () => {
+        navigate('/agente-ia');
+        setIsQuickActionsOpen(false);
+      },
+      color: 'text-violet-600',
+      bgColor: 'bg-violet-50 hover:bg-violet-100'
+    },
+    {
+      icon: Crown,
+      label: 'Planos',
+      action: () => {
+        navigate('/plans');
+        setIsQuickActionsOpen(false);
+      },
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50 hover:bg-yellow-100'
     }
   ];
 
