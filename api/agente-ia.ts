@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "./auth/[...nextauth]"; // Ajuste o caminho se necessário
 
 // Inicialize o cliente GROQ com a variável de ambiente (ou chave hardcoded para teste)
-const groq = new Groq({ apiKey: 'SUA_CHAVE_DE_API_GROQ_AQUI' });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
