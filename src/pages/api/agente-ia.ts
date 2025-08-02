@@ -12,7 +12,7 @@ if (!process.env.GROQ_API_KEY) {
   throw new Error('GROQ_API_KEY is not set');
 }
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: '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' }); // 👈 Substitua por sua chave real
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
