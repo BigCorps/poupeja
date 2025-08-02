@@ -962,6 +962,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logout,
     setCustomDateRange,
     setTimeRange,
+    addCategory,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
