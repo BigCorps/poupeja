@@ -19,9 +19,9 @@ import {
   Crown, 
   LogOut, 
   Shield,
-  Landmark,
-  ChevronDown,
-  ChevronUp
+  Landmark, // NOVO: Importando o ícone para Saldo
+  ChevronDown, // NOVO: Ícone para menu expansível
+  ChevronUp // NOVO: Ícone para menu expansível
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,12 +37,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // NOVO: Estado para controlar a expansão do menu de configurações
   const [isSettingsMenuExpanded, setIsSettingsMenuExpanded] = useState(false);
 
   const toggleSettingsMenu = () => {
     setIsSettingsMenuExpanded(!isSettingsMenuExpanded);
   };
   
+  // Verificar se estamos na página de administração
   const isAdminPage = location.pathname === '/admin';
 
   const handleLogout = async () => {
@@ -58,6 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     }
   };
 
+  // Se for admin na página de admin, mostrar apenas menu administrativo
   if (isAdmin && isAdminPage) {
     const adminMenuItems = [
       {
@@ -73,10 +76,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
 
     return (
       <div className="hidden md:flex h-screen w-64 lg:w-64 xl:w-72 flex-col bg-background border-r">
+        {/* Logo/Header */}
         <div className="p-6 border-b">
           <h1 className="text-2xl font-bold text-primary">Admin Panel</h1>
         </div>
 
+        {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
           {adminMenuItems.map((item, index) => (
             <Button
@@ -90,6 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
             </Button>
           ))}
           
+          {/* Botão Perfil que executa função ao invés de navegar */}
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -100,6 +106,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
           </Button>
         </nav>
 
+        {/* Bottom Navigation - Theme Toggle e Logout */}
         <div className="p-4 border-t space-y-2">
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm text-muted-foreground">Tema</span>
@@ -118,12 +125,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     );
   }
 
+  // Menu padrão para usuários normais
   const defaultMenuItems = [
     {
       icon: LayoutDashboard,
       label: t('nav.dashboard'),
-      href: '/dashboard',
+      href: '/dashboard'
     },
+    // Adicionando o item 'Saldo' na estrutura original, após o dashboard
     {
       icon: Landmark,
       label: 'Saldo',
@@ -132,35 +141,36 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     {
       icon: Receipt,
       label: t('nav.transactions'),
-      href: '/dashboard/transactions'
+      href: '/transactions'
     },
     {
       icon: FolderOpen,
       label: t('nav.categories'),
-      href: '/dashboard/categories'
+      href: '/categories'
     },
     {
       icon: Target,
       label: t('nav.goals'),
-      href: '/dashboard/goals'
+      href: '/goals'
     },
     {
       icon: Calendar,
       label: t('schedule.title'),
-      href: '/dashboard/schedule'
+      href: '/schedule'
     },
     {
       icon: BarChart3,
       label: t('nav.reports'),
-      href: '/dashboard/reports'
+      href: '/reports'
     },
     {
       icon: Crown,
       label: t('nav.plans'),
-      href: '/dashboard/plans'
+      href: '/plans'
     },
   ];
 
+  // Adicionar item admin apenas se o usuário for admin e não estiver na página admin
   let menuItems = [...defaultMenuItems];
   if (isAdmin && !isAdminPage) {
     const adminMenuItem = {
@@ -171,10 +181,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     menuItems.push(adminMenuItem);
   }
 
+  // A estrutura do menu inferior foi modificada para ser expansível
   if (!user) return null;
 
   return (
     <div className="hidden md:flex h-screen w-64 lg:w-64 xl:w-72 flex-col bg-background border-r overflow-hidden">
+      {/* Logo/Header */}
       <div className="p-6 border-b flex-shrink-0">
         <div className="flex items-center space-x-3">
           {logoUrl && (
@@ -183,6 +195,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
               alt={logoAltText}
               className="h-8 w-8 object-contain"
               onError={(e) => {
+                // Fallback para primeira letra do nome da empresa se a logo falhar
                 const target = e.currentTarget as HTMLImageElement;
                 target.style.display = 'none';
                 const nextSibling = target.nextElementSibling as HTMLElement;
@@ -203,6 +216,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
         </div>
       </div>
 
+      {/* Navigation - Scrollable content */}
       <div className="flex-1 flex flex-col min-h-0">
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => (
@@ -225,7 +239,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
           ))}
         </nav>
 
+        {/* Bottom Navigation - Com o menu de configurações agrupado */}
         <div className="p-4 border-t space-y-2 flex-shrink-0 bg-background">
+          {/* Botão de Configurações que agora é um dropdown */}
           <Button
             variant="ghost"
             className={cn(
@@ -246,7 +262,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
           {isSettingsMenuExpanded && (
             <div className="pl-6 space-y-2">
               <NavLink
-                to="/dashboard/profile"
+                to="/profile"
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
@@ -262,7 +278,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
               </NavLink>
 
               <NavLink
-                to="/dashboard/settings"
+                to="/settings"
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
