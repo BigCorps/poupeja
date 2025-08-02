@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet } from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -21,6 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
   const { companyName, logoUrl, logoAltText } = useBrandingConfig();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isProfileExpanded, setIsProfileExpanded] = useState(false);
   
   // Verificar se estamos na página de administração
   const isAdminPage = location.pathname === '/admin';
@@ -117,7 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     },
     {
       icon: Wallet,
-      label: t('nav.balance') || 'Saldo',
+      label: 'Saldo',
       href: '/saldo'
     },
     {
@@ -160,15 +161,23 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
 
   const bottomMenuItems = [
     {
-      icon: User,
-      label: t('nav.profile'),
-      href: '/profile'
-    },
-    {
       icon: Settings,
       label: t('nav.settings'),
       href: '/settings'
     },
+  ];
+
+  const profileMenuItems = [
+    {
+      icon: User,
+      label: 'Usuário',
+      href: '/profile'
+    },
+    {
+      icon: Settings,
+      label: 'Configurações',
+      href: '/settings'
+    }
   ];
 
   if (!user) return null;
@@ -230,40 +239,64 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
 
         {/* Bottom Navigation - Always visible */}
         <div className="p-4 border-t space-y-2 flex-shrink-0 bg-background">
-          {bottomMenuItems.map((item) => (
-            <NavLink
-              key={item.href}
-              to={item.href}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  isActive 
-                    ? "bg-primary text-primary-foreground" 
-                    : "text-muted-foreground"
-                )
-              }
+          {/* Profile Expandable Menu */}
+          <div className="space-y-1">
+            <Button
+              variant="ghost"
+              className="w-full justify-between gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              onClick={() => setIsProfileExpanded(!isProfileExpanded)}
             >
-              <item.icon className="h-5 w-5" />
-              {item.label}
-            </NavLink>
-          ))}
-          
-          {/* Theme Toggle */}
-          <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-sm text-muted-foreground">Tema</span>
-            <ThemeToggle variant="ghost" size="sm" />
+              <div className="flex items-center gap-3">
+                <User className="h-5 w-5" />
+                <span>Perfil</span>
+              </div>
+              {isProfileExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
+            
+            {/* Submenu do Perfil */}
+            {isProfileExpanded && (
+              <div className="ml-4 space-y-1">
+                {profileMenuItems.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    to={item.href}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        isActive 
+                          ? "bg-primary text-primary-foreground" 
+                          : "text-muted-foreground"
+                      )
+                    }
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </NavLink>
+                ))}
+                
+                {/* Theme Toggle */}
+                <div className="flex items-center justify-between px-4 py-2">
+                  <span className="text-sm text-muted-foreground">Tema</span>
+                  <ThemeToggle variant="ghost" size="sm" />
+                </div>
+                
+                {/* Logout Button */}
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-3 px-4 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground text-sm"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t('settings.logout')}
+                </Button>
+              </div>
+            )}
           </div>
-          
-          {/* Logout Button */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-5 w-5" />
-            {t('settings.logout')}
-          </Button>
         </div>
       </div>
     </div>
