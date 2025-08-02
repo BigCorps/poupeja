@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Transaction, Goal, ScheduledTransaction } from '@/types';
 import { setupAuthListener, getCurrentSession } from '@/services/authService';
 import { recalculateGoalAmounts as recalculateGoalAmountsService } from '@/services/goalService';
+import { useSaldoContext } from './SaldoContext';
+import { useToast } from '@/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
 
 // Use database types directly from Supabase
 interface Category {
@@ -204,6 +207,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isInitialized, setIsInitialized] = useState(false);
+  const { toast } = useToast();
+  const { t } = useTranslation();
+  const { updateAccountBalance } = useSaldoContext();
 
   // Helper function to get current user with better error handling
   const getCurrentUser = async () => {
@@ -235,6 +241,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       goal_id: dbTransaction.goal_id,
       user_id: dbTransaction.user_id,
       created_at: dbTransaction.created_at,
+      account_id: dbTransaction.account_id,
     };
   };
 
@@ -617,21 +624,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Transaction actions
-  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at'>) => {
+  const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'created_at'>) => {
     try {
       console.log('AppContext: Adding transaction...', transaction);
       const user = await getCurrentUser();
+      const transactionWithUser = { 
+        type: transaction.type,
+        amount: transaction.amount,
+        category_id: transaction.category_id,
+        description: transaction.description,
+        date: transaction.date,
+        goal_id: transaction.goalId,
+        user_id: user.id,
+        account_id: transaction.account_id,
+      };
+      
       const { data, error } = await supabase
         .from('poupeja_transactions')
-        .insert({ 
-          type: transaction.type,
-          amount: transaction.amount,
-          category_id: transaction.category_id,
-          description: transaction.description,
-          date: transaction.date,
-          goal_id: transaction.goalId,
-          user_id: user.id,
-        })
+        .insert(transactionWithUser)
         .select(`
           *,
           category:poupeja_categories(id, name, icon, color, type)
@@ -639,9 +649,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         .single();
   
       if (error) throw error;
+      
       const transformedTransaction = transformTransaction(data);
-      console.log('AppContext: Transaction added successfully:', transformedTransaction);
       dispatch({ type: 'ADD_TRANSACTION', payload: transformedTransaction });
+      
+      toast({
+        title: t('transactions.created'),
+        description: t('transactions.createSuccess'),
+      });
+
+      // ✅ NOVO: Atualiza o saldo da conta
+      const amount = data.type === 'income' ? data.amount : -data.amount;
+      updateAccountBalance(data.account_id, amount);
       
       // Se a transação estiver associada a uma meta, recalcular os valores das metas
       if (transaction.goalId) {
@@ -652,19 +671,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('Error adding transaction:', error);
       throw error;
     }
-  };
+  }, [user, updateAccountBalance, toast, t]);
   
-  const updateTransaction = async (id: string, transaction: Partial<Transaction>) => {
+  const updateTransaction = useCallback(async (id: string, updatedFields: Partial<Transaction>) => {
+    const originalTransaction = state.transactions.find(t => t.id === id);
+    if (!originalTransaction) {
+      toast({
+        title: t('transactions.error'),
+        description: t('transactions.notFound'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('poupeja_transactions')
         .update({
-          type: transaction.type,
-          amount: transaction.amount,
-          category_id: transaction.category_id,
-          description: transaction.description,
-          date: transaction.date,
-          goal_id: transaction.goalId,
+          type: updatedFields.type,
+          amount: updatedFields.amount,
+          category_id: updatedFields.category_id,
+          description: updatedFields.description,
+          date: updatedFields.date,
+          goal_id: updatedFields.goalId,
+          account_id: updatedFields.account_id,
         })
         .eq('id', id)
         .select(`
@@ -674,20 +704,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         .single();
   
       if (error) throw error;
+      
       const transformedTransaction = transformTransaction(data);
       dispatch({ type: 'UPDATE_TRANSACTION', payload: transformedTransaction });
       
+      toast({
+        title: t('transactions.updated'),
+        description: t('transactions.updateSuccess'),
+      });
+
+      // ✅ NOVO: Calcula a diferença e atualiza o saldo
+      const originalAmount = originalTransaction.type === 'income' ? originalTransaction.amount : -originalTransaction.amount;
+      const newAmount = data.type === 'income' ? data.amount : -data.amount;
+      const amountDifference = newAmount - originalAmount;
+      updateAccountBalance(data.account_id, amountDifference);
+      
       // Se a transação estiver associada a uma meta, recalcular os valores das metas
-      if (transaction.goalId) {
+      if (updatedFields.goalId) {
         await recalculateGoalAmounts();
       }
     } catch (error) {
       console.error('Error updating transaction:', error);
       throw error;
     }
-  };
+  }, [state.transactions, updateAccountBalance, toast, t]);
   
-  const deleteTransaction = async (id: string) => {
+  const deleteTransaction = useCallback(async (id: string) => {
+    const transactionToDelete = state.transactions.find(t => t.id === id);
+    if (!transactionToDelete) {
+      toast({
+        title: t('transactions.error'),
+        description: t('transactions.notFound'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       // Primeiro, obter a transação para verificar se está associada a uma meta
       const { data: transactionData } = await supabase
@@ -705,7 +757,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         .eq('id', id);
   
       if (error) throw error;
+      
       dispatch({ type: 'DELETE_TRANSACTION', payload: id });
+      
+      toast({
+        title: t('transactions.deleted'),
+        description: t('transactions.deleteSuccess'),
+      });
+
+      // ✅ NOVO: Reverte a transação no saldo
+      const amountToRevert = transactionToDelete.type === 'income' ? -transactionToDelete.amount : transactionToDelete.amount;
+      updateAccountBalance(transactionToDelete.account_id, amountToRevert);
       
       // Se a transação estava associada a uma meta, recalcular os valores das metas
       if (hasGoal) {
@@ -715,7 +777,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('Error deleting transaction:', error);
       throw error;
     }
-  };
+  }, [state.transactions, updateAccountBalance, toast, t]);
 
   // Category actions
   const addCategory = async (category: Omit<Category, 'id' | 'created_at'>) => {
@@ -962,6 +1024,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logout,
     setCustomDateRange,
     setTimeRange,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
