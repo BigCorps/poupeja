@@ -112,14 +112,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       href: '/dashboard'
     },
     {
-      icon: Receipt,
-      label: t('nav.transactions'),
-      href: '/transactions'
-    },
-    {
       icon: Wallet,
       label: 'Saldo',
       href: '/saldo'
+    },
+    {
+      icon: Receipt,
+      label: t('nav.transactions'),
+      href: '/transactions'
     },
     {
       icon: FolderOpen,
