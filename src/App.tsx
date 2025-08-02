@@ -34,6 +34,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
+import AgenteIA from './pages/AgenteIA';
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ function App() {
                           <Route path="/schedule" element={<SchedulePage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/categories" element={<CategoriesPage />} />
+                          <Route path="/agente-ia" element={<AgenteIA />} />
                           <Route path="/plans" element={<PlansPage />} />
                           <Route path="/checkout/:planType" element={<CheckoutPage />} />
                           <Route path="/payment-success" element={<PaymentSuccessPage />} />
