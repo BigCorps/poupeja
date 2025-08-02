@@ -1,12 +1,11 @@
 // src/contexts/SaldoContext.tsx
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // Substitua pela URL e pela sua chave anon pública do seu projeto Supabase
 const supabaseUrl = 'https://duchahfvhvhbyagdslbz.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1Y2hhaGZ2aHZoYnlhZ2RzbGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwMDA1ODYsImV4cCI6MjA2OTU3NjU4Nn0.gVCDSD3Ml8kOGCoeRNnDqOaA-cJdfw7dl-j-p6boBrs';
 
-// Inicializa o cliente Supabase
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const SaldoContext = createContext(null);
@@ -18,6 +17,7 @@ export const SaldoProvider = ({ children }) => {
   const [newAccount, setNewAccount] = useState({ name: '', type: 'Conta Corrente', value: '' });
 
   // Autenticação e busca de dados
+  // ... (O código aqui permanece o mesmo da versão anterior)
   useEffect(() => {
     const authListener = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
@@ -29,7 +29,6 @@ export const SaldoProvider = ({ children }) => {
         setLoading(false);
       }
     });
-    // Tenta autenticar anonimamente se não houver sessão
     const authenticate = async () => {
       const { data, error } = await supabase.auth.getSession();
       if (!data.session) {
@@ -47,7 +46,6 @@ export const SaldoProvider = ({ children }) => {
       .select('*')
       .eq('user_id', currentUserId)
       .order('created_at', { ascending: false });
-
     if (error) {
       console.error("Erro ao buscar contas:", error);
     } else {
@@ -55,7 +53,7 @@ export const SaldoProvider = ({ children }) => {
     }
     setLoading(false);
   };
-
+  
   const handleAddAccount = async (e) => {
     e.preventDefault();
     if (newAccount.name && newAccount.value && userId) {
@@ -83,8 +81,42 @@ export const SaldoProvider = ({ children }) => {
     setNewAccount(prev => ({ ...prev, type: value }));
   };
 
+  // NOVA FUNÇÃO PARA ATUALIZAR O SALDO
+  const updateAccountBalance = useCallback(async (accountId, amount) => {
+    if (!accountId || amount === 0) return;
+    try {
+      const { data: currentAccountData, error: fetchError } = await supabase
+        .from('poupeja_accounts')
+        .select('value')
+        .eq('id', accountId)
+        .single();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      const newValue = currentAccountData.value + amount;
+
+      const { data, error } = await supabase
+        .from('poupeja_accounts')
+        .update({ value: newValue })
+        .eq('id', accountId)
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      // Atualiza o estado local
+      setAccounts(prev => prev.map(acc => acc.id === accountId ? { ...acc, value: newValue } : acc));
+    } catch (error) {
+      console.error("Erro ao atualizar o saldo da conta:", error);
+    }
+  }, []);
+
+
   const totals = useMemo(() => {
-    // Lógica de cálculo de totais
+    // ... (A lógica de cálculo de totais permanece a mesma)
     const totalWorkingCapital = accounts.filter(acc => acc.type === 'Conta Corrente').reduce((sum, acc) => sum + acc.value, 0);
     const totalInvestments = accounts.filter(acc => acc.type === 'Investimento').reduce((sum, acc) => sum + acc.value, 0);
     const totalCards = accounts.filter(acc => acc.type === 'Cartão de Crédito').reduce((sum, acc) => sum + acc.value, 0);
@@ -99,8 +131,8 @@ export const SaldoProvider = ({ children }) => {
     handleInputChange,
     handleSelectChange,
     handleAddAccount,
+    updateAccountBalance, // Adicione a nova função ao contexto
     totals,
-    // Outras funções como updateAccount e deleteAccount podem ser adicionadas aqui
   };
 
   return <SaldoContext.Provider value={value}>{children}</SaldoContext.Provider>;
