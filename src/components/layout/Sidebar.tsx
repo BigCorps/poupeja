@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot } from 'lucide-react'; // 👈 Adicionei o 'Bot' aqui
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -140,6 +140,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       icon: BarChart3,
       label: t('nav.reports'),
       href: '/reports'
+    },
+    { // 👈 Aqui está a nova seção do Agente IA
+      icon: Bot,
+      label: 'Agente IA',
+      href: '/agente-ia'
     },
     {
       icon: Crown,
