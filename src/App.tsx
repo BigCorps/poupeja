@@ -58,24 +58,60 @@ function App() {
                         <Route path="/register/:planType" element={<RegisterWithPlanPage />} />
                         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                         <Route path="/reset-password" element={<ResetPasswordPage />} />
-                        <Route path="/profile" element={<ProfilePage />} />
-                        <Route path="/transactions" element={<TransactionsPage />} />
+                        <Route path="/profile" element={
+                          <MainLayout title="Perfil">
+                            <ProfilePage />
+                          </MainLayout>
+                        } />
+                        <Route path="/transactions" element={
+                          <MainLayout title="Transações">
+                            <TransactionsPage />
+                          </MainLayout>
+                        } />
                         <Route path="/saldo" element={
                           <MainLayout title="Saldo">
                             <SaldoDashboard />
                           </MainLayout>
                         } />
-                        <Route path="/expenses" element={<ExpensesPage />} />
-                        <Route path="/goals" element={<GoalsPage />} />
-                        <Route path="/reports" element={<ReportsPage />} />
-                        <Route path="/schedule" element={<SchedulePage />} />
-                        <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="/categories" element={<CategoriesPage />} />
+                        <Route path="/expenses" element={
+                          <MainLayout title="Despesas">
+                            <ExpensesPage />
+                          </MainLayout>
+                        } />
+                        <Route path="/goals" element={
+                          <MainLayout title="Metas">
+                            <GoalsPage />
+                          </MainLayout>
+                        } />
+                        <Route path="/reports" element={
+                          <MainLayout title="Relatórios">
+                            <ReportsPage />
+                          </MainLayout>
+                        } />
+                        <Route path="/schedule" element={
+                          <MainLayout title="Agendamentos">
+                            <SchedulePage />
+                          </MainLayout>
+                        } />
+                        <Route path="/settings" element={
+                          <MainLayout title="Configurações">
+                            <SettingsPage />
+                          </MainLayout>
+                        } />
+                        <Route path="/categories" element={
+                          <MainLayout title="Categorias">
+                            <CategoriesPage />
+                          </MainLayout>
+                        } />
                         <Route path="/plans" element={<PlansPage />} />
                         <Route path="/checkout/:planType" element={<CheckoutPage />} />
                         <Route path="/payment-success" element={<PaymentSuccessPage />} />
                         <Route path="/thank-you" element={<ThankYouPage />} />
-                        <Route path="/achievements" element={<AchievementsPage />} />
+                        <Route path="/achievements" element={
+                          <MainLayout title="Conquistas">
+                            <AchievementsPage />
+                          </MainLayout>
+                        } />
                         <Route 
                           path="/admin" 
                           element={
