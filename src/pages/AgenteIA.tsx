@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import MainLayout from '@/components/layout/MainLayout'; // 👈 Importamos o layout principal
+import SubscriptionGuard from '@/components/subscription/SubscriptionGuard'; // 👈 Se necessário, para restringir o acesso
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,8 +12,8 @@ interface Message {
   content: string;
 }
 
-export default function AgenteIA() {
-  const { addCategory } = useApp(); // Pegamos a função de adicionar categoria do nosso contexto
+const AgenteIA = () => { // 👈 Mudamos para uma função de componente padrão
+  const { addCategory } = useApp();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,11 +40,9 @@ export default function AgenteIA() {
       const data = await response.json();
       const aiResponseContent = data.response;
 
-      // ⚠️ Lógica para tratar a resposta da IA (passo 5)
       try {
         const parsedResponse = JSON.parse(aiResponseContent);
         if (parsedResponse.action === 'addCategory') {
-          // A IA instruiu a adicionar uma categoria. Chamamos a função do AppContext.
           await addCategory(parsedResponse.name, parsedResponse.type);
           setMessages(currentMessages => [
             ...currentMessages,
@@ -55,7 +55,6 @@ export default function AgenteIA() {
           ]);
         }
       } catch (e) {
-        // A resposta não era um JSON de ação, trate como texto normal
         setMessages(currentMessages => [
           ...currentMessages,
           { role: 'assistant', content: aiResponseContent },
@@ -74,40 +73,48 @@ export default function AgenteIA() {
   };
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle>Agente IA</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col flex-grow p-4 space-y-4">
-        <ScrollArea className="flex-grow p-4 border rounded-md">
-          {messages.map((msg, index) => (
-            <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-2`}>
-              <div
-                className={`max-w-xs p-2 rounded-lg ${
-                  msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
-                }`}
-              >
-                {msg.content}
+    <MainLayout> {/* 👈 Envolvendo o componente no layout principal */}
+      <SubscriptionGuard feature="agente ia"> {/* 👈 Exemplo de como usar o SubscriptionGuard */}
+        <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8 flex flex-col h-full">
+          <Card className="flex-grow flex flex-col">
+            <CardHeader>
+              <CardTitle>Agente IA</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow flex flex-col p-4 space-y-4">
+              <ScrollArea className="flex-grow p-4 border rounded-md">
+                {messages.map((msg, index) => (
+                  <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-2`}>
+                    <div
+                      className={`max-w-xs p-2 rounded-lg ${
+                        msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+              </ScrollArea>
+              <div className="flex w-full space-x-2">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') handleSendMessage();
+                  }}
+                  placeholder="Pergunte ao Agente IA..."
+                  className="flex-grow"
+                  disabled={isLoading}
+                />
+                <Button onClick={handleSendMessage} disabled={isLoading}>
+                  {isLoading ? 'Enviando...' : 'Enviar'}
+                </Button>
               </div>
-            </div>
-          ))}
-        </ScrollArea>
-        <div className="flex w-full space-x-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') handleSendMessage();
-            }}
-            placeholder="Pergunte ao Agente IA..."
-            className="flex-grow"
-            disabled={isLoading}
-          />
-          <Button onClick={handleSendMessage} disabled={isLoading}>
-            {isLoading ? 'Enviando...' : 'Enviar'}
-          </Button>
+            </CardContent>
+          </Card>
         </div>
-      </CardContent>
-    </Card>
+      </SubscriptionGuard>
+    </MainLayout>
   );
-}
+};
+
+export default AgenteIA;
