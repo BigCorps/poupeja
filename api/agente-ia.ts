@@ -1,34 +1,31 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabase } from '@/integrations/supabase/client';
 import Groq from 'groq-sdk';
-import { getServerSession } from "next-auth";
-import { authOptions } from "./auth/[...nextauth]"; // Ajuste o caminho se necessário
 
-// Inicialize o cliente GROQ com a variável de ambiente (ou chave hardcoded para teste)
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); // Use a variável de ambiente para produção
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { userMessage } = req.body;
-  if (!userMessage) {
-    return res.status(400).json({ error: 'Missing userMessage' });
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Authorization header not found' });
   }
 
-  const session = await getServerSession(req, res, authOptions);
-  const userId = session?.user?.id;
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-  if (!userId) {
-    console.error('API Error: User not authenticated');
+  if (authError || !user) {
     return res.status(401).json({ error: 'User not authenticated' });
   }
 
-  try {
-    // ---- Ponto de Diagnóstico 1: Checando Supabase ----
-    console.log('Fetching data from Supabase for user:', userId);
+  const userId = user.id;
 
+  try {
     const { data: transactions, error: transactionsError } = await supabase
       .from('poupeja_transactions')
       .select('*')
@@ -45,11 +42,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
 
-    console.log('Supabase data fetched successfully.');
-    console.log('Transactions:', transactions);
-    console.log('Categories:', categories);
-
-    // 2. Construir um prompt robusto para o GROQ
     const systemPrompt = `
       Você é o Agente IA da Vixus, um assistente financeiro pessoal.
       Sua função é analisar as transações e categorias do usuário para responder perguntas e realizar ações.
@@ -67,8 +59,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       Mantenha a resposta concisa e sempre em português.
     `;
 
-    // ---- Ponto de Diagnóstico 2: Checando Groq ----
-    console.log('Making Groq API call...');
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         { role: 'system', content: systemPrompt },
@@ -76,15 +66,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ],
       model: 'llama3-8b-8192',
     });
-    console.log('Groq API call successful.');
 
     const aiResponse = chatCompletion.choices[0]?.message?.content || 'Não entendi. Pode reformular a pergunta?';
-
-    // 4. Enviar a resposta de volta ao frontend
     res.status(200).json({ response: aiResponse });
 
   } catch (error) {
-    // ---- Ponto de Diagnóstico 3: Erro detalhado ----
     console.error('Error in Agente IA API:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
