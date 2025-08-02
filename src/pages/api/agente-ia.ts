@@ -4,6 +4,8 @@ import Groq from 'groq-sdk';
 import { getServerSession } from "next-auth";
 import { authOptions } from "./auth/[...nextauth]";
 
+console.log('Status da GROQ_API_KEY:', process.env.GROQ_API_KEY ? 'Presente' : 'Ausente');
+
 // 1. Verificação explícita da chave de API
 if (!process.env.GROQ_API_KEY) {
   console.error('GROQ_API_KEY is not set in environment variables.');
