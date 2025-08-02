@@ -14,7 +14,7 @@ import {
   Shield,
   User,
   FileText,
-  Landmark,
+  Landmark, // NOVO: Importando o ícone para Saldo
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -33,11 +33,13 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
   const { isAdmin } = useUserRole();
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   
+  // Verificar se estamos na página de administração
   const isAdminPage = location.pathname === '/admin';
 
+  // NOVO: Adicionando o item de Saldo
   const quickActionItems = [
     {
-      icon: Landmark,
+      icon: Landmark, // Usando o ícone Landmark para Saldo
       label: 'Saldo',
       action: () => {
         navigate('/dashboard/saldo');
@@ -50,7 +52,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Receipt,
       label: 'Transações',
       action: () => {
-        navigate('/dashboard/transactions');
+        navigate('/transactions');
         setIsQuickActionsOpen(false);
       },
       color: 'text-blue-600',
@@ -60,7 +62,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Target,
       label: t('nav.goals') || 'Metas',
       action: () => {
-        navigate('/dashboard/goals');
+        navigate('/goals');
         setIsQuickActionsOpen(false);
       },
       color: 'text-blue-600',
@@ -70,7 +72,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Calendar,
       label: 'Agendamentos',
       action: () => {
-        navigate('/dashboard/schedule');
+        navigate('/schedule');
         setIsQuickActionsOpen(false);
       },
       color: 'text-purple-600',
@@ -80,7 +82,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: FileText,
       label: 'Relatórios',
       action: () => {
-        navigate('/dashboard/reports');
+        navigate('/reports');
         setIsQuickActionsOpen(false);
       },
       color: 'text-orange-600',
@@ -88,6 +90,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     }
   ];
 
+  // Se for admin na página de admin, mostrar apenas menu administrativo
   if (isAdmin && isAdminPage) {
     const adminMenuItems = [
       {
@@ -98,7 +101,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       {
         icon: User,
         label: t('nav.profile'),
-        href: '/dashboard/profile'
+        href: '/profile'
       }
     ];
 
@@ -126,6 +129,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     );
   }
 
+  // Menu padrão para usuários normais
   const defaultMenuItems = [
     {
       icon: LayoutDashboard,
@@ -135,7 +139,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     {
       icon: Receipt,
       label: t('nav.transactions'),
-      href: '/dashboard/transactions'
+      href: '/transactions'
     },
     {
       type: 'quick-actions',
@@ -146,17 +150,19 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     {
       icon: Crown,
       label: t('nav.plans'),
-      href: '/dashboard/plans'
+      href: '/plans'
     },
     {
       icon: Settings,
       label: t('nav.settings'),
-      href: '/dashboard/settings'
+      href: '/settings'
     }
   ];
   
+  // Determinar quais itens de menu mostrar
   let menuItems = defaultMenuItems;
   
+  // Se for admin mas não estiver na página de admin, adicionar o item admin ao menu
   if (isAdmin && !isAdminPage) {
     const adminMenuItem = {
       icon: Shield,
@@ -164,6 +170,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       href: '/admin'
     };
     
+    // Adicionar o item admin antes do último item (settings)
     menuItems = [...defaultMenuItems.slice(0, -1), adminMenuItem, defaultMenuItems[defaultMenuItems.length - 1]];
   }
 
