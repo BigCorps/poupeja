@@ -9,6 +9,7 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
 import { AppProvider } from "@/contexts/AppContext";
 import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
+import MainLayout from "@/components/layout/MainLayout";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -59,7 +60,11 @@ function App() {
                         <Route path="/reset-password" element={<ResetPasswordPage />} />
                         <Route path="/profile" element={<ProfilePage />} />
                         <Route path="/transactions" element={<TransactionsPage />} />
-                        <Route path="/saldo" element={<SaldoDashboard />} />
+                        <Route path="/saldo" element={
+                          <MainLayout title="Saldo">
+                            <SaldoDashboard />
+                          </MainLayout>
+                        } />
                         <Route path="/expenses" element={<ExpensesPage />} />
                         <Route path="/goals" element={<GoalsPage />} />
                         <Route path="/reports" element={<ReportsPage />} />
