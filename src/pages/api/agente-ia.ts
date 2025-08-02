@@ -2,9 +2,14 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '@/integrations/supabase/client';
 import Groq from 'groq-sdk';
 import { getServerSession } from "next-auth";
-import { authOptions } from "./auth/[...nextauth]"; // Ajuste o caminho se necessário
+import { authOptions } from "./auth/[...nextauth]";
 
-// Inicialize o cliente GROQ com a variável de ambiente
+// 1. Verificação explícita da chave de API
+if (!process.env.GROQ_API_KEY) {
+  console.error('GROQ_API_KEY is not set in environment variables.');
+  throw new Error('GROQ_API_KEY is not set');
+}
+
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
