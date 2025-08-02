@@ -32,14 +32,17 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-2 p-4 bg-background/95 backdrop-blur-sm border-b md:hidden">
-      {/* Container do lado esquerdo para manter o alinhamento 'space-between' */}
+      {/* Container da esquerda com o logo */}
       <div className="flex items-center gap-2">
-        {/* Adicione outros botões aqui se necessário */}
+        <img
+          src="/lovable-uploads/logo-footer.png" // 👈 Caminho do seu logo
+          alt="Poupeja Logo"
+          className="h-6 object-contain" // 👈 Definindo a altura para não quebrar o layout
+        />
       </div>
 
       {/* Botões e links do lado direito na nova ordem */}
       <div className="flex items-center gap-2">
-        {/* 1. Botão Ocultar Valores */}
         <Button
           variant="ghost"
           size="icon"
@@ -49,10 +52,8 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
           {hideValues ? <EyeOff className="h-5 w-5 text-foreground" /> : <Eye className="h-5 w-5 text-foreground" />} 
         </Button>
         
-        {/* 2. Botão Alternar Tema */}
         <ThemeToggle variant="ghost" size="icon" />
         
-        {/* 3. Link para a página de Planos */}
         <NavLink
           to="/plans"
           className={({ isActive }) =>
@@ -66,7 +67,6 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
           <Crown className="h-5 w-5" />
         </NavLink>
 
-        {/* 4. Link para a página de Configurações */}
         <NavLink
           to="/settings"
           className={({ isActive }) =>
@@ -80,7 +80,6 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
           <Settings className="h-5 w-5" />
         </NavLink>
         
-        {/* 5. Botão de Sair */}
         <Button
           variant="ghost"
           size="icon"
