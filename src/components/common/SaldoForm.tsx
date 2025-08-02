@@ -39,7 +39,7 @@ const SaldoForm = ({ newAccount, onInputChange, onSelectChange, onAddAccount, lo
             name="name"
             value={newAccount.name}
             onChange={onInputChange}
-            placeholder="Ex: Nubank, PicPay"
+            placeholder="Ex: Itaú, Inter"
             required
           />
         </div>
