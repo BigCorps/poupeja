@@ -257,6 +257,20 @@ const SaldoDashboard = () => {
           <motion.div variants={itemVariants}>
             <Card>
               <CardHeader>
+                <CardTitle>Evolução do Saldo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 flex items-center justify-center text-muted-foreground">
+                  {/* Aqui você pode adicionar um gráfico de evolução do saldo */}
+                  Gráfico de evolução do saldo será implementado aqui
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </motion.div>
+      </SubscriptionGuard>
+    </MainLayout>
+  );
 };
 
 export default SaldoDashboard;
