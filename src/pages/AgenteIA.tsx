@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import MainLayout from '@/components/layout/MainLayout'; // 👈 Importamos o layout principal
-import SubscriptionGuard from '@/components/subscription/SubscriptionGuard'; // 👈 Se necessário, para restringir o acesso
+import MainLayout from '@/components/layout/MainLayout';
+import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,14 +12,23 @@ interface Message {
   content: string;
 }
 
-const AgenteIA = () => { // 👈 Mudamos para uma função de componente padrão
-  const { addCategory } = useApp();
+const AgenteIA = () => {
+  const { addCategory, session } = useApp(); // ✅ Obtenha a sessão do AppContext
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
+
+    // ✅ Verifique se a sessão e o token de acesso existem antes de enviar
+    if (!session || !session.access_token) {
+      setMessages(currentMessages => [
+        ...currentMessages,
+        { role: 'assistant', content: 'Você precisa estar logado para usar o Agente IA.' },
+      ]);
+      return;
+    }
 
     const userMessage = { role: 'user', content: input };
     setMessages(currentMessages => [...currentMessages, userMessage]);
@@ -29,7 +38,10 @@ const AgenteIA = () => { // 👈 Mudamos para uma função de componente padrão
     try {
       const response = await fetch('/api/agente-ia', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`, // ✅ Adicionado o token de autenticação
+        },
         body: JSON.stringify({ userMessage: input }),
       });
 
@@ -73,8 +85,8 @@ const AgenteIA = () => { // 👈 Mudamos para uma função de componente padrão
   };
 
   return (
-    <MainLayout> {/* 👈 Envolvendo o componente no layout principal */}
-      <SubscriptionGuard feature="agente ia"> {/* 👈 Exemplo de como usar o SubscriptionGuard */}
+    <MainLayout>
+      <SubscriptionGuard feature="agente ia">
         <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8 flex flex-col h-full">
           <Card className="flex-grow flex flex-col">
             <CardHeader>
