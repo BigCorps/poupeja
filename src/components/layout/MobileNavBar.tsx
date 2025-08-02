@@ -42,7 +42,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Landmark, // Usando o ícone Landmark para Saldo
       label: 'Saldo',
       action: () => {
-        navigate('/dashboard/saldo');
+        navigate('/saldo');
         setIsQuickActionsOpen(false);
       },
       color: 'text-green-600',
