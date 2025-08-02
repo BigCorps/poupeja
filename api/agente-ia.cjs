@@ -1,10 +1,9 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase } from '@/integrations/supabase/client';
-import Groq from 'groq-sdk';
+const { supabase } = require('../integrations/supabase/client'); // Verifique o caminho
+const Groq = require('groq-sdk');
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY as string });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -74,4 +73,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('Error in Agente IA API:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
-}
+};
