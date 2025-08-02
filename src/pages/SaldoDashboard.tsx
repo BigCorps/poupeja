@@ -27,12 +27,6 @@ const __app_id = typeof window !== 'undefined' && window.__app_id;
 const __firebase_config = typeof window !== 'undefined' && window.__firebase_config;
 const __initial_auth_token = typeof window !== 'undefined' && window.__initial_auth_token;
 
-// Inicializa o cliente Supabase
-const supabase = createClient(
-  'https://duchahfvhvhbyagdslbz.supabase.co', // Substitua pela URL do seu projeto Supabase
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1Y2hhaGZ2aHZoYnlhZ2RzbGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwMDA1ODYsImV4cCI6MjA2OTU3NjU4Nn0.gVCDSD3Ml8kOGCoeRNnDqOaA-cJdfw7dl-j-p6boBrs' // Substitua pela sua chave anon pública
-);
-
 // O componente principal da página de saldo
 const SaldoDashboard = () => {
   const { t } = usePreferences();
