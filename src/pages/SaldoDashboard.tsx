@@ -29,11 +29,6 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
-// Configuração do Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 // Variáveis globais fornecidas pelo ambiente
 const __app_id = typeof window !== 'undefined' && window.__app_id;
 const __firebase_config = typeof window !== 'undefined' && window.__firebase_config;
