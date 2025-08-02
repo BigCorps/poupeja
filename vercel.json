@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/agente-ia",
+      "destination": "/api/agente-ia.cjs"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
