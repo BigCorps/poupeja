@@ -50,13 +50,13 @@
 
   .light {
     /* Light mode - Apenas quando selecionado */
-    --background: 162 91% 92%; /* Verde bem claro #dcfef7 */
+    --background: 0 0% 100%; /* Branco puro #FFFFFF */
     --foreground: 0 0% 0%; /* Preto para textos */
 
-    --card: 0 0% 100%; /* Branco para cards */
+    --card: 162 91% 92%; /* Verde clarinho para cards #dcfef7 */
     --card-foreground: 0 0% 0%; /* Preto para texto do card */
 
-    --popover: 0 0% 100%;
+    --popover: 162 91% 92%; /* Verde clarinho para popovers */
     --popover-foreground: 0 0% 0%;
 
     --primary: 169 85% 12%; /* Verde escuro para destaques #053c31 */
@@ -78,11 +78,11 @@
     --input: 162 71% 88%; /* Fundo dos inputs claro */
     --ring: 169 85% 12%; /* Anéis de foco escuros */
 
-    --sidebar-background: 162 91% 92%;
+    --sidebar-background: 0 0% 100%; /* Fundo branco para sidebar */
     --sidebar-foreground: 0 0% 0%;
     --sidebar-primary: 169 85% 12%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 162 71% 88%;
+    --sidebar-accent: 162 91% 92%; /* Verde clarinho para accent da sidebar */
     --sidebar-accent-foreground: 169 85% 12%;
     --sidebar-border: 169 85% 12%;
     --sidebar-ring: 169 85% 12%;
