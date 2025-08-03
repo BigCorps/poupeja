@@ -167,10 +167,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: 'Usuário',
       href: '/profile'
     },
-    { // 👈 Aqui está a nova seção do menu expansível
+    { 
       icon: Crown,
       label: t('nav.plans'),
       href: '/plans'
+    },
+    {
+      icon: Wallet,
+      label: 'API Bancos', // Alterado de "Bancos Conectados" para "API Bancos"
+      href: '/connected-banks' // Adicionado o href para a nova página
     },
     {
       icon: Settings,
