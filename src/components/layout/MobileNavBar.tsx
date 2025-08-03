@@ -3,34 +3,65 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot } from 'lucide-react';
+import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Landmark, PiggyBank, Briefcase } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useToast } from '@/components/ui/use-toast';
+import { useAppContext } from '@/contexts/AppContext';
 
 interface MobileNavBarProps {
   onAddTransaction?: (type: 'income' | 'expense') => void;
+  onAddGoal?: () => void;
+  onAddScheduledTransaction?: () => void;
 }
 
 const MobileNavBar: React.FC<MobileNavBarProps> = ({
-  onAddTransaction
+  onAddTransaction,
+  onAddGoal,
+  onAddScheduledTransaction
 }) => {
   const { t } = usePreferences();
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin } = useUserRole();
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
-  
+  const { toast } = useToast();
+  const { getTransactions } = useAppContext();
+
   // Verificar se estamos na página de administração
   const isAdminPage = location.pathname === '/admin';
+
+  // Animação para o popover
+  const containerVariants = {
+    hidden: { opacity: 0, scale: 0.9, transition: { staggerChildren: 0.05, staggerDirection: -1 } },
+    visible: { opacity: 1, scale: 1, transition: { staggerChildren: 0.07, delayChildren: 0.2 } },
+    exit: { opacity: 0, scale: 0.9, transition: { staggerChildren: 0.05, staggerDirection: -1 } }
+  };
+  
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1 },
+    exit: { y: 20, opacity: 0 }
+  };
 
   // 1. Ações rápidas restantes no botão "+"
   const quickActionItems = [
     {
+      icon: Receipt,
+      label: 'Transação',
+      action: () => {
+        if (onAddTransaction) onAddTransaction('expense');
+        setIsQuickActionsOpen(false);
+      },
+      color: 'text-red-600',
+      bgColor: 'bg-red-50 hover:bg-red-100'
+    },
+    {
       icon: Target,
       label: t('nav.goals') || 'Metas',
       action: () => {
-        navigate('/goals');
+        if (onAddGoal) onAddGoal();
         setIsQuickActionsOpen(false);
       },
       color: 'text-blue-600',
@@ -40,43 +71,43 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Calendar,
       label: 'Agendamentos',
       action: () => {
-        navigate('/schedule');
+        if (onAddScheduledTransaction) onAddScheduledTransaction();
+        setIsQuickActionsOpen(false);
+      },
+      color: 'text-green-600',
+      bgColor: 'bg-green-50 hover:bg-green-100'
+    },
+    {
+      icon: Landmark,
+      label: 'Conectar Banco',
+      action: () => {
+        navigate('/bancos-conectados');
         setIsQuickActionsOpen(false);
       },
       color: 'text-purple-600',
       bgColor: 'bg-purple-50 hover:bg-purple-100'
-    },
-    {
-      icon: FileText,
-      label: 'Relatórios',
-      action: () => {
-        navigate('/reports');
-        setIsQuickActionsOpen(false);
-      },
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50 hover:bg-orange-100'
     }
   ];
 
-  // Se for admin na página de admin, mostrar apenas menu administrativo
-  if (isAdmin && isAdminPage) {
-    const adminMenuItems = [
-      {
-        icon: Shield,
-        label: 'Admin',
-        href: '/admin'
-      },
-      {
-        icon: User,
-        label: t('nav.profile'),
-        href: '/profile'
-      }
-    ];
+  // 2. Itens de navegação da barra de navegação
+  const navItems = [
+    { icon: LayoutDashboard, label: t('nav.dashboard') || 'Dashboard', href: '/dashboard' },
+    { icon: Wallet, label: t('nav.transactions') || 'Transações', href: '/transactions' },
+    { icon: Plus, label: t('nav.add') || 'Adicionar', href: '#quick-actions' }, // Botão de ação rápida
+    { icon: BarChart3, label: t('nav.reports') || 'Relatórios', href: '/reports' },
+    { icon: Settings, label: t('nav.settings') || 'Configurações', href: '/settings' },
+  ];
 
+  // Se for admin na página de admin, mostrar menu administrativo
+  if (isAdmin && isAdminPage) {
+    const adminNavItems = [
+      { icon: Crown, label: 'Admin', href: '/admin' },
+      { icon: Settings, label: 'Config', href: '/admin/config' },
+    ];
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden">
-        <nav className="flex items-center justify-around py-2">
-          {adminMenuItems.map((item) => (
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t p-2">
+        <nav className="flex justify-around items-center">
+          {adminNavItems.map(item => (
             <NavLink
               key={item.href}
               to={item.href}
@@ -97,102 +128,26 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     );
   }
 
-  // 2. Menu padrão atualizado para usuários normais
-  const defaultMenuItems = [
-    {
-      icon: LayoutDashboard,
-      label: t('nav.dashboard'),
-      href: '/dashboard'
-    },
-    {
-      icon: Receipt,
-      label: t('nav.transactions'),
-      href: '/transactions'
-    },
-    {
-      type: 'quick-actions',
-      icon: Plus,
-      label: '',
-      href: '#'
-    },
-    { // 👈 "Saldo" no lugar de "Planos"
-      icon: Wallet,
-      label: 'Saldo',
-      href: '/saldo'
-    },
-    { // 👈 "Agente IA" no lugar de "Configurações"
-      icon: Bot,
-      label: 'Agente IA',
-      href: '/agente-ia'
-    }
-  ];
-  
-  // Determinar quais itens de menu mostrar
-  let menuItems = defaultMenuItems;
-  
-  // Se for admin mas não estiver na página de admin, adicionar o item admin ao menu
-  if (isAdmin && !isAdminPage) {
-    const adminMenuItem = {
-      icon: Shield,
-      label: 'Admin',
-      href: '/admin'
-    };
-    
-    // Adicionar o item admin antes do último item (Agente IA)
-    menuItems = [...defaultMenuItems.slice(0, -1), adminMenuItem, defaultMenuItems[defaultMenuItems.length - 1]];
-  }
-
-  const containerVariants = {
-    hidden: {
-      opacity: 0,
-      scale: 0.95
-    },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: {
-        duration: 0.2,
-        staggerChildren: 0.05
-      }
-    },
-    exit: {
-      opacity: 0,
-      scale: 0.95,
-      transition: {
-        duration: 0.15
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: {
-      opacity: 0,
-      y: 10
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.2
-      }
-    }
-  };
-
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden">
-      <nav className="flex items-center justify-around py-2">
-        {menuItems.map((item, index) => {
-          if (item.type === 'quick-actions') {
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t p-2 md:hidden">
+      <nav className="flex justify-around items-center">
+        {navItems.map(item => {
+          if (item.href === '#quick-actions') {
             return (
-              <Popover key="quick-actions" open={isQuickActionsOpen} onOpenChange={setIsQuickActionsOpen}>
+              <Popover open={isQuickActionsOpen} onOpenChange={setIsQuickActionsOpen} key={item.label}>
                 <PopoverTrigger asChild>
-                  <button className={cn("flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors", "hover:bg-accent hover:text-accent-foreground min-w-0", isQuickActionsOpen ? "text-primary bg-primary/10" : "text-muted-foreground")}>
-                    <div className="rounded-full bg-primary text-primary-foreground p-1">
-                      <Plus className="h-8 w-8 py-0" />
-                    </div>
-                  </button>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-2 rounded-full h-14 w-14 shadow-lg transition-transform duration-300",
+                      isQuickActionsOpen ? "bg-primary text-primary-foreground rotate-45" : "bg-primary text-primary-foreground hover:bg-primary/90"
+                    )}
+                  >
+                    <Plus className="h-6 w-6" />
+                    <span className="sr-only">Adicionar</span>
+                  </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-56 p-2 mb-2" align="center" side="top">
+                <PopoverContent className="w-48 p-2 mb-20 bg-card border shadow-xl rounded-xl">
                   <AnimatePresence>
                     {isQuickActionsOpen && (
                       <motion.div variants={containerVariants} initial="hidden" animate="visible" exit="exit" className="space-y-1">
@@ -212,9 +167,17 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
             );
           }
           return (
-            <NavLink key={item.href} to={item.href} className={({
-              isActive
-            }) => cn("flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors", "hover:bg-accent hover:text-accent-foreground min-w-0", isActive ? "text-primary bg-primary/10" : "text-muted-foreground")}>
+            <NavLink
+              key={item.href}
+              to={item.href}
+              className={({ isActive }) =>
+                cn(
+                  "flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                  "hover:bg-accent hover:text-accent-foreground min-w-0",
+                  isActive ? "text-primary bg-primary/10" : "text-muted-foreground"
+                )
+              }
+            >
               <item.icon className="h-5 w-5 flex-shrink-0" />
               <span className="truncate">{item.label}</span>
             </NavLink>
