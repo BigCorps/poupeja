@@ -35,69 +35,73 @@ import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
 import AgenteIA from './pages/AgenteIA';
+// Importação da nova página para a API de Bancos
+import ConnectedBanksPage from "./pages/ConnectedBanksPage";
 import "./App.css";
 
 const queryClient = new QueryClient();
 
 function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-          <BrandingProvider>
-            <PreferencesProvider>
-              <SubscriptionProvider>
-                <AppProvider>
-                  <SaldoProvider> {/* Adicionado o SaldoProvider aqui */}
-                    <SupabaseInitializer>
-                      <BrowserRouter>
-                        <Routes>
-                          <Route path="/" element={<LandingPage />} />
-                          <Route path="/dashboard" element={<Index />} />
-                          <Route path="/landing" element={<LandingPage />} />
-                          <Route path="/login" element={<LoginPage />} />
-                          <Route path="/register" element={<RegisterPage />} />
-                          <Route path="/register/:planType" element={<RegisterWithPlanPage />} />
-                          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                          <Route path="/reset-password" element={<ResetPasswordPage />} />
-                          <Route path="/profile" element={<ProfilePage />} />
-                          <Route path="/transactions" element={<TransactionsPage />} />
-                          <Route path="/saldo" element={<SaldoDashboard />} />
-                          <Route path="/expenses" element={<ExpensesPage />} />
-                          <Route path="/goals" element={<GoalsPage />} />
-                          <Route path="/reports" element={<ReportsPage />} />
-                          <Route path="/schedule" element={<SchedulePage />} />
-                          <Route path="/settings" element={<SettingsPage />} />
-                          <Route path="/categories" element={<CategoriesPage />} />
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
+          <BrandingProvider>
+            <PreferencesProvider>
+              <SubscriptionProvider>
+                <AppProvider>
+                  <SaldoProvider> {/* Adicionado o SaldoProvider aqui */}
+                    <SupabaseInitializer>
+                      <BrowserRouter>
+                        <Routes>
+                          <Route path="/" element={<LandingPage />} />
+                          <Route path="/dashboard" element={<Index />} />
+                          <Route path="/landing" element={<LandingPage />} />
+                          <Route path="/login" element={<LoginPage />} />
+                          <Route path="/register" element={<RegisterPage />} />
+                          <Route path="/register/:planType" element={<RegisterWithPlanPage />} />
+                          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                          <Route path="/reset-password" element={<ResetPasswordPage />} />
+                          <Route path="/profile" element={<ProfilePage />} />
+                          <Route path="/transactions" element={<TransactionsPage />} />
+                          <Route path="/saldo" element={<SaldoDashboard />} />
+                          <Route path="/expenses" element={<ExpensesPage />} />
+                          <Route path="/goals" element={<GoalsPage />} />
+                          <Route path="/reports" element={<ReportsPage />} />
+                          <Route path="/schedule" element={<SchedulePage />} />
+                          <Route path="/settings" element={<SettingsPage />} />
+                          <Route path="/categories" element={<CategoriesPage />} />
                           <Route path="/agente-ia" element={<AgenteIA />} />
-                          <Route path="/plans" element={<PlansPage />} />
-                          <Route path="/checkout/:planType" element={<CheckoutPage />} />
-                          <Route path="/payment-success" element={<PaymentSuccessPage />} />
-                          <Route path="/thank-you" element={<ThankYouPage />} />
-                          <Route path="/achievements" element={<AchievementsPage />} />
-                          <Route
-                            path="/admin"
-                            element={
-                              <AdminRoute>
-                                <AdminDashboard />
-                              </AdminRoute>
-                            }
-                          />
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </BrowserRouter>
-                      <Toaster />
-                      <Sonner />
-                    </SupabaseInitializer>
-                  </SaldoProvider>
-                </AppProvider>
-              </SubscriptionProvider>
-            </PreferencesProvider>
-          </BrandingProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
+                          {/* Nova rota para a página da API de Bancos */}
+                          <Route path="/connected-banks" element={<ConnectedBanksPage />} />
+                          <Route path="/plans" element={<PlansPage />} />
+                          <Route path="/checkout/:planType" element={<CheckoutPage />} />
+                          <Route path="/payment-success" element={<PaymentSuccessPage />} />
+                          <Route path="/thank-you" element={<ThankYouPage />} />
+                          <Route path="/achievements" element={<AchievementsPage />} />
+                          <Route
+                            path="/admin"
+                            element={
+                              <AdminRoute>
+                                <AdminDashboard />
+                              </AdminRoute>
+                            }
+                          />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </BrowserRouter>
+                      <Toaster />
+                      <Sonner />
+                    </SupabaseInitializer>
+                  </SaldoProvider>
+                </AppProvider>
+              </SubscriptionProvider>
+            </PreferencesProvider>
+          </BrandingProvider>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
 }
 
 export default App;
