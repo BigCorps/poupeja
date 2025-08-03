@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,46 +10,78 @@ import { useNavigate } from 'react-router-dom';
 import ConnectedBankList from '@/components/common/ConnectedBankList';
 import ConnectedBankForm from '@/components/common/ConnectedBankForm';
 import { ConnectedBank } from '@/types';
+import { motion } from 'framer-motion';
 
 const BancosConectados = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingBank, setEditingBank] = useState<ConnectedBank | null>(null);
-  const { connectedBanks, deleteConnectedBank } = useAppContext();
+  const { connectedBanks, deleteConnectedBank, isLoading } = useAppContext();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
+  // Função para abrir o formulário de adicionar banco
   const handleAddBank = () => {
     setEditingBank(null);
     setFormOpen(true);
   };
 
+  // Função para abrir o formulário de editar banco
   const handleEditBank = (bank: ConnectedBank) => {
     setEditingBank(bank);
     setFormOpen(true);
   };
 
+  // Função para deletar um banco conectado
   const handleDeleteBank = (id: string) => {
     deleteConnectedBank(id);
   };
 
+  // Função de navegação
   const handleNavClick = (path: string) => {
     navigate(path);
+  };
+
+  // Variantes para a animação
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.3
+      }
+    }
   };
 
   return (
     <MainLayout>
       <SubscriptionGuard feature="conexão de bancos">
-        <div className="w-full max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
-          <div className="flex items-center justify-between mb-6">
+        <motion.div
+          className="w-full max-w-7xl mx-auto p-4 md:p-6 lg:p-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div variants={itemVariants} className="flex items-center justify-between mb-6">
             <h1 className="text-3xl font-bold tracking-tight">Bancos Conectados</h1>
             {!isMobile && (
               <Button onClick={handleAddBank}>
                 <Plus className="mr-2 h-4 w-4" /> Conectar Banco
               </Button>
             )}
-          </div>
+          </motion.div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
+          <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-8">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleNavClick('/dashboard')}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -92,34 +124,56 @@ const BancosConectados = () => {
                 </p>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
 
-          <div className="space-y-4">
+          <motion.div variants={itemVariants} className="space-y-4">
             <div className="hidden md:block">
               <Card>
                 <CardHeader>
                   <CardTitle>Seus Bancos Conectados</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ConnectedBankList
-                    banks={connectedBanks}
-                    onEdit={handleEditBank}
-                    onDelete={handleDeleteBank}
-                  />
+                  {isLoading ? (
+                    <div className="text-center py-4 text-muted-foreground">Carregando bancos...</div>
+                  ) : (
+                    connectedBanks && connectedBanks.length > 0 ? (
+                      <ConnectedBankList
+                        banks={connectedBanks}
+                        onEdit={handleEditBank}
+                        onDelete={handleDeleteBank}
+                      />
+                    ) : (
+                      <div className="text-center py-4 text-muted-foreground">
+                        Nenhum banco conectado.
+                        <Button variant="link" onClick={handleAddBank} className="ml-2">Conectar agora.</Button>
+                      </div>
+                    )
+                  )}
                 </CardContent>
               </Card>
             </div>
             
             {/* Versão mobile */}
             {isMobile && (
-              <ConnectedBankList
-                banks={connectedBanks}
-                onEdit={handleEditBank}
-                onDelete={handleDeleteBank}
-              />
+              isLoading ? (
+                <div className="text-center py-4 text-muted-foreground">Carregando bancos...</div>
+              ) : (
+                connectedBanks && connectedBanks.length > 0 ? (
+                  <ConnectedBankList
+                    banks={connectedBanks}
+                    onEdit={handleEditBank}
+                    onDelete={handleDeleteBank}
+                  />
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    Nenhum banco conectado.
+                    <Button variant="link" onClick={handleAddBank} className="ml-2">Conectar agora.</Button>
+                  </div>
+                )
+              )
             )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Mobile Floating Action Button */}
         {isMobile && (
