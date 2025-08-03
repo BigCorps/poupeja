@@ -3,14 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Transaction, Goal, ScheduledTransaction, User, TimeRange } from '@/types';
 import { setupAuthListener, getCurrentSession } from '@/services/authService';
 import { recalculateGoalAmounts as recalculateGoalAmountsService } from '@/services/goalService';
-import { toast } from '@/components/ui/use-toast';
-import { calculateDateRange } from '@/lib/utils';
-import { isWithinInterval, parseISO } from 'date-fns';
 
 // ===================================================
 // TIPOS E INTERFACES
 // ===================================================
 
+// Use database types directly from Supabase
 interface Category {
   id: string;
   created_at: string;
@@ -22,28 +20,15 @@ interface Category {
   is_default: boolean | null;
 }
 
-// Novo tipo para Bancos Conectados
-interface ConnectedBank {
-  id: string;
-  created_at: string;
-  user_id: string;
-  bank_name: string;
-  account_number: string;
-  balance: number;
-  api_key?: string;
-  last_sync_at?: string;
-}
-
 interface AppState {
   transactions: Transaction[];
   categories: Category[];
   goals: Goal[];
   scheduledTransactions: ScheduledTransaction[];
-  connectedBanks: ConnectedBank[]; // Adicionado o estado para bancos conectados
   isLoading: boolean;
   error: string | null;
   user: User | null;
-  session: any | null;
+  session: any | null; // ✅ Adicionado para armazenar a sessão do Supabase
   hideValues: boolean;
   timeRange: TimeRange;
   customStartDate: string | null;
@@ -58,50 +43,42 @@ interface AppContextType extends AppState {
   toggleHideValues: () => void;
   logout: () => Promise<void>;
   setCustomDateRange: (start: Date | null, end: Date | null) => void;
-  setTimeRange: (range: TimeRange) => void;
+  setTimeRange: (range: string) => void;
   // Data fetching methods
-  getTransactions: () => Promise<void>;
-  getGoals: () => Promise<void>;
-  getCategories: () => Promise<void>;
-  getScheduledTransactions: () => Promise<void>;
-  getConnectedBanks: () => Promise<void>; // Adicionado o método para buscar bancos
+  getTransactions: () => Promise<Transaction[]>;
+  getGoals: () => Promise<Goal[]>;
   recalculateGoalAmounts: () => Promise<boolean>;
   updateUserProfile: (data: any) => Promise<void>;
   // Transaction actions
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'created_at'>) => Promise<void>;
   updateTransaction: (id: string, transaction: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   // Category actions
-  addCategory: (category: Omit<Category, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'created_at'>) => Promise<void>;
   updateCategory: (id: string, category: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   // Goal actions
-  addGoal: (goal: Omit<Goal, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => Promise<void>;
+  addGoal: (goal: Omit<Goal, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   updateGoal: (id: string, goal: Partial<Goal>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
   // Scheduled Transaction actions
-  addScheduledTransaction: (transaction: Omit<ScheduledTransaction, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
+  addScheduledTransaction: (transaction: Omit<ScheduledTransaction, 'id' | 'created_at'>) => Promise<void>;
   updateScheduledTransaction: (id: string, transaction: Partial<ScheduledTransaction>) => Promise<void>;
   deleteScheduledTransaction: (id: string) => Promise<void>;
-  // Connected Banks actions
-  addConnectedBank: (bank: Omit<ConnectedBank, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
-  updateConnectedBank: (id: string, bank: Partial<ConnectedBank>) => Promise<void>;
-  deleteConnectedBank: (id: string) => Promise<void>;
 }
 
 type AppAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_USER'; payload: User | null }
-  | { type: 'SET_SESSION'; payload: any | null }
-  | { type: 'TOGGLE_HIDE_VALUES' }
-  | { type: 'SET_TIME_RANGE'; payload: TimeRange }
-  | { type: 'SET_CUSTOM_DATE_RANGE'; payload: { startDate: string | null; endDate: string | null } }
   | { type: 'SET_TRANSACTIONS'; payload: Transaction[] }
   | { type: 'SET_CATEGORIES'; payload: Category[] }
   | { type: 'SET_GOALS'; payload: Goal[] }
   | { type: 'SET_SCHEDULED_TRANSACTIONS'; payload: ScheduledTransaction[] }
-  | { type: 'SET_CONNECTED_BANKS'; payload: ConnectedBank[] } // Novo tipo de ação
+  | { type: 'SET_SESSION'; payload: any | null } // ✅ Adicionada nova ação
+  | { type: 'TOGGLE_HIDE_VALUES' }
+  | { type: 'SET_TIME_RANGE'; payload: TimeRange }
+  | { type: 'SET_CUSTOM_DATE_RANGE'; payload: { startDate: string | null; endDate: string | null } }
   | { type: 'SET_FILTERED_TRANSACTIONS'; payload: Transaction[] }
   | { type: 'ADD_TRANSACTION'; payload: Transaction }
   | { type: 'UPDATE_TRANSACTION'; payload: Transaction }
@@ -114,10 +91,7 @@ type AppAction =
   | { type: 'DELETE_GOAL'; payload: string }
   | { type: 'ADD_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
   | { type: 'UPDATE_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
-  | { type: 'DELETE_SCHEDULED_TRANSACTION'; payload: string }
-  | { type: 'ADD_CONNECTED_BANK'; payload: ConnectedBank } // Novo tipo de ação
-  | { type: 'UPDATE_CONNECTED_BANK'; payload: ConnectedBank } // Novo tipo de ação
-  | { type: 'DELETE_CONNECTED_BANK'; payload: string }; // Novo tipo de ação
+  | { type: 'DELETE_SCHEDULED_TRANSACTION'; payload: string };
 
 // ===================================================
 // ESTADO INICIAL E REDUCER
@@ -128,11 +102,10 @@ const initialAppState: AppState = {
   categories: [],
   goals: [],
   scheduledTransactions: [],
-  connectedBanks: [], // Estado inicial
   isLoading: true,
   error: null,
   user: null,
-  session: null,
+  session: null, // ✅ Inicializamos a sessão como nula
   hideValues: false,
   timeRange: 'last30days',
   customStartDate: null,
@@ -148,14 +121,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, error: action.payload };
     case 'SET_USER':
       return { ...state, user: action.payload };
-    case 'SET_SESSION':
+    case 'SET_SESSION': // ✅ Tratamos a nova ação para a sessão
       return { ...state, session: action.payload };
-    case 'TOGGLE_HIDE_VALUES':
-      return { ...state, hideValues: !state.hideValues };
-    case 'SET_TIME_RANGE':
-      return { ...state, timeRange: action.payload, customStartDate: null, customEndDate: null };
-    case 'SET_CUSTOM_DATE_RANGE':
-      return { ...state, timeRange: 'custom', ...action.payload };
     case 'SET_TRANSACTIONS':
       return { ...state, transactions: action.payload };
     case 'SET_CATEGORIES':
@@ -164,579 +131,799 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, goals: action.payload };
     case 'SET_SCHEDULED_TRANSACTIONS':
       return { ...state, scheduledTransactions: action.payload };
-    case 'SET_CONNECTED_BANKS':
-      return { ...state, connectedBanks: action.payload };
+    case 'TOGGLE_HIDE_VALUES':
+      return { ...state, hideValues: !state.hideValues };
+    case 'SET_TIME_RANGE':
+      return { ...state, timeRange: action.payload, customStartDate: null, customEndDate: null };
+    case 'SET_CUSTOM_DATE_RANGE':
+      return { ...state, timeRange: 'custom', ...action.payload };
     case 'SET_FILTERED_TRANSACTIONS':
       return { ...state, filteredTransactions: action.payload };
     case 'ADD_TRANSACTION':
       return { ...state, transactions: [action.payload, ...state.transactions] };
     case 'UPDATE_TRANSACTION':
-      return { ...state, transactions: state.transactions.map(t => t.id === action.payload.id ? action.payload : t ) };
+      return {
+        ...state,
+        transactions: state.transactions.map(t => 
+          t.id === action.payload.id ? action.payload : t
+        )
+      };
     case 'DELETE_TRANSACTION':
-      return { ...state, transactions: state.transactions.filter(t => t.id !== action.payload) };
+      return {
+        ...state,
+        transactions: state.transactions.filter(t => t.id !== action.payload)
+      };
     case 'ADD_CATEGORY':
       return { ...state, categories: [...state.categories, action.payload] };
     case 'UPDATE_CATEGORY':
-      return { ...state, categories: state.categories.map(c => c.id === action.payload.id ? action.payload : c ) };
+      return {
+        ...state,
+        categories: state.categories.map(c => 
+          c.id === action.payload.id ? action.payload : c
+        )
+      };
     case 'DELETE_CATEGORY':
-      return { ...state, categories: state.categories.filter(c => c.id !== action.payload) };
+      return {
+        ...state,
+        categories: state.categories.filter(c => c.id !== action.payload)
+      };
     case 'ADD_GOAL':
       return { ...state, goals: [...state.goals, action.payload] };
     case 'UPDATE_GOAL':
-      return { ...state, goals: state.goals.map(g => g.id === action.payload.id ? action.payload : g ) };
+      return {
+        ...state,
+        goals: state.goals.map(g => 
+          g.id === action.payload.id ? action.payload : g
+        )
+      };
     case 'DELETE_GOAL':
-      return { ...state, goals: state.goals.filter(g => g.id !== action.payload) };
+      return {
+        ...state,
+        goals: state.goals.filter(g => g.id !== action.payload)
+      };
     case 'ADD_SCHEDULED_TRANSACTION':
       return { ...state, scheduledTransactions: [...state.scheduledTransactions, action.payload] };
     case 'UPDATE_SCHEDULED_TRANSACTION':
-      return { ...state, scheduledTransactions: state.scheduledTransactions.map(st => st.id === action.payload.id ? action.payload : st ) };
+      return {
+        ...state,
+        scheduledTransactions: state.scheduledTransactions.map(st => 
+          st.id === action.payload.id ? action.payload : st
+        )
+      };
     case 'DELETE_SCHEDULED_TRANSACTION':
-      return { ...state, scheduledTransactions: state.scheduledTransactions.filter(st => st.id !== action.payload) };
-    case 'ADD_CONNECTED_BANK':
-      return { ...state, connectedBanks: [...state.connectedBanks, action.payload] };
-    case 'UPDATE_CONNECTED_BANK':
-      return { ...state, connectedBanks: state.connectedBanks.map(cb => cb.id === action.payload.id ? action.payload : cb ) };
-    case 'DELETE_CONNECTED_BANK':
-      return { ...state, connectedBanks: state.connectedBanks.filter(cb => cb.id !== action.payload) };
+      return {
+        ...state,
+        scheduledTransactions: state.scheduledTransactions.filter(st => st.id !== action.payload)
+      };
     default:
       return state;
   }
 };
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+// ===================================================
+// PROVEDOR DE CONTEXTO
+// ===================================================
 
-// ===================================================
-// PROVIDER
-// ===================================================
+const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
-  const { transactions, timeRange, customStartDate, customEndDate, user } = state;
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const fetchUserData = useCallback(async () => {
-    dispatch({ type: 'SET_LOADING', payload: true });
+  // Helper function to get current user with better error handling
+  const getCurrentUser = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        dispatch({ type: 'SET_USER', payload: user });
+      const session = await getCurrentSession();
+      if (!session?.user) {
+        throw new Error('User not authenticated');
       }
-    } catch (error: any) {
-      console.error('Erro ao buscar dados do usuário:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message });
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
+      return session.user;
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      throw error;
     }
-  }, []);
+  };
 
+  // Helper function to transform database types to proper types
+  const transformTransaction = (dbTransaction: any): Transaction => {
+    return {
+      id: dbTransaction.id,
+      type: dbTransaction.type as 'income' | 'expense',
+      amount: dbTransaction.amount,
+      category: dbTransaction.category?.name || 'Unknown',
+      categoryIcon: dbTransaction.category?.icon || 'circle',
+      categoryColor: dbTransaction.category?.color || '#607D8B',
+      description: dbTransaction.description || '',
+      date: dbTransaction.date,
+      goalId: dbTransaction.goal_id,
+      category_id: dbTransaction.category_id,
+      goal_id: dbTransaction.goal_id,
+      user_id: dbTransaction.user_id,
+      created_at: dbTransaction.created_at,
+    };
+  };
+
+  const transformCategory = (dbCategory: any): Category => ({
+    ...dbCategory,
+    type: dbCategory.type as 'income' | 'expense',
+  });
+
+  const transformGoal = (dbGoal: any): Goal => ({
+    id: dbGoal.id,
+    name: dbGoal.name,
+    targetAmount: dbGoal.target_amount,
+    currentAmount: dbGoal.current_amount || 0,
+    startDate: dbGoal.start_date,
+    endDate: dbGoal.end_date,
+    deadline: dbGoal.deadline,
+    color: dbGoal.color || '#3B82F6',
+    transactions: [],
+    target_amount: dbGoal.target_amount,
+    current_amount: dbGoal.current_amount,
+    start_date: dbGoal.start_date,
+    end_date: dbGoal.end_date,
+    user_id: dbGoal.user_id,
+    created_at: dbGoal.created_at,
+    updated_at: dbGoal.updated_at,
+  });
+
+  const transformScheduledTransaction = (dbScheduledTransaction: any): ScheduledTransaction => {
+    const categoryName = dbScheduledTransaction.category?.name || 'Outros';
+    const categoryIcon = dbScheduledTransaction.category?.icon || 'DollarSign';
+    const categoryColor = dbScheduledTransaction.category?.color || '#6B7280';
+    return {
+      id: dbScheduledTransaction.id,
+      type: dbScheduledTransaction.type as 'income' | 'expense',
+      amount: dbScheduledTransaction.amount,
+      category: categoryName,
+      categoryIcon: categoryIcon,
+      categoryColor: categoryColor,
+      description: dbScheduledTransaction.description || '',
+      scheduledDate: dbScheduledTransaction.scheduled_date,
+      recurrence: dbScheduledTransaction.recurrence as 'once' | 'daily' | 'weekly' | 'monthly' | 'yearly',
+      goalId: dbScheduledTransaction.goal_id,
+      status: dbScheduledTransaction.status as 'pending' | 'paid' | 'overdue' | 'upcoming',
+      paidDate: dbScheduledTransaction.paid_date,
+      paidAmount: dbScheduledTransaction.paid_amount,
+      lastExecutionDate: dbScheduledTransaction.last_execution_date,
+      nextExecutionDate: dbScheduledTransaction.next_execution_date,
+      category_id: dbScheduledTransaction.category_id,
+      goal_id: dbScheduledTransaction.goal_id,
+      user_id: dbScheduledTransaction.user_id,
+      scheduled_date: dbScheduledTransaction.scheduled_date,
+      paid_date: dbScheduledTransaction.paid_date,
+      last_execution_date: dbScheduledTransaction.last_execution_date,
+      next_execution_date: dbScheduledTransaction.next_execution_date,
+      created_at: dbScheduledTransaction.created_at,
+    };
+  };
+
+  // Filter transactions based on time range
+  const filterTransactionsByTimeRange = (transactions: Transaction[]) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+    
+    if (state.timeRange === 'custom' && state.customStartDate && state.customEndDate) {
+      startDate = new Date(state.customStartDate);
+      endDate = new Date(state.customEndDate);
+    } else {
+      switch (state.timeRange) {
+        case 'today':
+          startDate = today;
+          endDate = today;
+          break;
+        case 'yesterday':
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          startDate = yesterday;
+          endDate = yesterday;
+          break;
+        case '7days':
+          const sevenDaysAgo = new Date(today);
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+          startDate = sevenDaysAgo;
+          endDate = today;
+          break;
+        case '14days':
+          const fourteenDaysAgo = new Date(today);
+          fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 13);
+          startDate = fourteenDaysAgo;
+          endDate = today;
+          break;
+        case 'last30days':
+        case '30days':
+        default:
+          const thirtyDaysAgo = new Date(today);
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+          startDate = thirtyDaysAgo;
+          endDate = today;
+          break;
+      }
+    }
+    
+    if (!startDate || !endDate) return transactions;
+    
+    return transactions.filter(transaction => {
+      const transactionDate = new Date(transaction.date);
+      const transactionDateOnly = new Date(transactionDate.getFullYear(), transactionDate.getMonth(), transactionDate.getDate());
+      return transactionDateOnly >= startDate && transactionDateOnly <= endDate;
+    });
+  };
+
+  // Update filtered transactions when transactions or time range changes
   useEffect(() => {
-    // Escuta mudanças na autenticação
-    const { data: authListener } = setupAuthListener((_event, session) => {
-      dispatch({ type: 'SET_SESSION', payload: session });
-      if (session) {
-        dispatch({ type: 'SET_USER', payload: session.user });
-        fetchUserData();
+    const filtered = filterTransactionsByTimeRange(state.transactions);
+    dispatch({ type: 'SET_FILTERED_TRANSACTIONS', payload: filtered });
+  }, [state.transactions, state.timeRange, state.customStartDate, state.customEndDate]);
+
+  const fetchUserData = async () => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+      const [{ data: transactions, error: transactionsError }, { data: categories, error: categoriesError }] =
+        await Promise.all([
+          supabase.from('poupeja_transactions').select(`
+            *,
+            category:poupeja_categories(id, name, icon, color, type)
+          `).eq('user_id', user.id),
+          supabase.from('poupeja_categories').select('*').eq('user_id', user.id)
+        ]);
+
+      if (transactionsError || categoriesError) {
+        dispatch({ type: 'SET_ERROR', payload: transactionsError?.message || categoriesError?.message || 'Erro ao buscar dados.' });
       } else {
+        const transformedTransactions = (transactions || []).map(transformTransaction);
+        const transformedCategories = (categories || []).map(transformCategory);
+        dispatch({ type: 'SET_TRANSACTIONS', payload: transformedTransactions });
+        dispatch({ type: 'SET_CATEGORIES', payload: transformedCategories });
+      }
+    } else {
+      dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
+      dispatch({ type: 'SET_CATEGORIES', payload: [] });
+    }
+    dispatch({ type: 'SET_LOADING', payload: false });
+  };
+
+  // Setup auth state listener and initial session check
+  useEffect(() => {
+    let mounted = true;
+    
+    const handleAuthChange = async (session: any) => {
+      if (!mounted) return;
+      
+      if (session?.user) {
+        dispatch({ type: 'SET_SESSION', payload: session }); // ✅ Salva a sessão
+        dispatch({ type: 'SET_USER', payload: session.user });
+        
+        // Only load data if we haven't initialized yet or user changed
+        if (!isInitialized || state.user?.id !== session.user.id) {
+          await loadUserData(session.user);
+        }
+      } else {
+        dispatch({ type: 'SET_SESSION', payload: null }); // ✅ Atualiza a sessão
         dispatch({ type: 'SET_USER', payload: null });
         dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
+        dispatch({ type: 'SET_CATEGORIES', payload: [] });
         dispatch({ type: 'SET_GOALS', payload: [] });
         dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
-        dispatch({ type: 'SET_CONNECTED_BANKS', payload: [] }); // Limpa o estado
+        dispatch({ type: 'SET_LOADING', payload: false });
+        setIsInitialized(true);
       }
-    });
+    };
 
-    // Filtra as transações sempre que houver mudanças
-    const { startDate, endDate } = calculateDateRange(timeRange, customStartDate, customEndDate);
-    const filtered = transactions.filter(t => {
-      const transactionDate = parseISO(t.transaction_date);
-      return isWithinInterval(transactionDate, { start: startDate, end: endDate });
-    });
-    dispatch({ type: 'SET_FILTERED_TRANSACTIONS', payload: filtered });
+    // Set up auth state listener
+    const { data: { subscription } } = setupAuthListener(handleAuthChange);
+
+    // Check for existing session
+    const checkInitialSession = async () => {
+      try {
+        const session = await getCurrentSession();
+        
+        if (session?.user) {
+          await handleAuthChange(session);
+        } else {
+          await handleAuthChange(null);
+        }
+      } catch (error) {
+        console.error('AppContext: Error during initialization:', error);
+        dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
+        dispatch({ type: 'SET_LOADING', payload: false });
+        setIsInitialized(true);
+      }
+    };
+
+    checkInitialSession();
 
     return () => {
-      authListener?.unsubscribe();
+      mounted = false;
+      subscription.unsubscribe();
     };
-  }, [transactions, timeRange, customStartDate, customEndDate, fetchUserData]);
+  }, []);
+
+  // Load user data function with better error handling
+  const loadUserData = async (user: any) => {
+    if (!user?.id) {
+      console.error('AppContext: Cannot load data - no user ID');
+      return;
+    }
+    
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'SET_ERROR', payload: null });
+      
+      // Verify user session before making requests
+      const session = await getCurrentSession();
+      if (!session?.user) {
+        throw new Error('Session expired or invalid');
+      }
+      
+      // Load all data in parallel
+      const [transactionsRes, categoriesRes, goalsRes, scheduledRes] = await Promise.all([
+        supabase.from('poupeja_transactions')
+          .select(`
+            *,
+            category:poupeja_categories(id, name, icon, color, type)
+          `)
+          .eq('user_id', user.id)
+          .order('date', { ascending: false }),
+        supabase.from('poupeja_categories').select('*').eq('user_id', user.id),
+        supabase.from('poupeja_goals').select('*').eq('user_id', user.id),
+        supabase.from('poupeja_scheduled_transactions')
+          .select(`
+            *,
+            category:poupeja_categories(id, name, icon, color, type)
+          `)
+          .eq('user_id', user.id)
+      ]);
+
+      if (transactionsRes.error) {
+        console.error('Error loading transactions:', transactionsRes.error);
+        throw transactionsRes.error;
+      }
+      if (categoriesRes.error) {
+        console.error('Error loading categories:', categoriesRes.error);
+        throw categoriesRes.error;
+      }
+      if (goalsRes.error) {
+        console.error('Error loading goals:', goalsRes.error);
+        throw goalsRes.error;
+      }
+      if (scheduledRes.error) {
+        console.error('Error loading scheduled transactions:', scheduledRes.error);
+        throw scheduledRes.error;
+      }
+
+      // Store categories first, then transform transactions
+      const categories = (categoriesRes.data || []).map(transformCategory);
+      dispatch({ type: 'SET_CATEGORIES', payload: categories });
+      
+      const transactions = (transactionsRes.data || []).map(transformTransaction);
+      dispatch({ type: 'SET_TRANSACTIONS', payload: transactions });
+      
+      const goals = (goalsRes.data || []).map(transformGoal);
+      dispatch({ type: 'SET_GOALS', payload: goals });
+      
+      const scheduledTransactions = (scheduledRes.data || []).map(transformScheduledTransaction);
+      dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: scheduledTransactions });
+      
+      console.log('AppContext: User data loaded successfully', {
+        transactions: transactions.length,
+        categories: categories.length,
+        goals: goals.length,
+        scheduled: scheduledTransactions.length
+      });
+      
+    } catch (error) {
+      console.error('AppContext: Error loading user data:', error);
+      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+      setIsInitialized(true);
+    }
+  };
 
   const toggleHideValues = useCallback(() => {
     dispatch({ type: 'TOGGLE_HIDE_VALUES' });
   }, []);
 
   const logout = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Erro ao fazer logout:', error);
-      toast({
-        title: 'Erro ao sair',
-        description: 'Não foi possível fazer logout. Tente novamente.',
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Logout realizado com sucesso',
-        description: 'Você saiu da sua conta.',
-      });
-    }
+    await supabase.auth.signOut();
+    dispatch({ type: 'SET_USER', payload: null });
+    dispatch({ type: 'SET_SESSION', payload: null }); // ✅ Limpa a sessão
+  }, []);
+
+  const setTimeRange = useCallback((range: string) => {
+    dispatch({ type: 'SET_TIME_RANGE', payload: range as TimeRange });
   }, []);
 
   const setCustomDateRange = useCallback((start: Date | null, end: Date | null) => {
-    dispatch({ type: 'SET_CUSTOM_DATE_RANGE', payload: { startDate: start?.toISOString() || null, endDate: end?.toISOString() || null } });
+    dispatch({ 
+      type: 'SET_CUSTOM_DATE_RANGE', 
+      payload: { 
+        startDate: start ? start.toISOString().split('T')[0] : null, 
+        endDate: end ? end.toISOString().split('T')[0] : null 
+      } 
+    });
   }, []);
 
-  const setTimeRange = useCallback((range: TimeRange) => {
-    dispatch({ type: 'SET_TIME_RANGE', payload: range });
-  }, []);
-
-  // ===================================================
-  // MÉTODOS DE DADOS
-  // ===================================================
-
-  const getTransactions = useCallback(async () => {
-    if (!user) return;
+  // Data fetching methods (memoized to prevent unnecessary re-renders)
+  const getTransactions = useCallback(async (): Promise<Transaction[]> => {
     try {
+      console.log('AppContext: Fetching transactions...');
+      const user = await getCurrentUser();
       const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      dispatch({ type: 'SET_TRANSACTIONS', payload: data });
-    } catch (error: any) {
-      console.error('Erro ao buscar transações:', error.message);
-      toast({
-        title: 'Erro ao buscar transações',
-        description: 'Ocorreu um erro ao carregar suas transações.',
-        variant: 'destructive',
-      });
-    }
-  }, [user]);
-
-  const getCategories = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      dispatch({ type: 'SET_CATEGORIES', payload: data });
-    } catch (error: any) {
-      console.error('Erro ao buscar categorias:', error.message);
-    }
-  }, [user]);
-
-  const getGoals = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      dispatch({ type: 'SET_GOALS', payload: data });
-    } catch (error: any) {
-      console.error('Erro ao buscar metas:', error.message);
-      toast({
-        title: 'Erro ao buscar metas',
-        description: 'Ocorreu um erro ao carregar suas metas.',
-        variant: 'destructive',
-      });
-    }
-  }, [user]);
-
-  const getScheduledTransactions = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('scheduled_transactions')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: data });
-    } catch (error: any) {
-      console.error('Erro ao buscar agendamentos:', error.message);
-      toast({
-        title: 'Erro ao buscar agendamentos',
-        description: 'Ocorreu um erro ao carregar seus agendamentos.',
-        variant: 'destructive',
-      });
-    }
-  }, [user]);
-  
-  const getConnectedBanks = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('connected_banks')
-        .select('*')
-        .eq('user_id', user.id);
-        
-      if (error) throw error;
-      dispatch({ type: 'SET_CONNECTED_BANKS', payload: data });
-    } catch (error: any) {
-      console.error('Erro ao buscar bancos conectados:', error.message);
-      toast({
-        title: 'Erro ao buscar bancos',
-        description: 'Ocorreu um erro ao carregar seus bancos conectados.',
-        variant: 'destructive',
-      });
-    }
-  }, [user]);
-
-  const recalculateGoalAmounts = useCallback(async () => {
-    if (!user) return false;
-    // Lógica para recalcular os valores das metas
-    const recalculated = recalculateGoalAmountsService(state.goals, state.transactions);
-    dispatch({ type: 'SET_GOALS', payload: recalculated });
-    return true;
-  }, [state.goals, state.transactions, user]);
-
-  const updateUserProfile = useCallback(async (data: any) => {
-    if (!user) return;
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update(data)
-        .eq('id', user.id);
-      
-      if (error) throw error;
-      // Poderia buscar o usuário atualizado aqui, mas por simplicidade, apenas atualizamos o estado
-      dispatch({ type: 'SET_USER', payload: { ...user, ...data } });
-      toast({
-        title: 'Perfil atualizado',
-        description: 'Seu perfil foi atualizado com sucesso.',
-      });
-    } catch (error: any) {
-      console.error('Erro ao atualizar perfil:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível atualizar seu perfil.',
-        variant: 'destructive',
-      });
-    }
-  }, [user]);
-
-  // ===================================================
-  // AÇÕES DE DADOS
-  // ===================================================
-  
-  const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'>) => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({ ...transaction, user_id: user.id })
-        .select()
-        .single();
-
-      if (error) throw error;
-      dispatch({ type: 'ADD_TRANSACTION', payload: data });
-      toast({
-        title: 'Transação adicionada',
-        description: `Transação "${data.title}" adicionada com sucesso.`,
-      });
-    } catch (error: any) {
-      console.error('Error adding transaction:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível adicionar a transação.',
-        variant: 'destructive',
-      });
-    }
-  }, [user]);
-
-  const updateTransaction = useCallback(async (id: string, transaction: Partial<Transaction>) => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .update(transaction)
-        .eq('id', id)
+        .from('poupeja_transactions')
+        .select(`
+          *,
+          category:poupeja_categories(id, name, icon, color, type)
+        `)
         .eq('user_id', user.id)
-        .select()
-        .single();
-      
+        .order('date', { ascending: false });
+  
       if (error) throw error;
-      dispatch({ type: 'UPDATE_TRANSACTION', payload: data });
-      toast({
-        title: 'Transação atualizada',
-        description: `Transação "${data.title}" atualizada com sucesso.`,
-      });
-    } catch (error: any) {
-      console.error('Error updating transaction:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível atualizar a transação.',
-        variant: 'destructive',
-      });
+      
+      const transactions = (data || []).map(transformTransaction);
+      console.log('AppContext: Transactions fetched successfully:', transactions.length);
+      dispatch({ type: 'SET_TRANSACTIONS', payload: transactions });
+      return transactions;
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      throw error;
     }
-  }, [user]);
+  }, []);
 
-  const deleteTransaction = useCallback(async (id: string) => {
-    if (!user) return;
+  const getGoals = useCallback(async (): Promise<Goal[]> => {
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', id)
+      console.log('AppContext: Fetching goals...');
+      const user = await getCurrentUser();
+      const { data, error } = await supabase
+        .from('poupeja_goals')
+        .select('*')
         .eq('user_id', user.id);
 
+      if (error) throw error;
+      
+      const goals = (data || []).map(transformGoal);
+      console.log('AppContext: Goals fetched successfully:', goals.length);
+      dispatch({ type: 'SET_GOALS', payload: goals });
+      return goals;
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+      throw error;
+    }
+  }, []);
+
+  const recalculateGoalAmounts = async (): Promise<boolean> => {
+    try {
+      console.log('Recalculating goal amounts...');
+      const success = await recalculateGoalAmountsService();
+      if (success) {
+        await getGoals();
+      }
+      return success;
+    } catch (error) {
+      console.error('Error recalculating goal amounts:', error);
+      return false;
+    }
+  };
+
+  const updateUserProfile = async (data: any): Promise<void> => {
+    try {
+      console.log('AppContext: updateUserProfile called with data:', data);
+      
+      const { updateUserProfile: updateUserProfileService } = await import('@/services/userService');
+      const result = await updateUserProfileService(data);
+      
+      if (!result) {
+        throw new Error('Failed to update user profile');
+      }
+      
+      console.log('AppContext: Profile updated successfully:', result);
+    } catch (error) {
+      console.error('AppContext: Error updating user profile:', error);
+      throw error;
+    }
+  };
+
+  // Transaction actions
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at'>) => {
+    try {
+      console.log('AppContext: Adding transaction...', transaction);
+      const user = await getCurrentUser();
+      const { data, error } = await supabase
+        .from('poupeja_transactions')
+        .insert({ 
+          type: transaction.type,
+          amount: transaction.amount,
+          category_id: transaction.category_id,
+          description: transaction.description,
+          date: transaction.date,
+          goal_id: transaction.goalId,
+          user_id: user.id,
+        })
+        .select(`
+          *,
+          category:poupeja_categories(id, name, icon, color, type)
+        `)
+        .single();
+  
+      if (error) throw error;
+      const transformedTransaction = transformTransaction(data);
+      console.log('AppContext: Transaction added successfully:', transformedTransaction);
+      dispatch({ type: 'ADD_TRANSACTION', payload: transformedTransaction });
+      
+      if (transaction.goalId) {
+        console.log('AppContext: Recalculating goal amounts...');
+        await recalculateGoalAmounts();
+      }
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      throw error;
+    }
+  };
+  
+  const updateTransaction = async (id: string, transaction: Partial<Transaction>) => {
+    try {
+      const { data, error } = await supabase
+        .from('poupeja_transactions')
+        .update({
+          type: transaction.type,
+          amount: transaction.amount,
+          category_id: transaction.category_id,
+          description: transaction.description,
+          date: transaction.date,
+          goal_id: transaction.goalId,
+        })
+        .eq('id', id)
+        .select(`
+          *,
+          category:poupeja_categories(id, name, icon, color, type)
+        `)
+        .single();
+  
+      if (error) throw error;
+      const transformedTransaction = transformTransaction(data);
+      dispatch({ type: 'UPDATE_TRANSACTION', payload: transformedTransaction });
+      
+      if (transaction.goalId) {
+        await recalculateGoalAmounts();
+      }
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      throw error;
+    }
+  };
+  
+  const deleteTransaction = async (id: string) => {
+    try {
+      const { data: transactionData } = await supabase
+        .from('poupeja_transactions')
+        .select('goal_id')
+        .eq('id', id)
+        .single();
+        
+      const hasGoal = transactionData?.goal_id;
+      
+      const { error } = await supabase
+        .from('poupeja_transactions')
+        .delete()
+        .eq('id', id);
+  
       if (error) throw error;
       dispatch({ type: 'DELETE_TRANSACTION', payload: id });
-      toast({
-        title: 'Transação excluída',
-        description: 'A transação foi removida com sucesso.',
-      });
-    } catch (error: any) {
+      
+      if (hasGoal) {
+        await recalculateGoalAmounts();
+      }
+    } catch (error) {
       console.error('Error deleting transaction:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível excluir a transação.',
-        variant: 'destructive',
-      });
+      throw error;
     }
-  }, [user]);
+  };
 
-  const addCategory = useCallback(async (category: Omit<Category, 'id' | 'created_at' | 'user_id'>) => {
-    if (!user) return;
+  // Category actions
+  const addCategory = async (category: Omit<Category, 'id' | 'created_at'>) => {
     try {
+      const user = await getCurrentUser();
       const { data, error } = await supabase
-        .from('categories')
+        .from('poupeja_categories')
         .insert({ ...category, user_id: user.id })
         .select()
         .single();
-      
+  
       if (error) throw error;
-      dispatch({ type: 'ADD_CATEGORY', payload: data });
-    } catch (error: any) {
+      const transformedCategory = transformCategory(data);
+      dispatch({ type: 'ADD_CATEGORY', payload: transformedCategory });
+    } catch (error) {
       console.error('Error adding category:', error);
+      throw error;
     }
-  }, [user]);
+  };
 
-  const updateCategory = useCallback(async (id: string, category: Partial<Category>) => {
-    if (!user) return;
+  const updateCategory = async (id: string, category: Partial<Category>) => {
     try {
       const { data, error } = await supabase
-        .from('categories')
+        .from('poupeja_categories')
         .update(category)
         .eq('id', id)
-        .eq('user_id', user.id)
         .select()
         .single();
-      
+  
       if (error) throw error;
-      dispatch({ type: 'UPDATE_CATEGORY', payload: data });
-    } catch (error: any) {
+      const transformedCategory = transformCategory(data);
+      dispatch({ type: 'UPDATE_CATEGORY', payload: transformedCategory });
+    } catch (error) {
       console.error('Error updating category:', error);
+      throw error;
     }
-  }, [user]);
+  };
 
-  const deleteCategory = useCallback(async (id: string) => {
-    if (!user) return;
+  const deleteCategory = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('categories')
+        .from('poupeja_categories')
         .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-      
+        .eq('id', id);
+  
       if (error) throw error;
       dispatch({ type: 'DELETE_CATEGORY', payload: id });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting category:', error);
+      throw error;
     }
-  }, [user]);
+  };
 
-  const addGoal = useCallback(async (goal: Omit<Goal, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
-    if (!user) return;
+  // Goal actions
+  const addGoal = async (goal: Omit<Goal, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      const user = await getCurrentUser();
       const { data, error } = await supabase
-        .from('goals')
-        .insert({ ...goal, user_id: user.id })
+        .from('poupeja_goals')
+        .insert({ 
+          name: goal.name,
+          target_amount: goal.targetAmount || goal.target_amount,
+          current_amount: goal.currentAmount || goal.current_amount || 0,
+          start_date: goal.startDate || goal.start_date,
+          end_date: goal.endDate || goal.end_date,
+          deadline: goal.deadline,
+          color: goal.color,
+          user_id: user.id,
+        })
         .select()
         .single();
-
+  
       if (error) throw error;
-      dispatch({ type: 'ADD_GOAL', payload: data });
-    } catch (error: any) {
+      const transformedGoal = transformGoal(data);
+      dispatch({ type: 'ADD_GOAL', payload: transformedGoal });
+    } catch (error) {
       console.error('Error adding goal:', error);
+      throw error;
     }
-  }, [user]);
+  };
 
-  const updateGoal = useCallback(async (id: string, goal: Partial<Goal>) => {
-    if (!user) return;
+  const updateGoal = async (id: string, goal: Partial<Goal>) => {
     try {
       const { data, error } = await supabase
-        .from('goals')
-        .update(goal)
+        .from('poupeja_goals')
+        .update({
+          name: goal.name,
+          target_amount: goal.targetAmount || goal.target_amount,
+          current_amount: goal.currentAmount || goal.current_amount,
+          start_date: goal.startDate || goal.start_date,
+          end_date: goal.endDate || goal.end_date,
+          deadline: goal.deadline,
+          color: goal.color,
+        })
         .eq('id', id)
-        .eq('user_id', user.id)
         .select()
         .single();
-
+  
       if (error) throw error;
-      dispatch({ type: 'UPDATE_GOAL', payload: data });
-    } catch (error: any) {
+      const transformedGoal = transformGoal(data);
+      dispatch({ type: 'UPDATE_GOAL', payload: transformedGoal });
+    } catch (error) {
       console.error('Error updating goal:', error);
+      throw error;
     }
-  }, [user]);
+  };
 
-  const deleteGoal = useCallback(async (id: string) => {
-    if (!user) return;
+  const deleteGoal = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('goals')
+        .from('poupeja_goals')
         .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-
+        .eq('id', id);
+  
       if (error) throw error;
       dispatch({ type: 'DELETE_GOAL', payload: id });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting goal:', error);
+      throw error;
     }
-  }, [user]);
+  };
+
+  // Scheduled Transaction actions
+  const addScheduledTransaction = async (transaction: Omit<ScheduledTransaction, 'id' | 'created_at'>) => {
+    try {
+      const user = await getCurrentUser();
+      const { data, error } = await supabase
+        .from('poupeja_scheduled_transactions')
+        .insert({ 
+          type: transaction.type,
+          amount: transaction.amount,
+          category_id: transaction.category_id,
+          description: transaction.description,
+          scheduled_date: transaction.scheduledDate || transaction.scheduled_date,
+          recurrence: transaction.recurrence,
+          goal_id: transaction.goalId || transaction.goal_id,
+          status: transaction.status,
+          user_id: user.id,
+        })
+        .select(`
+          *,
+          category:poupeja_categories(id, name, icon, color, type)
+        `)
+        .single();
   
-  const addScheduledTransaction = useCallback(async (transaction: Omit<ScheduledTransaction, 'id' | 'created_at' | 'user_id'>) => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('scheduled_transactions')
-        .insert({ ...transaction, user_id: user.id })
-        .select()
-        .single();
-
       if (error) throw error;
-      dispatch({ type: 'ADD_SCHEDULED_TRANSACTION', payload: data });
-    } catch (error: any) {
+      const transformedTransaction = transformScheduledTransaction(data);
+      dispatch({ type: 'ADD_SCHEDULED_TRANSACTION', payload: transformedTransaction });
+    } catch (error) {
       console.error('Error adding scheduled transaction:', error);
+      throw error;
     }
-  }, [user]);
+  };
 
-  const updateScheduledTransaction = useCallback(async (id: string, transaction: Partial<ScheduledTransaction>) => {
-    if (!user) return;
+  const updateScheduledTransaction = async (id: string, transaction: Partial<ScheduledTransaction>) => {
     try {
       const { data, error } = await supabase
-        .from('scheduled_transactions')
-        .update(transaction)
+        .from('poupeja_scheduled_transactions')
+        .update({
+          type: transaction.type,
+          amount: transaction.amount,
+          category_id: transaction.category_id,
+          description: transaction.description,
+          scheduled_date: transaction.scheduledDate || transaction.scheduled_date,
+          recurrence: transaction.recurrence,
+          goal_id: transaction.goalId || transaction.goal_id,
+          status: transaction.status,
+        })
         .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
+        .select(`
+          *,
+          category:poupeja_categories(id, name, icon, color, type)
+        `)
         .single();
-      
+  
       if (error) throw error;
-      dispatch({ type: 'UPDATE_SCHEDULED_TRANSACTION', payload: data });
-    } catch (error: any) {
+      const transformedTransaction = transformScheduledTransaction(data);
+      dispatch({ type: 'UPDATE_SCHEDULED_TRANSACTION', payload: transformedTransaction });
+    } catch (error) {
       console.error('Error updating scheduled transaction:', error);
+      throw error;
     }
-  }, [user]);
+  };
 
-  const deleteScheduledTransaction = useCallback(async (id: string) => {
-    if (!user) return;
+  const deleteScheduledTransaction = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('scheduled_transactions')
+        .from('poupeja_scheduled_transactions')
         .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('id', id);
   
       if (error) throw error;
       dispatch({ type: 'DELETE_SCHEDULED_TRANSACTION', payload: id });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error deleting scheduled transaction:', error);
+      throw error;
     }
-  }, [user]);
-
-  const addConnectedBank = useCallback(async (bank: Omit<ConnectedBank, 'id' | 'created_at' | 'user_id'>) => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('connected_banks')
-        .insert({ ...bank, user_id: user.id })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      dispatch({ type: 'ADD_CONNECTED_BANK', payload: data });
-      toast({
-        title: 'Banco conectado',
-        description: `O banco "${data.bank_name}" foi conectado com sucesso.`,
-      });
-    } catch (error: any) {
-      console.error('Error adding connected bank:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível conectar o banco.',
-        variant: 'destructive',
-      });
-    }
-  }, [user]);
-
-  const updateConnectedBank = useCallback(async (id: string, bank: Partial<ConnectedBank>) => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('connected_banks')
-        .update(bank)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      dispatch({ type: 'UPDATE_CONNECTED_BANK', payload: data });
-      toast({
-        title: 'Banco atualizado',
-        description: `As informações do banco "${data.bank_name}" foram atualizadas.`,
-      });
-    } catch (error: any) {
-      console.error('Error updating connected bank:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível atualizar as informações do banco.',
-        variant: 'destructive',
-      });
-    }
-  }, [user]);
-
-  const deleteConnectedBank = useCallback(async (id: string) => {
-    if (!user) return;
-    try {
-      const { error } = await supabase
-        .from('connected_banks')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-  
-      if (error) throw error;
-      dispatch({ type: 'DELETE_CONNECTED_BANK', payload: id });
-      toast({
-        title: 'Banco desconectado',
-        description: 'O banco foi desconectado com sucesso.',
-      });
-    } catch (error: any) {
-      console.error('Error deleting connected bank:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível desconectar o banco.',
-        variant: 'destructive',
-      });
-    }
-  }, [user]);
-
-
-  // Busca dados iniciais após a autenticação do usuário
-  useEffect(() => {
-    if (user) {
-      getTransactions();
-      getCategories();
-      getGoals();
-      getScheduledTransactions();
-      getConnectedBanks(); // Chama o novo método de busca
-    }
-  }, [user, getTransactions, getCategories, getGoals, getScheduledTransactions, getConnectedBanks]);
+  };
 
   const value: AppContextType = useMemo(() => ({
     ...state,
@@ -748,10 +935,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setTimeRange,
     // Data fetching methods
     getTransactions,
-    getCategories,
     getGoals,
-    getScheduledTransactions,
-    getConnectedBanks,
     recalculateGoalAmounts,
     updateUserProfile,
     // Transaction actions
@@ -770,39 +954,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addScheduledTransaction,
     updateScheduledTransaction,
     deleteScheduledTransaction,
-    // Connected Banks actions
-    addConnectedBank,
-    updateConnectedBank,
-    deleteConnectedBank
   }), [
     state,
-    fetchUserData,
     toggleHideValues,
     logout,
     setCustomDateRange,
     setTimeRange,
     getTransactions,
-    getCategories,
     getGoals,
-    getScheduledTransactions,
-    getConnectedBanks,
-    recalculateGoalAmounts,
-    updateUserProfile,
-    addTransaction,
-    updateTransaction,
-    deleteTransaction,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    addGoal,
-    updateGoal,
-    deleteGoal,
-    addScheduledTransaction,
-    updateScheduledTransaction,
-    deleteScheduledTransaction,
-    addConnectedBank,
-    updateConnectedBank,
-    deleteConnectedBank
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -815,3 +974,6 @@ export const useAppContext = () => {
   }
   return context;
 };
+
+// Export useApp as an alias for useAppContext for compatibility
+export const useApp = useAppContext;
