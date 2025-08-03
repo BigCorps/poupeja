@@ -228,7 +228,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
           return (
             <NavLink key={item.href} to={item.href} className={({
               isActive
-            }) => cn("flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors", "hover:bg-accent hover:text-accent-foreground min-w-0", isActive ? "text-primary bg-primary/10 text-primary" : "text-muted-foreground")}>
+            }) => cn("flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors", "hover:bg-accent hover:text-accent-foreground min-w-0", isActive ? "text-green-800 dark:text-primary bg-primary/10" : "text-muted-foreground")}>
               <item.icon className="h-5 w-5 flex-shrink-0" />
               <span className="truncate">{item.label}</span>
             </NavLink>
