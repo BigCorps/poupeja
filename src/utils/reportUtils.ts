@@ -69,7 +69,7 @@ export const downloadPDF = (data: Transaction[]): void => {
     
     // Set document title
     doc.setFontSize(20);
-    doc.text('Relatório Financeiro - Poupeja', 20, 20);
+    doc.text('Relatório Financeiro - Vixus', 20, 20);
     
     // Add generation date
     doc.setFontSize(12);
