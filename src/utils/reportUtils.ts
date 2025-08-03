@@ -49,7 +49,7 @@ export const downloadCSV = (data: Transaction[]): void => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `poupeja-relatorio-${new Date().toISOString().slice(0, 10)}.csv`);
+  link.setAttribute('download', `vixus-relatorio-${new Date().toISOString().slice(0, 10)}.csv`);
   link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
@@ -124,7 +124,7 @@ export const downloadPDF = (data: Transaction[]): void => {
     });
     
     // Save the PDF
-    const fileName = `poupeja-relatorio-${new Date().toISOString().slice(0, 10)}.pdf`;
+    const fileName = `vixus-relatorio-${new Date().toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);
     
     // Show success notification
