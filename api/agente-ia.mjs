@@ -1,4 +1,5 @@
-import { supabase } from '../integrations/supabase/client';
+// ✅ Caminho de importação corrigido
+import { supabase } from '../src/integrations/supabase/client';
 import Groq from 'groq-sdk';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
