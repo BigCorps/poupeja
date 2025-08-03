@@ -17,35 +17,35 @@
     --popover: 167 67% 18%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 73 100% 73%; /* Amarelo/verde neon do logo #f0ff3d */
-    --primary-foreground: 169 85% 12%; /* Verde escuro sobre botões para melhor contraste */
+    --primary: 73 80% 45%; /* Verde limão mais escuro para melhor contraste */
+    --primary-foreground: 0 0% 100%; /* Branco para texto sobre o verde escurecido */
 
-    --secondary: 162 91% 92%; /* Verde muito claro #dcfef7 */
-    --secondary-foreground: 169 85% 12%; /* Verde escuro para contraste */
+    --secondary: 200 80% 45%; /* Azul complementar para detalhes */
+    --secondary-foreground: 0 0% 100%; /* Branco para texto sobre azul */
 
     --muted: 167 67% 18%; /* Verde médio */
     --muted-foreground: 162 46% 71%; /* Verde claro suave #a8e5da */
 
-    --accent: 73 100% 73%; /* Amarelo/verde neon para acentos */
-    --accent-foreground: 169 85% 12%;
+    --accent: 195 100% 75%; /* Azul claro para hover/acentos */
+    --accent-foreground: 169 85% 12%; /* Verde escuro sobre azul claro */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 73 100% 73%; /* Bordas em amarelo/verde */
+    --border: 73 80% 45%; /* Bordas em verde limão escuro */
     --input: 167 67% 18%; /* Fundo dos inputs */
-    --ring: 73 100% 73%; /* Anéis de foco */
+    --ring: 195 100% 75%; /* Anéis de foco em azul claro */
 
     --radius: 1rem;
 
     --sidebar-background: 169 85% 12%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 73 100% 73%;
-    --sidebar-primary-foreground: 169 85% 12%;
+    --sidebar-primary: 73 80% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 167 67% 18%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 73 100% 73%;
-    --sidebar-ring: 73 100% 73%;
+    --sidebar-border: 73 80% 45%;
+    --sidebar-ring: 195 100% 75%;
   }
 
   .light {
@@ -131,41 +131,88 @@
   }
   
   ::-webkit-scrollbar-thumb {
-    background-color: var(--muted);
+    background-color: hsl(var(--muted));
     border-radius: 9999px;
+    transition: background-color 0.2s;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--primary);
+    background-color: hsl(var(--primary));
   }
 
   /* Custom styles for VIXUS */
   .card-gradient {
-    background-image: linear-gradient(to bottom right, var(--primary), var(--secondary));
-    color: var(--primary-foreground);
+    background: linear-gradient(135deg, 
+      hsl(73 80% 45%) 0%,     /* Verde limão escuro nas pontas */
+      hsl(120 100% 25%) 50%,  /* Verde bandeira no centro */
+      hsl(73 80% 45%) 100%    /* Verde limão escuro nas pontas */
+    );
+    color: white; /* Texto branco para melhor contraste */
+  }
+
+  /* Gradiente especial para hero sections */
+  .hero-gradient {
+    background: linear-gradient(135deg, 
+      hsl(73 80% 45%) 0%,     /* Verde limão escuro */
+      hsl(120 100% 25%) 50%,  /* Verde bandeira */
+      hsl(73 80% 45%) 100%    /* Verde limão escuro */
+    );
+    color: white;
+  }
+
+  /* REMOVE as regras que forçavam texto verde escuro */
+  .bg-primary,
+  .bg-primary\/10,
+  .bg-primary\/20,
+  .bg-primary\/30,
+  .bg-primary\/40,
+  .bg-primary\/50,
+  .bg-primary\/60,
+  .bg-primary\/70,
+  .bg-primary\/80,
+  .bg-primary\/90,
+  button[class*="bg-primary"],
+  .btn-primary,
+  [class*="bg-primary"] {
+    color: white !important; /* Texto branco sobre verde escurecido */
+  }
+
+  /* Força texto branco em elementos filhos também */
+  .bg-primary *,
+  button[class*="bg-primary"] *,
+  [class*="bg-primary"] * {
+    color: white !important;
+  }
+
+  /* Hover states com azul claro mantido */
+  .hover\:bg-accent:hover,
+  .hover\:bg-primary\/80:hover,
+  button:hover[class*="bg-primary"] {
+    background-color: hsl(195 100% 75%) !important; /* Azul claro no hover */
+    color: hsl(169 85% 12%) !important; /* Texto verde escuro no hover */
   }
 
   .progress-bar {
     @apply h-2 rounded-full overflow-hidden;
-    background-color: var(--muted);
+    background-color: hsl(var(--muted));
   }
 
   .progress-bar-value {
     @apply h-full animate-progress-fill;
-    background-color: var(--primary);
+    background-color: hsl(var(--primary));
   }
   
-  /* Glass effect - Ajustado para tema escuro */
+  /* Glass effect */
   .glass {
-    background-color: rgba(10, 79, 67, 0.3); /* Verde escuro com transparência */
+    background-color: hsla(var(--card), 0.1);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(0, 255, 136, 0.2); /* Borda verde claro */
+    border: 1px solid hsla(var(--primary), 0.2);
     border-radius: 1rem;
   }
   
   .light .glass {
-    background-color: rgba(255, 255, 255, 0.7); /* Branco transparente no modo claro */
-    border: 1px solid rgba(5, 60, 49, 0.2); /* Borda verde escuro */
+    background-color: hsla(0, 0%, 100%, 0.7);
+    border: 1px solid hsla(var(--primary), 0.2);
   }
   
   /* Hover effects */
