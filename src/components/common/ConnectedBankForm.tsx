@@ -9,19 +9,16 @@ import { Input } from '@/components/ui/input';
 import { useAppContext } from '@/contexts/AppContext';
 import { toast } from '@/components/ui/use-toast';
 import { ConnectedBank } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Esquema de validação com Zod
 const formSchema = z.object({
-  bank_name: z.string().min(2, {
-    message: "O nome do banco deve ter pelo menos 2 caracteres.",
+  bank_name: z.enum(['ITAU', 'INTER', 'INFINITEPAY'], {
+    required_error: "Selecione um banco para continuar."
   }),
-  account_number: z.string().min(1, {
-    message: "O número da conta é obrigatório.",
+  api_key: z.string().min(1, {
+    message: "O token é obrigatório para conectar o banco."
   }),
-  balance: z.string().transform((val) => Number(val)).refine((val) => !isNaN(val) && val >= 0, {
-    message: "O saldo deve ser um número positivo.",
-  }),
-  api_key: z.string().optional(),
 });
 
 interface ConnectedBankFormProps {
@@ -37,9 +34,7 @@ const ConnectedBankForm: React.FC<ConnectedBankFormProps> = ({ open, onOpenChang
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      bank_name: initialData?.bank_name || '',
-      account_number: initialData?.account_number || '',
-      balance: initialData?.balance.toString() || '0',
+      bank_name: initialData?.bank_name || 'ITAU',
       api_key: initialData?.api_key || '',
     },
   });
@@ -49,15 +44,11 @@ const ConnectedBankForm: React.FC<ConnectedBankFormProps> = ({ open, onOpenChang
     if (initialData) {
       form.reset({
         bank_name: initialData.bank_name,
-        account_number: initialData.account_number,
-        balance: initialData.balance.toString(),
         api_key: initialData.api_key,
       });
     } else {
       form.reset({
-        bank_name: '',
-        account_number: '',
-        balance: '0',
+        bank_name: 'ITAU',
         api_key: '',
       });
     }
@@ -68,16 +59,20 @@ const ConnectedBankForm: React.FC<ConnectedBankFormProps> = ({ open, onOpenChang
       if (mode === 'edit' && initialData) {
         await updateConnectedBank(initialData.id, {
           ...values,
-          balance: Number(values.balance),
+          // A API fornecerá o saldo e a conta, então os campos não são mais necessários
+          account_number: initialData.account_number,
+          balance: initialData.balance
         });
         toast({
           title: 'Banco atualizado',
           description: `O banco ${values.bank_name} foi atualizado com sucesso.`,
         });
       } else {
+        // A API fornecerá o saldo e a conta ao conectar o banco
         await addConnectedBank({
           ...values,
-          balance: Number(values.balance),
+          account_number: '', // Placeholder, será preenchido pela API
+          balance: 0,        // Placeholder, será preenchido pela API
         });
         toast({
           title: 'Banco conectado',
@@ -113,36 +108,19 @@ const ConnectedBankForm: React.FC<ConnectedBankFormProps> = ({ open, onOpenChang
               name="bank_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome do Banco</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nubank, Inter, Itaú..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="account_number"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Número da Conta</FormLabel>
-                  <FormControl>
-                    <Input placeholder="123456-7" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="balance"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Saldo Atual</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="1500.00" {...field} />
-                  </FormControl>
+                  <FormLabel>Banco</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um banco" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="ITAU">Itaú</SelectItem>
+                      <SelectItem value="INTER">Inter</SelectItem>
+                      <SelectItem value="INFINITEPAY">InfinitePay</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -152,14 +130,17 @@ const ConnectedBankForm: React.FC<ConnectedBankFormProps> = ({ open, onOpenChang
               name="api_key"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Chave de API (Opcional)</FormLabel>
+                  <FormLabel>Token de Acesso</FormLabel>
                   <FormControl>
-                    <Input placeholder="api_key_12345" {...field} />
+                    <Input placeholder="Insira o seu token de acesso" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <p className="text-sm text-muted-foreground mt-2">
+              Atualmente, oferecemos suporte apenas para Itaú, Inter e InfinitePay. Estamos trabalhando para expandir a compatibilidade com outros bancos em breve.
+            </p>
             <Button type="submit" className="w-full">{submitText}</Button>
           </form>
         </Form>
