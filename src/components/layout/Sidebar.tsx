@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Landmark } from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot } from 'lucide-react';
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -39,133 +39,236 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     }
   };
 
-  const menuItems = [
-    { icon: LayoutDashboard, label: t('nav.dashboard') || 'Dashboard', href: '/dashboard' },
-    { icon: Wallet, label: t('nav.transactions') || 'Transações', href: '/transactions' },
-    { icon: Calendar, label: t('nav.schedule') || 'Agendamentos', href: '/schedule' },
-    { icon: Target, label: t('nav.goals') || 'Metas', href: '/goals' },
-    { icon: BarChart3, label: t('nav.reports') || 'Relatórios', href: '/reports' },
-    { icon: FolderOpen, label: t('nav.categories') || 'Categorias', href: '/categories' },
-    { icon: Landmark, label: 'Bancos Conectados', href: '/bancos-conectados' }, // Novo item de menu
-    { icon: Shield, label: t('nav.subscription') || 'Assinatura', href: '/plans' },
-  ];
-  
-  const adminMenuItems = [
-    { icon: Crown, label: 'Painel Admin', href: '/admin' },
-    { icon: Settings, label: 'Configurações', action: () => { if (onConfigClick) { onConfigClick(); } } }
-  ];
-
-  const profileMenuItems = [
-    { icon: User, label: t('nav.profile') || 'Meu Perfil', action: handleProfileClick },
-    { icon: Settings, label: t('nav.settings') || 'Configurações', href: '/settings' },
-  ];
-
   // Se for admin na página de admin, mostrar apenas menu administrativo
   if (isAdmin && isAdminPage) {
+    const adminMenuItems = [
+      {
+        icon: Settings,
+        label: 'Configurações',
+        action: () => {
+          if (onConfigClick) {
+            onConfigClick();
+          }
+        }
+      }
+    ];
+
     return (
       <div className="hidden md:flex h-screen w-64 lg:w-64 xl:w-72 flex-col bg-background border-r">
         {/* Logo/Header */}
         <div className="p-6 border-b">
-          <h1 className="text-xl font-bold">{companyName || 'Saldo'}</h1>
+          <h1 className="text-2xl font-bold text-primary">Admin Panel</h1>
         </div>
-        
-        {/* Menu Administrativo */}
-        <div className="flex-1 p-4 space-y-2 overflow-auto">
-          {adminMenuItems.map(item => (
-            <div key={item.label}>
-              {item.href ? (
-                <NavLink
-                  to={item.href}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                      "hover:bg-accent hover:text-accent-foreground",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground"
-                    )
-                  }
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </NavLink>
-              ) : (
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3 px-4 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground text-sm"
-                  onClick={item.action}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Button>
-              )}
-            </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          {adminMenuItems.map((item, index) => (
+            <Button
+              key={index}
+              variant="ghost"
+              className="w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              onClick={item.action}
+            >
+              <item.icon className="h-5 w-5" />
+              {item.label}
+            </Button>
           ))}
+          
+          {/* Botão Perfil que executa função ao invés de navegar */}
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            onClick={handleProfileClick}
+          >
+            <User className="h-5 w-5" />
+            Perfil
+          </Button>
+        </nav>
+
+        {/* Bottom Navigation - Theme Toggle e Logout */}
+        <div className="p-4 border-t space-y-2">
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-sm text-muted-foreground">Tema</span>
+            <ThemeToggle variant="ghost" size="sm" />
+          </div>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-5 w-5" />
+            Sair
+          </Button>
         </div>
       </div>
     );
   }
 
+  // Menu padrão para usuários normais
+  const defaultMenuItems = [
+    {
+      icon: LayoutDashboard,
+      label: t('nav.dashboard'),
+      href: '/dashboard'
+    },
+    {
+      icon: Wallet,
+      label: 'Saldo',
+      href: '/saldo'
+    },
+    {
+      icon: Receipt,
+      label: t('nav.transactions'),
+      href: '/transactions'
+    },
+    {
+      icon: FolderOpen,
+      label: t('nav.categories'),
+      href: '/categories'
+    },
+    {
+      icon: Target,
+      label: t('nav.goals'),
+      href: '/goals'
+    },
+    {
+      icon: Calendar,
+      label: t('schedule.title'),
+      href: '/schedule'
+    },
+    {
+      icon: BarChart3,
+      label: t('nav.reports'),
+      href: '/reports'
+    },
+    {
+      icon: Bot,
+      label: 'Agente IA',
+      href: '/agente-ia'
+    },
+    // Removi o item "Planos" daqui
+  ];
+
+  // Adicionar item admin apenas se o usuário for admin e não estiver na página admin
+  let menuItems = [...defaultMenuItems];
+  if (isAdmin && !isAdminPage) {
+    const adminMenuItem = {
+      icon: Shield,
+      label: 'Admin',
+      href: '/admin'
+    };
+    menuItems.push(adminMenuItem);
+  }
+
+  // Removi os itens de menu 'bottomMenuItems' e 'profileMenuItems' para simplificar o código
+  const profileMenuItems = [
+    {
+      icon: User,
+      label: 'Usuário',
+      href: '/profile'
+    },
+    { // 👈 Aqui está a nova seção do menu expansível
+      icon: Crown,
+      label: t('nav.plans'),
+      href: '/plans'
+    },
+    {
+      icon: Settings,
+      label: 'Configurações',
+      href: '/settings'
+    }
+  ];
+
+  if (!user) return null;
+
   return (
-    <div className="hidden md:flex h-screen w-64 lg:w-64 xl:w-72 flex-col bg-background border-r">
+    <div className="hidden md:flex h-screen w-64 lg:w-64 xl:w-72 flex-col bg-background border-r overflow-hidden">
       {/* Logo/Header */}
-      <div className="p-6 border-b">
-        {logoUrl && (
-          <img src={logoUrl} alt={logoAltText || 'Logo'} className="h-8 w-auto mb-2" />
-        )}
-        <h1 className="text-xl font-bold">{companyName || 'Saldo'}</h1>
+      <div className="p-6 border-b flex-shrink-0">
+        <div className="flex items-center space-x-3">
+          {logoUrl && (
+            <img 
+              src={logoUrl} 
+              alt={logoAltText}
+              className="h-8 w-8 object-contain"
+              onError={(e) => {
+                // Fallback para primeira letra do nome da empresa se a logo falhar
+                const target = e.currentTarget as HTMLImageElement;
+                target.style.display = 'none';
+                const nextSibling = target.nextElementSibling as HTMLElement;
+                if (nextSibling) {
+                  nextSibling.style.display = 'block';
+                }
+              }}
+            />
+          )}
+          {!logoUrl && (
+            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-sm">
+                {companyName.charAt(0)}
+              </span>
+            </div>
+          )}
+          <h1 className="text-xl font-bold text-primary">{companyName}</h1>
+        </div>
       </div>
 
-      {/* Menu Principal */}
-      <div className="flex-1 p-4 space-y-2 overflow-auto">
-        {menuItems.map(item => (
-          <NavLink
-            key={item.href}
-            to={item.href}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                "hover:bg-accent hover:text-accent-foreground",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground"
-              )
-            }
-          >
-            <item.icon className="h-4 w-4" />
-            {item.label}
-          </NavLink>
-        ))}
-      </div>
+      {/* Navigation - Scrollable content */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          {menuItems.map((item) => (
+            <NavLink
+              key={item.href}
+              to={item.href}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  isActive 
+                    ? "bg-primary text-primary-foreground" 
+                    : "text-muted-foreground"
+                )
+              }
+            >
+              <item.icon className="h-5 w-5" />
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
 
-      {/* Seção de Perfil e Configurações */}
-      <div className="border-t p-4">
-        {user ? (
-          <div className="flex flex-col gap-2">
+        {/* Bottom Navigation - Always visible */}
+        <div className="p-4 border-t space-y-2 flex-shrink-0 bg-background">
+          {/* Profile Expandable Menu */}
+          <div className="space-y-1">
             <Button
               variant="ghost"
-              className="w-full justify-between px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              className="w-full justify-between gap-3 px-4 py-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               onClick={() => setIsProfileExpanded(!isProfileExpanded)}
             >
               <div className="flex items-center gap-3">
-                <User className="h-4 w-4" />
-                <span>{user.email}</span>
+                <User className="h-5 w-5" />
+                <span>Perfil</span>
               </div>
-              {isProfileExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              {isProfileExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
             </Button>
+            
+            {/* Submenu do Perfil */}
             {isProfileExpanded && (
-              <div className="space-y-1 pl-4">
-                {profileMenuItems.map(item => (
+              <div className="ml-4 space-y-1">
+                {profileMenuItems.map((item) => (
                   <NavLink
-                    key={item.label}
-                    to={item.href || '#'}
-                    onClick={item.action}
+                    key={item.href}
+                    to={item.href}
                     className={({ isActive }) =>
                       cn(
                         "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                         "hover:bg-accent hover:text-accent-foreground",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
+                        isActive 
+                          ? "bg-primary text-primary-foreground" 
                           : "text-muted-foreground"
                       )
                     }
@@ -188,21 +291,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4" />
-                  {t('settings.logout') || 'Sair'}
+                  {t('settings.logout')}
                 </Button>
               </div>
             )}
           </div>
-        ) : (
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 px-4 py-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground text-sm"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            {t('settings.logout') || 'Sair'}
-          </Button>
-        )}
+        </div>
       </div>
     </div>
   );
