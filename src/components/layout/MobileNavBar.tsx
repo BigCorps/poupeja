@@ -33,8 +33,9 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
         navigate('/goals');
         setIsQuickActionsOpen(false);
       },
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50 hover:bg-blue-100'
+      // Estilos atualizados para ter fundo branco e letras verdes
+      color: 'text-green-800 dark:text-green-200', 
+      bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
     },
     {
       icon: Calendar,
@@ -43,8 +44,9 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
         navigate('/schedule');
         setIsQuickActionsOpen(false);
       },
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50 hover:bg-purple-100'
+      // Estilos atualizados
+      color: 'text-green-800 dark:text-green-200',
+      bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
     },
     {
       icon: FileText,
@@ -53,8 +55,20 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
         navigate('/reports');
         setIsQuickActionsOpen(false);
       },
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50 hover:bg-orange-100'
+      // Estilos atualizados
+      color: 'text-green-800 dark:text-green-200',
+      bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+    },
+    {
+      icon: Wallet,
+      label: 'API Bancos',
+      action: () => {
+        navigate('/connected-banks'); // Adicionado o href para a nova página
+        setIsQuickActionsOpen(false);
+      },
+      // Estilos atualizados
+      color: 'text-green-800 dark:text-green-200',
+      bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
     }
   ];
 
