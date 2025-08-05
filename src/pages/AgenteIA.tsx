@@ -13,17 +13,32 @@ const supabase = createClient(
 
 const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null); // Adicionado para armazenar o nome do cliente
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const getSession = async () => {
+    const getSessionAndUserData = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (session?.user?.email) {
+        if (session?.user?.email && session?.user?.id) {
           setUserEmail(session.user.email);
-        } else if (error) {
-          console.error('Erro ao obter a sessão:', error);
+
+          // Busca o nome do usuário na tabela poupeja_users
+          const { data, error: userError } = await supabase
+            .from('poupeja_users')
+            .select('name')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (userError) {
+            console.error('Erro ao buscar o nome do usuário:', userError);
+            setUserName('Usuário'); // Nome padrão em caso de erro
+          } else {
+            setUserName(data?.name || 'Usuário');
+          }
+        } else if (sessionError) {
+          console.error('Erro ao obter a sessão:', sessionError);
         }
       } catch (e) {
         console.error('Erro inesperado:', e);
@@ -32,19 +47,20 @@ const AgenteIA: React.FC = () => {
       }
     };
 
-    getSession();
+    getSessionAndUserData();
   }, []);
 
+  // URL do seu Typebot corrigida, agora com o caminho correto do bot
   const typebotUrl = userEmail ? `https://typebot.co/bot-vixus?email=${userEmail}` : 'about:blank';
 
   return (
     <MainLayout>
-      <div className="flex flex-col h-full p-4">
+      <div className="flex flex-col h-full p-2 lg:p-4">
         <div className="text-center mb-4 text-2xl font-bold">
           {isLoading ? (
             <Skeleton className="h-8 w-48 mx-auto" />
           ) : (
-            'Olá!'
+            `Olá, ${userName || 'Usuário'}!` // Saudação com o nome do cliente
           )}
         </div>
         <Card className="flex-1 overflow-hidden border-2 border-green-300 rounded-xl">
@@ -58,7 +74,7 @@ const AgenteIA: React.FC = () => {
                 src={typebotUrl}
                 title="Assistente Vixus"
                 className="w-full h-full border-none"
-                style={{ minHeight: 'calc(100vh - 150px)' }}
+                style={{ minHeight: 'calc(100vh - 100px)' }} // Altura ajustada para ser mais próxima do limite
               />
             )}
           </CardContent>
@@ -68,4 +84,4 @@ const AgenteIA: React.FC = () => {
   );
 };
 
-export default AgenteIA; // Alterado para exportação padrão (default export)
+export default AgenteIA;
