@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Importação corrigida para o componente MainLayout
 import MainLayout from '@/components/layout/MainLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +11,7 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-export const AgenteIA: React.FC = () => {
+const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -68,3 +67,5 @@ export const AgenteIA: React.FC = () => {
     </MainLayout>
   );
 };
+
+export default AgenteIA; // Alterado para exportação padrão (default export)
