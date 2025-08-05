@@ -17,7 +17,7 @@ const AgenteIA: React.FC = () => {
   useEffect(() => {
     // Detecta se é mobile e ajusta altura do iframe
     const isMobile = window.innerWidth <= 768;
-    const height = isMobile ? 'calc(100vh - 220px)' : 'calc(100vh - 100px)';
+    const height = isMobile ? 'calc(100vh - 250px)' : 'calc(100vh - 100px)';
     setIframeMinHeight(height);
   }, []);
 
@@ -53,7 +53,7 @@ const AgenteIA: React.FC = () => {
     <MainLayout>
       <div className="flex flex-col h-full p-2 lg:p-4 pb-6">
         <div className="text-center mb-4 text-xl font-medium">
-          Aguarde enquanto a IA carrega suas informações...
+          Aguarde enquanto o Agente IA carrega suas informações...
         </div>
 
         <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl mb-6">
