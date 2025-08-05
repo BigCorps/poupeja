@@ -6,21 +6,21 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 
-// Inicializa o cliente Supabase fora do componente para evitar recriação
-// Assumindo que você usa VITE para suas variáveis de ambiente
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
-
 export const AgentPage: React.FC = () => {
   const { session } = useAuth();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Inicializa o cliente Supabase dentro do componente
+  const supabase = createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY
+  );
+
   useEffect(() => {
     const fetchUserData = async () => {
+      // Verifica se a sessão e o usuário existem antes de fazer a busca
       if (session?.user?.email && session?.user?.id) {
         setUserEmail(session.user.email);
 
@@ -44,7 +44,6 @@ export const AgentPage: React.FC = () => {
     fetchUserData();
   }, [session]);
 
-  // URL do seu Typebot, já com a variável de e-mail pronta
   const typebotUrl = userEmail ? `https://typebot.co/bot-vixus?email=${userEmail}` : '';
 
   return (
