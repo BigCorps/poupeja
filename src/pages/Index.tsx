@@ -15,15 +15,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { markAsPaid } from '@/services/scheduledTransactionService';
 import { ScheduledTransaction } from '@/types';
 import { motion } from 'framer-motion';
-import { createClient } from '@supabase/supabase-js'; // Importa o createClient
-import TypebotIframeLoader from '@/components/agente-ia/TypebotIframeLoader'; // Importa o componente de pré-carregamento
-import { useIsMobile } from '@/hooks/use-mobile'; // Importa o hook useIsMobile
-
-// Inicializa o cliente Supabase fora do componente para evitar recriação
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 const Index = () => {
   const navigate = useNavigate();
@@ -38,8 +29,7 @@ const Index = () => {
     getTransactions,
     getGoals,
     deleteTransaction,
-    scheduledTransactions,
-    user // ✅ Adicionado 'user' para obter o email do contexto
+    scheduledTransactions
   } = useAppContext();
   const { totals } = useSaldoContext();
   const { t } = usePreferences();
@@ -50,12 +40,6 @@ const Index = () => {
   const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentGoalIndex, setCurrentGoalIndex] = useState(0);
-
-  // Estado para armazenar o email do usuário para o TypebotIframeLoader
-  const [userEmailForTypebot, setUserEmailForTypebot] = useState<string | null>(null);
-  // Estado para controlar se o iframe pré-carregado terminou de carregar
-  const [preloadedIframeLoaded, setPreloadedIframeLoaded] = useState(false);
-  const isMobile = useIsMobile(); // Usa o hook useIsMobile
 
   console.log("Dashboard rendered with:", {
     transactionsCount: transactions.length,
@@ -72,31 +56,20 @@ const Index = () => {
   const totalExpenses = monthlyData.monthlyExpenses;
   const balance = totals.grandTotal;
 
-  // Load initial data and user email for Typebot when component mounts
+  // Load initial data only once when component mounts
   useEffect(() => {
-    const loadInitialDataAndUserEmail = async () => {
+    const loadInitialData = async () => {
       console.log("Dashboard: Loading initial data...");
       try {
         await Promise.all([getTransactions(), getGoals()]);
         console.log("Dashboard: Initial data loaded successfully");
-
-        // Obtém o email do usuário para o TypebotIframeLoader
-        if (user?.email) {
-          setUserEmailForTypebot(user.email);
-        } else {
-          // Fallback: tenta obter da sessão Supabase se não estiver no contexto
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user?.email) {
-            setUserEmailForTypebot(session.user.email);
-          }
-        }
       } catch (error) {
         console.error("Dashboard: Error loading initial data:", error);
       }
     };
 
-    loadInitialDataAndUserEmail();
-  }, [user]); // Depende do objeto user do contexto
+    loadInitialData();
+  }, []);
 
   // Update date range when month changes
   useEffect(() => {
@@ -137,6 +110,7 @@ const Index = () => {
         description: t('transactions.deleteSuccess'),
       });
 
+      // Refresh transactions and goals
       console.log("Dashboard: Refreshing data after delete...");
       await Promise.all([
         getTransactions(),
@@ -159,6 +133,7 @@ const Index = () => {
         title: t('schedule.marked_as_paid'),
         description: t('schedule.transaction_marked_as_paid')
       });
+      // Refresh data to update the alert
       console.log("Dashboard: Refreshing data after marking as paid...");
       await Promise.all([
         getTransactions(),
@@ -251,18 +226,6 @@ const Index = () => {
         mode={formMode}
         defaultType={transactionType}
       />
-
-      {/* Oculta o TypebotIframeLoader em uma div que não afeta o layout visível */}
-      {userEmailForTypebot && (
-        <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }}>
-          <TypebotIframeLoader
-            userEmail={userEmailForTypebot}
-            isVisible={false} // O iframe é carregado, mas não visível
-            onIframeLoad={() => setPreloadedIframeLoaded(true)} // Notifica quando o pré-carregamento estiver completo
-            isMobile={isMobile}
-          />
-        </div>
-      )}
     </MainLayout>
   );
 };
