@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-
 import MainLayout from '@/components/layout/MainLayout';
+import { useAppContext } from '@/contexts/AppContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -12,11 +12,40 @@ const supabase = createClient(
 );
 
 const AgenteIA: React.FC = () => {
+  const { user } = useAppContext(); // Usa o contexto para acessar dados do usuário
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   // Novo estado para controlar se o iframe do Typebot já carregou
   const [iframeLoaded, setIframeLoaded] = useState(false);
+  
+  // Estado local para dados atuais do usuário (sincronizado com o contexto)
+  const [currentUserData, setCurrentUserData] = useState<{
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    profileImage: string | null;
+    isAdmin?: boolean;
+  }>({
+    name: null,
+    email: null,
+    phone: null,
+    profileImage: null,
+    isAdmin: false
+  });
+
+  // Efeito para sincronizar com dados do contexto quando mudarem
+  useEffect(() => {
+    if (user) {
+      setCurrentUserData({
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profileImage: user.profileImage,
+        isAdmin: user.isAdmin || false
+      });
+      setUserEmail(user.email);
+    }
+  }, [user]);
 
   useEffect(() => {
     const getSessionAndUserData = async () => {
@@ -25,21 +54,33 @@ const AgenteIA: React.FC = () => {
         
         if (session?.user?.email && session?.user?.id) {
           setUserEmail(session.user.email);
-
-          // Busca o nome do usuário na tabela poupeja_users
-          const { data, error: userError } = await supabase
-            .from('poupeja_users')
-            .select('name')
-            .eq('user_id', session.user.id)
-            .single();
-
-          if (userError) {
-            console.error('Erro ao buscar o nome do usuário:', userError);
-            // Fallback para o email se a busca falhar
-            setUserName(session.user.email); 
-          } else {
-            // Usa o nome da tabela ou o email como fallback
-            setUserName(data?.name || session.user.email); 
+          
+          // Se não temos dados do usuário no contexto, busca no banco
+          if (!user || !user.name) {
+            const { data, error: userError } = await supabase
+              .from('poupeja_users')
+              .select('name, phone, profile_image, is_admin')
+              .eq('user_id', session.user.id)
+              .single();
+              
+            if (userError) {
+              console.error('Erro ao buscar o nome do usuário:', userError);
+              setCurrentUserData({
+                name: null,
+                email: session.user.email,
+                phone: null,
+                profileImage: null,
+                isAdmin: false
+              });
+            } else {
+              setCurrentUserData({
+                name: data?.name || null,
+                email: session.user.email,
+                phone: data?.phone || null,
+                profileImage: data?.profile_image || null,
+                isAdmin: data?.is_admin || false
+              });
+            }
           }
         } else if (sessionError) {
           console.error('Erro ao obter a sessão:', sessionError);
@@ -51,8 +92,13 @@ const AgenteIA: React.FC = () => {
       }
     };
 
-    getSessionAndUserData();
-  }, []);
+    // Se não temos dados do usuário no contexto, busca no banco
+    if (!user) {
+      getSessionAndUserData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user]);
 
   // UseEffect para resetar o estado de carregamento do iframe se o email mudar
   useEffect(() => {
@@ -60,6 +106,22 @@ const AgenteIA: React.FC = () => {
       setIframeLoaded(false);
     }
   }, [userEmail]);
+
+  // Função para determinar o nome de exibição
+  const getDisplayName = () => {
+    // Para administradores, mantém o comportamento atual (mostra nome ou email)
+    if (currentUserData.isAdmin) {
+      return currentUserData.name || currentUserData.email || 'Administrador';
+    }
+    
+    // Para usuários normais, prioriza o nome sobre o email
+    if (currentUserData.name && currentUserData.name.trim() !== '' && currentUserData.name !== currentUserData.email) {
+      return currentUserData.name;
+    }
+    
+    // Se não tem nome cadastrado ou o nome é igual ao email, usa "Usuário"
+    return 'Usuário';
+  };
 
   // URL do seu Typebot corrigida
   const typebotUrl = userEmail ? `https://typebot.co/bot-app?email=${userEmail}` : 'about:blank';
@@ -71,9 +133,10 @@ const AgenteIA: React.FC = () => {
           {isLoading ? (
             <Skeleton className="h-8 w-48 mx-auto" />
           ) : (
-            `Olá, ${userName || 'Usuário'}!` // Saudação com o nome do cliente
+            `Olá, ${getDisplayName()}!`
           )}
         </div>
+        
         <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl">
           <CardContent className="h-full w-full p-0">
             {/* O conteúdo é exibido apenas se os dados do usuário e o iframe do Typebot tiverem carregado */}
