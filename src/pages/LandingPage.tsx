@@ -82,7 +82,7 @@ const LandingPage = () => {
     script.onload = () => {
       if (window.Typebot) {
         window.Typebot.initBubble({
-          typebot: "bot-app", // ID do seu Typebot
+          typebot: "vixus-ia", // ID do seu Typebot
           previewMessage: {
             message: "Tire suas dúvidas comigo",
             autoShowDelay: 5000,
