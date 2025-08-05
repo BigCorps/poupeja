@@ -12,6 +12,14 @@ const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [iframeMinHeight, setIframeMinHeight] = useState('calc(100vh - 100px)');
+
+  useEffect(() => {
+    // Detecta se é mobile e ajusta altura do iframe
+    const isMobile = window.innerWidth <= 768;
+    const height = isMobile ? 'calc(100vh - 195px)' : 'calc(100vh - 100px)';
+    setIframeMinHeight(height);
+  }, []);
 
   useEffect(() => {
     const getSessionAndUserData = async () => {
@@ -43,12 +51,12 @@ const AgenteIA: React.FC = () => {
 
   return (
     <MainLayout>
-      <div className="flex flex-col h-full p-2 lg:p-4 pb-6"> {/* <- espaço extra no final */}
+      <div className="flex flex-col h-full p-2 lg:p-4 pb-6">
         <div className="text-center mb-4 text-xl font-medium">
           Aguarde enquanto o Agente IA carrega suas informações...
         </div>
 
-        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl mb-6"> {/* <- margem inferior aqui também */}
+        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl mb-6">
           <CardContent className="h-full w-full p-0">
             {(isLoading || !userEmail || !iframeLoaded) ? (
               <div className="flex items-center justify-center h-full p-4">
@@ -59,14 +67,14 @@ const AgenteIA: React.FC = () => {
             <iframe
               src={typebotUrl}
               title="Assistente Vixus"
-              className={`w-full h-full border-none ${(!isLoading && userEmail && iframeLoaded) ? 'block' : 'hidden'}`}
-              style={{ minHeight: 'calc(100vh - 100px)' }} // padrão restaurado
+              className={`w-full border-none ${(!isLoading && userEmail && iframeLoaded) ? 'block' : 'hidden'}`}
+              style={{ minHeight: iframeMinHeight }}
               onLoad={() => setIframeLoaded(true)}
             />
           </CardContent>
         </Card>
 
-        {/* Div fantasma para garantir espaçamento no final */}
+        {/* Espaço forçado no final da página */}
         <div style={{ height: '20px' }} />
       </div>
     </MainLayout>
