@@ -27,6 +27,14 @@ const ProfilePage = () => {
   const [profileImage, setProfileImage] = useState(user?.profileImage || '');
   const [updatingProfile, setUpdatingProfile] = useState(false);
   
+  // Estado local para exibir os dados atualizados imediatamente
+  const [currentUserData, setCurrentUserData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    profileImage: user?.profileImage || ''
+  });
+  
   // For password change
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -54,10 +62,18 @@ const ProfilePage = () => {
             .single();
             
           if (data && !error) {
-            setName(data.name || '');
-            setEmail(session.user.email || '');
-            setPhone(data.phone || '');
-            setProfileImage(data.profile_image || '');
+            const userData = {
+              name: data.name || '',
+              email: session.user.email || '',
+              phone: data.phone || '',
+              profileImage: data.profile_image || ''
+            };
+            
+            setName(userData.name);
+            setEmail(userData.email);
+            setPhone(userData.phone);
+            setProfileImage(userData.profileImage);
+            setCurrentUserData(userData);
           }
         }
       } catch (error) {
@@ -107,6 +123,15 @@ const ProfilePage = () => {
           return;
         }
       }
+      
+      // Atualizar estado local imediatamente para refletir as mudanças na UI
+      const updatedUserData = {
+        name,
+        email,
+        phone: formattedPhone,
+        profileImage
+      };
+      setCurrentUserData(updatedUserData);
       
       // Show success message
       toast({
@@ -179,30 +204,98 @@ const ProfilePage = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Verificar se o arquivo é uma imagem válida
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: t('common.error'),
+        description: 'Por favor, selecione apenas arquivos de imagem',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Verificar o tamanho do arquivo (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: t('common.error'),
+        description: 'A imagem deve ter no máximo 5MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setUploading(true);
     try {
-      // Upload image to Supabase Storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(`public/${fileName}`, file);
+      // Primeiro, verificar se o bucket existe ou tentar criar
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const avatarBucket = buckets?.find(bucket => bucket.name === 'avatars');
+      
+      if (!avatarBucket) {
+        // Tentar criar o bucket se não existir
+        const { error: bucketError } = await supabase.storage.createBucket('avatars', {
+          public: true,
+          allowedMimeTypes: ['image/*'],
+          fileSizeLimit: 5242880 // 5MB
+        });
+        
+        if (bucketError) {
+          console.error('Error creating bucket:', bucketError);
+          // Se não conseguir criar o bucket, usar um método alternativo
+          // Vamos tentar usar o bucket padrão do Supabase
+        }
+      }
 
-      if (error) {
-        throw error;
+      // Upload image to Supabase Storage
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `${user?.id || 'user'}_${Date.now()}.${fileExt}`;
+      
+      // Tentar upload no bucket avatars primeiro
+      let uploadResult = await supabase.storage
+        .from('avatars')
+        .upload(`public/${fileName}`, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      // Se falhar, tentar bucket alternativo ou criar na pasta do usuário
+      if (uploadResult.error) {
+        console.log('Trying alternative upload method...');
+        uploadResult = await supabase.storage
+          .from('avatars')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
+      }
+
+      if (uploadResult.error) {
+        throw uploadResult.error;
       }
 
       // Get the public URL
       const { data: urlData } = supabase.storage
         .from('avatars')
-        .getPublicUrl(`public/${fileName}`);
+        .getPublicUrl(uploadResult.data.path);
 
-      setProfileImage(urlData.publicUrl);
+      const newProfileImage = urlData.publicUrl;
+      setProfileImage(newProfileImage);
+      
+      // Atualizar estado local para mostrar a nova imagem imediatamente
+      setCurrentUserData(prev => ({
+        ...prev,
+        profileImage: newProfileImage
+      }));
+
+      toast({
+        title: t('common.success'),
+        description: 'Imagem carregada com sucesso! Lembre-se de salvar o perfil.',
+      });
+
     } catch (error) {
       console.error('Error uploading image:', error);
       toast({
         title: t('common.error'),
-        description: 'Erro ao fazer upload da imagem',
+        description: 'Erro ao fazer upload da imagem. Verifique se o arquivo é uma imagem válida.',
         variant: 'destructive',
       });
     } finally {
@@ -375,14 +468,16 @@ const ProfilePage = () => {
                           </div>
                         ) : (
                           <>
-                            <AvatarImage src={profileImage} />
-                            <AvatarFallback className="text-xl">{name?.charAt(0) || email?.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={currentUserData.profileImage} />
+                            <AvatarFallback className="text-xl">
+                              {currentUserData.name?.charAt(0) || currentUserData.email?.charAt(0) || 'U'}
+                            </AvatarFallback>
                           </>
                         )}
                       </Avatar>
                       {isEditing && (
                         <div 
-                          className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1 cursor-pointer shadow-md"
+                          className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1 cursor-pointer shadow-md hover:bg-primary/90 transition-colors"
                           onClick={handleImageClick}
                         >
                           <Camera className="h-4 w-4" />
@@ -397,9 +492,13 @@ const ProfilePage = () => {
                       )}
                     </div>
                     <div>
-                      <h3 className="text-lg font-medium">{user?.name || 'Usuário'}</h3>
-                      <p className="text-muted-foreground">{user?.email}</p>
-                      {user?.phone && <p className="text-muted-foreground">{user.phone}</p>}
+                      <h3 className="text-lg font-medium">
+                        {currentUserData.name || 'Usuário'}
+                      </h3>
+                      <p className="text-muted-foreground">{currentUserData.email}</p>
+                      {currentUserData.phone && (
+                        <p className="text-muted-foreground">{currentUserData.phone}</p>
+                      )}
                     </div>
                   </div>
                   
