@@ -15,6 +15,8 @@ const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Novo estado para controlar se o iframe do Typebot já carregou
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
   useEffect(() => {
     const getSessionAndUserData = async () => {
@@ -52,6 +54,13 @@ const AgenteIA: React.FC = () => {
     getSessionAndUserData();
   }, []);
 
+  // UseEffect para resetar o estado de carregamento do iframe se o email mudar
+  useEffect(() => {
+    if (userEmail) {
+      setIframeLoaded(false);
+    }
+  }, [userEmail]);
+
   // URL do seu Typebot corrigida
   const typebotUrl = userEmail ? `https://typebot.co/bot-app?email=${userEmail}` : 'about:blank';
 
@@ -65,21 +74,23 @@ const AgenteIA: React.FC = () => {
             `Olá, ${userName || 'Usuário'}!` // Saudação com o nome do cliente
           )}
         </div>
-        {/* Borda ajustada para combinar com o layout. */}
-        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl">
+        <Card className="flex-1 overflow-hidden border-2 border-[#84CC16] rounded-xl">
           <CardContent className="h-full w-full p-0">
-            {isLoading || !userEmail ? (
+            {/* O conteúdo é exibido apenas se os dados do usuário e o iframe do Typebot tiverem carregado */}
+            {(isLoading || !userEmail || !iframeLoaded) ? (
               <div className="flex items-center justify-center h-full p-4">
                 <p>Carregando assistente...</p>
               </div>
-            ) : (
-              <iframe
-                src={typebotUrl}
-                title="Assistente Vixus"
-                className="w-full h-full border-none"
-                style={{ minHeight: 'calc(100vh - 100px)' }}
-              />
-            )}
+            ) : null}
+            
+            {/* O iframe é renderizado de forma invisível até carregar, para que a mensagem de loading seja mostrada */}
+            <iframe
+              src={typebotUrl}
+              title="Assistente Vixus"
+              className={`w-full h-full border-none ${(!isLoading && userEmail && iframeLoaded) ? 'block' : 'hidden'}`}
+              style={{ minHeight: 'calc(100vh - 100px)' }}
+              onLoad={() => setIframeLoaded(true)}
+            />
           </CardContent>
         </Card>
       </div>
