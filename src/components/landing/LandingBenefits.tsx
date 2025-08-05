@@ -9,6 +9,11 @@ const LandingBenefits = () => {
   
   const benefits = [
     {
+      icon: Cash,
+      title: "Pagamentos em Lote",
+      description: "Faça pagamentos usando a API dos principais Bancos como Itaú e Inter."
+    },
+    {
       icon: Shield,
       title: "Segurança Total",
       description: "Seus dados são criptografados e protegidos com os mais altos padrões de segurança"
@@ -17,11 +22,6 @@ const LandingBenefits = () => {
       icon: Clock,
       title: "Economia de Tempo",
       description: "Automatize suas finanças e tenha mais tempo para o que realmente importa"
-    },
-    {
-      icon: Cash,
-      title: "Pagamentos em Lote",
-      description: "Faça pagamentos usando a API dos principais Bancos como Itaú e Inter."
     },
     {
       icon: Award,
