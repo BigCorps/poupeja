@@ -27,7 +27,7 @@ const PlansPage = () => {
     if (success === 'true') {
       toast({
         title: "Pagamento realizado com sucesso!",
-        description: "Sua assinatura foi ativada. Bem-vindo ao PoupeJá!",
+        description: "Sua assinatura foi ativada. Bem-vindo ao App Vixus!",
       });
       // Remove the search params from URL
       navigate('/plans', { replace: true });
@@ -62,7 +62,7 @@ const PlansPage = () => {
       price: config?.prices.monthly.displayPrice || 'R$ 29,90',
       period: "/mês",
       priceId: config?.prices.monthly.priceId,
-      description: "Para uso pessoal completo",
+      description: "Para uso profissional completo",
       features: [
         t('plans.features.unlimited'), 
         t('plans.features.dashboard'), 
