@@ -17,7 +17,7 @@ const AgenteIA: React.FC = () => {
   useEffect(() => {
     // Detecta se é mobile
     const isMobile = window.innerWidth <= 768;
-    const height = isMobile ? 'calc(100dvh - 195px)' : 'calc(100dvh - 100px)';
+    const height = isMobile ? 'calc(95dvh - 180px)' : 'calc(100dvh - 100px)';
     setIframeMinHeight(height);
   }, []);
 
