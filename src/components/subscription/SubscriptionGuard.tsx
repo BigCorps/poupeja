@@ -59,7 +59,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">
               {!subscription || subscription.status !== 'active' 
-                ? `Para acessar ${feature}, você precisa de uma assinatura ativa do PoupeJá.`
+                ? `Para acessar ${feature}, você precisa de uma assinatura ativa do App Vixus.`
                 : `Sua assinatura expirou. Para continuar acessando ${feature}, você precisa renovar sua assinatura.`
               }
             </p>
