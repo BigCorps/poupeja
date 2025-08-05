@@ -13,7 +13,7 @@ const supabase = createClient(
 
 const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null); // Adicionado para armazenar o nome do cliente
+  const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -33,9 +33,11 @@ const AgenteIA: React.FC = () => {
 
           if (userError) {
             console.error('Erro ao buscar o nome do usuário:', userError);
-            setUserName('Usuário'); // Nome padrão em caso de erro
+            // Fallback para o email se a busca falhar
+            setUserName(session.user.email); 
           } else {
-            setUserName(data?.name || 'Usuário');
+            // Usa o nome da tabela ou o email como fallback
+            setUserName(data?.name || session.user.email); 
           }
         } else if (sessionError) {
           console.error('Erro ao obter a sessão:', sessionError);
@@ -63,7 +65,8 @@ const AgenteIA: React.FC = () => {
             `Olá, ${userName || 'Usuário'}!` // Saudação com o nome do cliente
           )}
         </div>
-        <Card className="flex-1 overflow-hidden border-2 border-green-300 rounded-xl">
+        {/* Borda ajustada para combinar com o layout. */}
+        <Card className="flex-1 overflow-hidden border-2 border-green-700 rounded-xl">
           <CardContent className="h-full w-full p-0">
             {isLoading || !userEmail ? (
               <div className="flex items-center justify-center h-full p-4">
@@ -74,7 +77,7 @@ const AgenteIA: React.FC = () => {
                 src={typebotUrl}
                 title="Assistente Vixus"
                 className="w-full h-full border-none"
-                style={{ minHeight: 'calc(100vh - 100px)' }} // Altura ajustada para ser mais próxima do limite
+                style={{ minHeight: 'calc(100vh - 100px)' }}
               />
             )}
           </CardContent>
