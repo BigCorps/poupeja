@@ -11,22 +11,8 @@ const supabase = createClient(
 
 const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>('');
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [currentUserData, setCurrentUserData] = useState<{
-    name: string | null;
-    email: string | null;
-    phone: string | null;
-    profileImage: string | null;
-    isAdmin: boolean;
-  }>({
-    name: null,
-    email: null,
-    phone: null,
-    profileImage: null,
-    isAdmin: false
-  });
   const [isLoading, setIsLoading] = useState(true);
+  // Novo estado para controlar se o iframe do Typebot já carregou
   const [iframeLoaded, setIframeLoaded] = useState(false);
 
   useEffect(() => {
@@ -100,17 +86,12 @@ const AgenteIA: React.FC = () => {
     getSessionAndUserData();
   }, []);
 
-  // UseEffect para carregar o iframe assim que os dados estiverem prontos
+  // UseEffect para resetar o estado de carregamento do iframe se o email mudar
   useEffect(() => {
-    if (userEmail && !isLoading) {
-      // Pequeno delay para garantir que a UI está estável
-      const timer = setTimeout(() => {
-        setIframeLoaded(false); // Reset para mostrar loading se necessário
-      }, 100);
-      
-      return () => clearTimeout(timer);
+    if (userEmail) {
+      setIframeLoaded(false);
     }
-  }, [userEmail, isLoading]);
+  }, [userEmail]);
 
   // Função para atualizar dados do usuário após salvamento do perfil (para integração futura)
   const updateCurrentUserData = (newData: { name?: string; email?: string; phone?: string; profileImage?: string }) => {
@@ -151,38 +132,23 @@ const AgenteIA: React.FC = () => {
           Aguarde enquanto o Agente IA carrega suas informações...
         </div>
         
-        {/* Card com fundo transparente e altura ajustada para mobile */}
-        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl bg-transparent backdrop-blur-none shadow-none">
-          <CardContent className="h-full w-full p-0 bg-transparent">
-            {/* Botão para abrir o chat ou loading */}
-            {!showChat ? (
+        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl">
+          <CardContent className="h-full w-full p-0">
+            {/* O conteúdo é exibido apenas se os dados do usuário e o iframe do Typebot tiverem carregado */}
+            {(isLoading || !userEmail || !iframeLoaded) ? (
               <div className="flex items-center justify-center h-full p-4">
-                {isLoading ? (
-                  <p>Carregando assistente...</p>
-                ) : (
-                  <button
-                    onClick={handleShowChat}
-                    className="px-6 py-3 bg-[#A7CF17] text-white rounded-lg font-semibold hover:bg-[#95BC15] transition-colors"
-                  >
-                    Abrir Chat com Agente IA
-                  </button>
-                )}
+                <p>Carregando assistente...</p>
               </div>
             ) : null}
             
-            {/* Iframe pré-carregado (oculto até ser necessário) */}
-            {iframePreloaded && (
-              <iframe
-                src={typebotUrl}
-                title="Assistente Vixus"
-                className={`w-full h-full border-none ${showChat ? 'block' : 'hidden'}`}
-                style={{ 
-                  minHeight: 'calc(100vh - 100px)', // Altura reduzida para mostrar melhor o quadro de resposta
-                  height: 'calc(100vh - 100px)' // Altura ajustada para desktop e mobile
-                }}
-                onLoad={() => setIframeLoaded(true)}
-              />
-            )}
+            {/* O iframe é renderizado de forma invisível até carregar, para que a mensagem de loading seja mostrada */}
+            <iframe
+              src={typebotUrl}
+              title="Assistente Vixus"
+              className={`w-full h-full border-none ${(!isLoading && userEmail && iframeLoaded) ? 'block' : 'hidden'}`}
+              style={{ minHeight: 'calc(100vh - 100px)' }}
+              onLoad={() => setIframeLoaded(true)}
+            />
           </CardContent>
         </Card>
       </div>
