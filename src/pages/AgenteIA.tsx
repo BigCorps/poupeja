@@ -74,7 +74,7 @@ const AgenteIA: React.FC = () => {
             `Olá, ${userName || 'Usuário'}!` // Saudação com o nome do cliente
           )}
         </div>
-        <Card className="flex-1 overflow-hidden border-2 border-[#84CC16] rounded-xl">
+        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl">
           <CardContent className="h-full w-full p-0">
             {/* O conteúdo é exibido apenas se os dados do usuário e o iframe do Typebot tiverem carregado */}
             {(isLoading || !userEmail || !iframeLoaded) ? (
