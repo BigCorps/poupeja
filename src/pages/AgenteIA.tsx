@@ -12,12 +12,12 @@ const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [iframeMinHeight, setIframeMinHeight] = useState('calc(100dvh - 100px)');
+  const [iframeMinHeight, setIframeMinHeight] = useState('calc(100vh - 100px)');
 
   useEffect(() => {
     // Detecta se é mobile
     const isMobile = window.innerWidth <= 768;
-    const height = isMobile ? 'calc(95dvh - 180px)' : 'calc(100dvh - 100px)';
+    const height = isMobile ? 'calc(100vh - 195px)' : 'calc(100vh - 100px)';
     setIframeMinHeight(height);
   }, []);
 
