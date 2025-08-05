@@ -23,7 +23,7 @@ const CheckoutPage = () => {
     if (success === 'true') {
       toast({
         title: "Pagamento realizado com sucesso!",
-        description: "Sua assinatura foi ativada. Bem-vindo ao PoupeJá!",
+        description: "Sua assinatura foi ativada. Bem-vindo ao App Vixus!",
       });
       navigate('/dashboard');
     } else if (canceled === 'true') {
