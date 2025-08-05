@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+
 import MainLayout from '@/components/layout/MainLayout';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
+import { useIsMobile } from '@/hooks/use-mobile'; // Importa o hook useIsMobile (assumindo que ele existe)
 
 // Inicializa o cliente Supabase fora do componente para evitar recriação
 const supabase = createClient(
@@ -11,9 +14,12 @@ const supabase = createClient(
 
 const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  // Novo estado para controlar se o iframe do Typebot já carregou
-  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [isLoadingUserData, setIsLoadingUserData] = useState(true); // Indica se os dados do usuário estão carregando
+  const [iframeLoaded, setIframeLoaded] = useState(false); // Indica se o iframe do Typebot carregou seu conteúdo
+  // 'showTypebot' não é mais necessário, o iframe carrega automaticamente
+
+  const isMobile = useIsMobile(); // Detecta se o dispositivo é mobile
 
   useEffect(() => {
     const getSessionAndUserData = async () => {
@@ -22,56 +28,19 @@ const AgenteIA: React.FC = () => {
         
         if (session?.user?.email && session?.user?.id) {
           setUserEmail(session.user.email);
-          
-          // Busca os dados do usuário na tabela poupeja_users igual ao ProfilePage
+
+          // Busca o nome do usuário na tabela poupeja_users
           const { data, error: userError } = await supabase
             .from('poupeja_users')
-            .select('name, phone, profile_image, is_admin')
-            .eq('id', session.user.id) // Usa 'id' igual ao ProfilePage
+            .select('name')
+            .eq('user_id', session.user.id) // Usa 'user_id' para buscar na tabela poupeja_users
             .single();
-          
+
           if (userError) {
-            console.error('Erro ao buscar dados do usuário:', userError);
-            // Fallback: tenta buscar por user_id se 'id' não funcionar
-            const { data: fallbackData, error: fallbackError } = await supabase
-              .from('poupeja_users')
-              .select('name, phone, profile_image, is_admin')
-              .eq('user_id', session.user.id)
-              .single();
-              
-            if (fallbackError) {
-              console.error('Erro no fallback:', fallbackError);
-              setUserName('Usuário');
-              setCurrentUserData({
-                name: null,
-                email: session.user.email,
-                phone: null,
-                profileImage: null,
-                isAdmin: false
-              });
-            } else {
-              const displayName = fallbackData?.name || 'Usuário';
-              setUserName(displayName);
-              setIsAdmin(fallbackData?.is_admin || false);
-              setCurrentUserData({
-                name: fallbackData?.name || null,
-                email: session.user.email,
-                phone: fallbackData?.phone || null,
-                profileImage: fallbackData?.profile_image || null,
-                isAdmin: fallbackData?.is_admin || false
-              });
-            }
+            console.error('Erro ao buscar o nome do usuário:', userError);
+            setUserName(session.user.email); // Fallback para o email se a busca falhar
           } else {
-            const displayName = data?.name || 'Usuário';
-            setUserName(displayName);
-            setIsAdmin(data?.is_admin || false);
-            setCurrentUserData({
-              name: data?.name || null,
-              email: session.user.email,
-              phone: data?.phone || null,
-              profileImage: data?.profile_image || null,
-              isAdmin: data?.is_admin || false
-            });
+            setUserName(data?.name || session.user.email); // Usa o nome da tabela ou o email como fallback
           }
         } else if (sessionError) {
           console.error('Erro ao obter a sessão:', sessionError);
@@ -79,76 +48,61 @@ const AgenteIA: React.FC = () => {
       } catch (e) {
         console.error('Erro inesperado:', e);
       } finally {
-        setIsLoading(false);
+        setIsLoadingUserData(false); // Carregamento dos dados do usuário finalizado
       }
     };
 
     getSessionAndUserData();
   }, []);
 
-  // UseEffect para resetar o estado de carregamento do iframe se o email mudar
+  // Reseta o estado de carregamento do iframe quando o email do usuário muda
   useEffect(() => {
     if (userEmail) {
-      setIframeLoaded(false);
+      setIframeLoaded(false); // Reseta o estado para mostrar a mensagem de carregamento do iframe
     }
   }, [userEmail]);
 
-  // Função para atualizar dados do usuário após salvamento do perfil (para integração futura)
-  const updateCurrentUserData = (newData: { name?: string; email?: string; phone?: string; profileImage?: string }) => {
-    setCurrentUserData(prev => ({
-      ...prev,
-      ...newData
-    }));
-    
-    // Também atualiza o userName para reflexo imediato na interface
-    if (newData.name !== undefined) {
-      setUserName(newData.name || 'Usuário');
-    }
-  };
-
-  // Função para determinar o nome de exibição
-  const getDisplayName = () => {
-    // Para administradores, mantém o comportamento atual (pode mostrar email)
-    if (isAdmin) {
-      return userName || userEmail || 'Administrador';
-    }
-    
-    // Para usuários normais, prioriza o nome sobre o email
-    if (currentUserData.name && currentUserData.name.trim() !== '' && currentUserData.name !== currentUserData.email) {
-      return currentUserData.name;
-    }
-    
-    // Se não tem nome cadastrado, usa "Usuário" em vez do email
-    return 'Usuário';
-  };
-
-  // URL do seu Typebot corrigida
   const typebotUrl = userEmail ? `https://typebot.co/bot-app?email=${userEmail}` : 'about:blank';
+
+  // Calcula a altura mínima do iframe dinamicamente
+  // Ajustado para mobile para considerar a barra de navegação inferior
+  const iframeMinHeight = isMobile ? 'calc(100vh - 200px)' : 'calc(100vh - 100px)'; 
 
   return (
     <MainLayout>
       <div className="flex flex-col h-full p-2 lg:p-4">
         <div className="text-center mb-4 text-2xl font-bold">
-          Aguarde enquanto o Agente IA carrega suas informações...
+          {isLoadingUserData ? (
+            <Skeleton className="h-8 w-48 mx-auto" />
+          ) : (
+            `Olá, ${userName || 'Usuário'}!` // Saudação com o nome do cliente
+          )}
         </div>
         
         <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl">
           <CardContent className="h-full w-full p-0">
-            {/* O conteúdo é exibido apenas se os dados do usuário e o iframe do Typebot tiverem carregado */}
-            {(isLoading || !userEmail || !iframeLoaded) ? (
+            {/* Mensagem de carregamento:
+                - Se os dados do usuário ainda estão carregando, OU
+                - Se o email do usuário não está disponível, OU
+                - Se o iframe ainda não carregou seu conteúdo
+            */}
+            {(isLoadingUserData || !userEmail || !iframeLoaded) ? (
               <div className="flex items-center justify-center h-full p-4">
                 <p>Carregando assistente...</p>
               </div>
             ) : null}
             
-            {/* O iframe é renderizado de forma invisível até carregar, para que a mensagem de loading seja mostrada */}
-            <iframe
-              src={typebotUrl}
-              title="Assistente Vixus"
-              className={`w-full h-full border-none ${(!isLoading && userEmail && iframeLoaded) ? 'block' : 'hidden'}`}
-              style={{ minHeight: 'calc(100vh - 100px)' }}
-              onLoad={() => setIframeLoaded(true)}
-            />
+            {/* O iframe é renderizado assim que o email do usuário estiver disponível.
+                Ele é inicialmente oculto e se torna visível apenas quando iframeLoaded é verdadeiro. */}
+            {userEmail && (
+              <iframe
+                src={typebotUrl}
+                title="Assistente Vixus"
+                className={`w-full h-full border-none ${iframeLoaded ? 'block' : 'hidden'}`}
+                style={{ minHeight: iframeMinHeight }}
+                onLoad={() => setIframeLoaded(true)} // Define iframeLoaded como true quando o iframe termina de carregar
+              />
+            )}
           </CardContent>
         </Card>
       </div>
