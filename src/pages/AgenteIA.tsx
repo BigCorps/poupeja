@@ -11,9 +11,26 @@ const supabase = createClient(
 
 const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>('');
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [currentUserData, setCurrentUserData] = useState<{
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    profileImage: string | null;
+    isAdmin: boolean;
+  }>({
+    name: null,
+    email: null,
+    phone: null,
+    profileImage: null,
+    isAdmin: false
+  });
   const [isLoading, setIsLoading] = useState(true);
-  // Novo estado para controlar se o iframe do Typebot já carregou
+  // Estados para controlar o lazy load do iframe
   const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [iframePreloaded, setIframePreloaded] = useState(false);
 
   useEffect(() => {
     const getSessionAndUserData = async () => {
@@ -90,8 +107,20 @@ const AgenteIA: React.FC = () => {
   useEffect(() => {
     if (userEmail) {
       setIframeLoaded(false);
+      setShowChat(false);
+      // Pré-carrega o iframe assim que o userEmail estiver disponível
+      const timer = setTimeout(() => {
+        setIframePreloaded(true);
+      }, 500); // Delay de 500ms para garantir que os dados do usuário foram carregados
+      
+      return () => clearTimeout(timer);
     }
   }, [userEmail]);
+
+  // Função para mostrar o chat
+  const handleShowChat = () => {
+    setShowChat(true);
+  };
 
   // Função para atualizar dados do usuário após salvamento do perfil (para integração futura)
   const updateCurrentUserData = (newData: { name?: string; email?: string; phone?: string; profileImage?: string }) => {
@@ -132,23 +161,38 @@ const AgenteIA: React.FC = () => {
           Aguarde enquanto o Agente IA carrega suas informações...
         </div>
         
-        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl">
-          <CardContent className="h-full w-full p-0">
-            {/* O conteúdo é exibido apenas se os dados do usuário e o iframe do Typebot tiverem carregado */}
-            {(isLoading || !userEmail || !iframeLoaded) ? (
+        {/* Card com fundo transparente e altura ajustada para mobile */}
+        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl bg-transparent backdrop-blur-none shadow-none">
+          <CardContent className="h-full w-full p-0 bg-transparent">
+            {/* Botão para abrir o chat ou loading */}
+            {!showChat ? (
               <div className="flex items-center justify-center h-full p-4">
-                <p>Carregando assistente...</p>
+                {isLoading ? (
+                  <p>Carregando assistente...</p>
+                ) : (
+                  <button
+                    onClick={handleShowChat}
+                    className="px-6 py-3 bg-[#A7CF17] text-white rounded-lg font-semibold hover:bg-[#95BC15] transition-colors"
+                  >
+                    Abrir Chat com Agente IA
+                  </button>
+                )}
               </div>
             ) : null}
             
-            {/* O iframe é renderizado de forma invisível até carregar, para que a mensagem de loading seja mostrada */}
-            <iframe
-              src={typebotUrl}
-              title="Assistente Vixus"
-              className={`w-full h-full border-none ${(!isLoading && userEmail && iframeLoaded) ? 'block' : 'hidden'}`}
-              style={{ minHeight: 'calc(100vh - 100px)' }}
-              onLoad={() => setIframeLoaded(true)}
-            />
+            {/* Iframe pré-carregado (oculto até ser necessário) */}
+            {iframePreloaded && (
+              <iframe
+                src={typebotUrl}
+                title="Assistente Vixus"
+                className={`w-full h-full border-none ${showChat ? 'block' : 'hidden'}`}
+                style={{ 
+                  minHeight: 'calc(100vh - 100px)', // Altura reduzida para mostrar melhor o quadro de resposta
+                  height: 'calc(100vh - 100px)' // Altura ajustada para desktop e mobile
+                }}
+                onLoad={() => setIframeLoaded(true)}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
