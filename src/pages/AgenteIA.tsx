@@ -66,7 +66,7 @@ const AgenteIA: React.FC = () => {
               src={typebotUrl}
               title="Assistente Vixus"
               className={`w-full h-full border-none ${(!isLoading && userEmail && iframeLoaded) ? 'block' : 'hidden'}`}
-              const iframeMinHeight = isMobile ? 'calc(100vh - 195px)' : 'calc(100vh - 100px)'; 
+              style={{ minHeight: 'calc(100vh - 100px)' }}
               onLoad={() => setIframeLoaded(true)}
             />
           </CardContent>
