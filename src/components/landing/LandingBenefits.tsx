@@ -20,13 +20,13 @@ const LandingBenefits = () => {
     },
     {
       icon: Users,
-      title: "Comunidade Ativa",
-      description: "Faça parte de uma comunidade de pessoas que alcançaram seus objetivos financeiros"
+      title: "Pagamentos em Lote",
+      description: "Faça pagaMentos usando a API dos principais Bancos como Itaú e Inter."
     },
     {
       icon: Award,
       title: "Resultados Comprovados",
-      description: `Milhares de usuários já transformaram suas vidas financeiras com o ${companyName}`
+      description: `Milhares de usuários já transformaram suas vidas financeiras com a Vixus`
     }
   ];
 
@@ -44,7 +44,7 @@ const LandingBenefits = () => {
             Por que escolher o {companyName}?
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Mais do que uma ferramenta, é o seu parceiro na jornada rumo à liberdade financeira
+            Mais do que uma ferramenta, é o seu parceiro na jornada rumo à liberdade financeira da sua empresa!
           </p>
         </motion.div>
         
