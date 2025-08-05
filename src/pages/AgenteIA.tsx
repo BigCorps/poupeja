@@ -1,132 +1,79 @@
-import React, { useState } from 'react';
-import MainLayout from '@/components/layout/MainLayout';
-import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useApp } from '@/contexts/AppContext';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '@supabase/auth-helpers-react';
+import { createClient } from '@supabase/supabase-js';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { MainLayout } from '@/components/layout/MainLayout';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
 
-const AgenteIA = () => {
-  const { addCategory, session } = useApp(); // ✅ Obtenha a sessão do AppContext
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+// Inicializa o cliente Supabase fora do componente para evitar recriação
+// Assumindo que você usa VITE para suas variáveis de ambiente
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+export const AgentPage: React.FC = () => {
+  const { session } = useAuth();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-    // ✅ Verifique se a sessão e o token de acesso existem antes de enviar
-    if (!session || !session.access_token) {
-      setMessages(currentMessages => [
-        ...currentMessages,
-        { role: 'assistant', content: 'Você precisa estar logado para usar o Agente IA.' },
-      ]);
-      return;
-    }
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (session?.user?.email && session?.user?.id) {
+        setUserEmail(session.user.email);
 
-    const userMessage = { role: 'user', content: input };
-    setMessages(currentMessages => [...currentMessages, userMessage]);
-    setInput('');
-    setIsLoading(true);
+        // Busca o nome do usuário na tabela poupeja_users
+        const { data, error } = await supabase
+          .from('poupeja_users')
+          .select('name')
+          .eq('user_id', session.user.id)
+          .single();
 
-    try {
-      const response = await fetch('/api/agente-ia', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`, // ✅ Adicionado o token de autenticação
-        },
-        body: JSON.stringify({ userMessage: input }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha na comunicação com a IA.');
-      }
-
-      const data = await response.json();
-      const aiResponseContent = data.response;
-
-      try {
-        const parsedResponse = JSON.parse(aiResponseContent);
-        if (parsedResponse.action === 'addCategory') {
-          await addCategory(parsedResponse.name, parsedResponse.type);
-          setMessages(currentMessages => [
-            ...currentMessages,
-            { role: 'assistant', content: `Categoria "${parsedResponse.name}" adicionada com sucesso!` },
-          ]);
+        if (error) {
+          console.error('Erro ao buscar o nome do usuário:', error);
+          setUserName('Usuário'); // Nome padrão em caso de erro
         } else {
-          setMessages(currentMessages => [
-            ...currentMessages,
-            { role: 'assistant', content: aiResponseContent },
-          ]);
+          setUserName(data?.name || 'Usuário');
         }
-      } catch (e) {
-        setMessages(currentMessages => [
-          ...currentMessages,
-          { role: 'assistant', content: aiResponseContent },
-        ]);
       }
-
-    } catch (error) {
-      setMessages(currentMessages => [
-        ...currentMessages,
-        { role: 'assistant', content: 'Desculpe, ocorreu um erro.' },
-      ]);
-      console.error('Error:', error);
-    } finally {
       setIsLoading(false);
-    }
-  };
+    };
+
+    fetchUserData();
+  }, [session]);
+
+  // URL do seu Typebot, já com a variável de e-mail pronta
+  const typebotUrl = userEmail ? `https://typebot.co/bot-vixus?email=${userEmail}` : '';
 
   return (
     <MainLayout>
-      <SubscriptionGuard feature="agente ia">
-        <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8 flex flex-col h-full">
-          <Card className="flex-grow flex flex-col">
-            <CardHeader>
-              <CardTitle>Agente IA</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-grow flex flex-col p-4 space-y-4">
-              <ScrollArea className="flex-grow p-4 border rounded-md">
-                {messages.map((msg, index) => (
-                  <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-2`}>
-                    <div
-                      className={`max-w-xs p-2 rounded-lg ${
-                        msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
-                      }`}
-                    >
-                      {msg.content}
-                    </div>
-                  </div>
-                ))}
-              </ScrollArea>
-              <div className="flex w-full space-x-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') handleSendMessage();
-                  }}
-                  placeholder="Pergunte ao Agente IA..."
-                  className="flex-grow"
-                  disabled={isLoading}
-                />
-                <Button onClick={handleSendMessage} disabled={isLoading}>
-                  {isLoading ? 'Enviando...' : 'Enviar'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="flex flex-col h-full p-4">
+        <div className="text-center mb-4 text-2xl font-bold">
+          {isLoading ? (
+            <Skeleton className="h-8 w-48 mx-auto" />
+          ) : (
+            `Olá, ${userName || 'Usuário'}`
+          )}
         </div>
-      </SubscriptionGuard>
+        <Card className="flex-1 overflow-hidden border-2 border-green-300 rounded-xl">
+          <CardContent className="h-full w-full p-0">
+            {isLoading || !userEmail ? (
+              <div className="flex items-center justify-center h-full p-4">
+                <p>Carregando assistente...</p>
+              </div>
+            ) : (
+              <iframe
+                src={typebotUrl}
+                title="Assistente Vixus"
+                className="w-full h-full border-none"
+                style={{ minHeight: 'calc(100vh - 150px)' }}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </MainLayout>
   );
 };
-
-export default AgenteIA;
