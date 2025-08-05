@@ -19,7 +19,7 @@ interface BrandingContextType {
 
 const defaultBranding: BrandingData = {
   companyName: 'Vixus',
-  logoUrl: '/lovable-uploads/87f23d85-2d95-44c2-af4e-c39a251cceff.png',
+  logoUrl: '/lovable-uploads/logo-footer.png',
   faviconUrl: '/favicon.ico',
   logoAltText: 'Vixus Logo'
 };
