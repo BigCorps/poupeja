@@ -50,7 +50,7 @@ const ProfilePage = () => {
           const { data, error } = await supabase
             .from('poupeja_users')
             .select('*')
-            .eq('id', session.user.id)
+            .eq('user_id', session.user.id) // Corrigido aqui: `user_id` em vez de `id`
             .single();
             
           if (data && !error) {
@@ -360,7 +360,7 @@ const ProfilePage = () => {
             </TabsList>
             
             <TabsContent value="info">
-              <Card>
+              <Card className="border-green-700"> {/* Cor da borda ajustada aqui */}
                 <CardHeader>
                   <CardTitle>Informações Pessoais</CardTitle>
                   <CardDescription>Seus dados de cadastro e contato</CardDescription>
@@ -466,7 +466,7 @@ const ProfilePage = () => {
             </TabsContent>
             
             <TabsContent value="password">
-              <Card>
+              <Card className="border-green-700"> {/* Cor da borda ajustada aqui */}
                 <CardHeader>
                   <CardTitle>Alterar Senha</CardTitle>
                   <CardDescription>Atualize sua senha de acesso</CardDescription>
