@@ -66,7 +66,7 @@ const AgenteIA: React.FC = () => {
           )}
         </div>
         {/* Borda ajustada para combinar com o layout. */}
-        <Card className="flex-1 overflow-hidden border-1 border-[#A7CF17] rounded-xl">
+        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl">
           <CardContent className="h-full w-full p-0">
             {isLoading || !userEmail ? (
               <div className="flex items-center justify-center h-full p-4">
