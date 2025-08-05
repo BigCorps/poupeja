@@ -50,8 +50,8 @@ const AgenteIA: React.FC = () => {
     getSessionAndUserData();
   }, []);
 
-  // URL do seu Typebot corrigida, agora com o caminho correto do bot
-  const typebotUrl = userEmail ? `https://typebot.co/bot-vixus?email=${userEmail}` : 'about:blank';
+  // URL do seu Typebot corrigida
+  const typebotUrl = userEmail ? `https://typebot.co/bot-app?email=${userEmail}` : 'about:blank';
 
   return (
     <MainLayout>
