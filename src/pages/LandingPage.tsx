@@ -9,24 +9,12 @@ import { motion } from 'framer-motion';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { useBranding } from '@/contexts/BrandingContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useLocation } from 'react-router-dom'; // Importa o hook useLocation
-
-// Declaração global para o objeto Typebot, para que o TypeScript o reconheça
-declare global {
-  interface Window {
-    Typebot: any;
-  }
-}
 
 const LandingPage = () => {
   const { companyName } = useBrandingConfig();
   const { isLoading: brandingLoading, lastUpdated } = useBranding();
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);
   const [forcedTheme, setForcedTheme] = useState<string | null>(null);
-  const location = useLocation(); // Obtém o objeto de localização atual
-
-  // Estado para controlar se o script do Typebot deve ser montado
-  const [shouldMountTypebotScript, setShouldMountTypebotScript] = useState(false);
 
   // Aplicar tema antes mesmo do primeiro render
   useEffect(() => {
@@ -77,87 +65,6 @@ const LandingPage = () => {
     };
   }, [lastUpdated, forcedTheme]);
 
-  // --- NOVO useEffect para controlar a montagem/desmontagem do script do Typebot com base na rota ---
-  useEffect(() => {
-    // Função de limpeza agressiva para o Typebot
-    const cleanupTypebot = () => {
-      // Tenta fechar o bubble do Typebot usando a API, se disponível
-      if (window.Typebot && typeof window.Typebot.close === 'function') {
-        window.Typebot.close();
-      }
-      // Remove qualquer elemento com as classes comuns do Typebot
-      const typebotElements = document.querySelectorAll('.typebot-bubble, .typebot-container, #typebot-chat-button');
-      typebotElements.forEach(el => el.remove());
-
-      // Remove o script do Typebot se ele foi anexado ao body
-      const existingScript = document.querySelector('script[src="https://cdn.jsdelivr.net/npm/@typebot.io/js@0/dist/web.js"]');
-      if (existingScript && existingScript.parentNode) {
-        existingScript.parentNode.removeChild(existingScript);
-      }
-    };
-
-    // Define se o script deve ser montado APENAS se a rota for a página inicial ('/')
-    if (location.pathname === '/') {
-      setShouldMountTypebotScript(true);
-    } else {
-      setShouldMountTypebotScript(false);
-      // Tenta limpar imediatamente ao sair da rota '/'
-      cleanupTypebot();
-
-      // Adiciona um pequeno atraso para tentar limpar novamente, caso o bubble apareça depois de um micro-render
-      const timeoutId = setTimeout(cleanupTypebot, 500); // Tenta novamente após 500ms
-
-      return () => clearTimeout(timeoutId); // Limpa o timeout se o componente for desmontado antes
-    }
-  }, [location.pathname]); // Este efeito roda sempre que a rota muda
-
-  // --- useEffect para carregar e inicializar o Typebot Bubble ---
-  // Este efeito só será executado se shouldMountTypebotScript for verdadeiro
-  useEffect(() => {
-    if (!shouldMountTypebotScript) {
-      // Se o script não deve ser montado, garante que ele não esteja ativo
-      // A limpeza já é feita no useEffect anterior, mas é um bom fallback
-      if (window.Typebot && typeof window.Typebot.close === 'function') {
-        window.Typebot.close();
-      }
-      return; // Não faz nada se o script não deve ser montado
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@typebot.io/js@0/dist/web.js';
-    script.type = 'module';
-    script.async = true;
-
-    script.onload = () => {
-      if (window.Typebot) {
-        window.Typebot.initBubble({
-          typebot: "vixus-ia", // ID do seu Typebot (atualizado)
-          previewMessage: {
-            message: "Tire suas dúvidas comigo!", // Mensagem de preview (atualizada)
-            autoShowDelay: 5000,
-          },
-          theme: {
-            button: {
-              backgroundColor: "#A7CF17", // Cor do botão (atualizada)
-              customIconSrc: "https://s3.typebot.io/public/workspaces/cmd0ug4ib0000l1049mwbs6ls/typebots/z3p568fijv5oygp8xkzf931d/hostAvatar?v=1754418298531", // Ícone personalizado (atualizado)
-            },
-          },
-          keepUrlQueryParams: true
-        });
-      }
-    };
-
-    document.body.appendChild(script);
-
-    // Função de limpeza: remove o script e garante que o Typebot bubble seja fechado/removido
-    // quando o componente é desmontado ou shouldMountTypebotScript se torna falso
-    return () => {
-      // A limpeza principal já é feita no useEffect de controle de rota
-      // Mas esta é uma camada extra de segurança
-      cleanupTypebot(); // Chama a função de limpeza agressiva
-    };
-  }, [shouldMountTypebotScript]); // Este efeito roda apenas quando shouldMountTypebotScript muda
-
   // Mostrar um loading mínimo enquanto carrega o tema para evitar flash
   if (!isThemeLoaded || brandingLoading) {
     return (
@@ -196,3 +103,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+
