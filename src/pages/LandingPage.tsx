@@ -77,17 +77,22 @@ const LandingPage = () => {
     };
   }, [lastUpdated, forcedTheme]);
 
-  // --- useEffect para controlar a montagem/desmontagem do script do Typebot ---
+  // --- NOVO useEffect para controlar a montagem/desmontagem do script do Typebot com base na rota ---
   useEffect(() => {
-    // Apenas monta o script se a rota atual for a da landing page ('/')
+    // Define se o script deve ser montado APENAS se a rota for a página inicial ('/')
     if (location.pathname === '/') {
       setShouldMountTypebotScript(true);
     } else {
       setShouldMountTypebotScript(false);
-      // Garante que qualquer bubble existente seja removido ao navegar para fora da landing
-      const typebotBubble = document.querySelector('.typebot-bubble');
-      if (typebotBubble) {
-        typebotBubble.remove();
+      // Tenta fechar o bubble do Typebot imediatamente ao sair da rota '/'
+      if (window.Typebot && typeof window.Typebot.close === 'function') {
+        window.Typebot.close();
+      } else {
+        // Fallback: remove manualmente o elemento do bubble se Typebot.close() não funcionar
+        const typebotBubble = document.querySelector('.typebot-bubble');
+        if (typebotBubble) {
+          typebotBubble.remove();
+        }
       }
     }
   }, [location.pathname]); // Este efeito roda sempre que a rota muda
@@ -95,7 +100,18 @@ const LandingPage = () => {
   // --- useEffect para carregar e inicializar o Typebot Bubble ---
   // Este efeito só será executado se shouldMountTypebotScript for verdadeiro
   useEffect(() => {
-    if (!shouldMountTypebotScript) return; // Não faz nada se o script não deve ser montado
+    if (!shouldMountTypebotScript) {
+      // Se o script não deve ser montado, garante que ele não esteja ativo
+      if (window.Typebot && typeof window.Typebot.close === 'function') {
+        window.Typebot.close();
+      } else {
+        const typebotBubble = document.querySelector('.typebot-bubble');
+        if (typebotBubble) {
+          typebotBubble.remove();
+        }
+      }
+      return; // Não faz nada se o script não deve ser montado
+    }
 
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/@typebot.io/js@0/dist/web.js';
@@ -105,15 +121,15 @@ const LandingPage = () => {
     script.onload = () => {
       if (window.Typebot) {
         window.Typebot.initBubble({
-          typebot: "vixus-ia", // ID do seu Typebot
+          typebot: "vixus-ia", // ID do seu Typebot (atualizado)
           previewMessage: {
-            message: "Tire suas dúvidas comigo!",
+            message: "Tire suas dúvidas comigo!", // Mensagem de preview (atualizada)
             autoShowDelay: 5000,
           },
           theme: {
             button: {
-              backgroundColor: "#A7CF17",
-              customIconSrc: "https://s3.typebot.io/public/workspaces/cmd0ug4ib0000l1049mwbs6ls/typebots/z3p568fijv5oygp8xkzf931d/hostAvatar?v=1754418298531",
+              backgroundColor: "#A7CF17", // Cor do botão (atualizada)
+              customIconSrc: "https://s3.typebot.io/public/workspaces/cmd0ug4ib0000l1049mwbs6ls/typebots/z3p568fijv5oygp8xkzf931d/hostAvatar?v=1754418298531", // Ícone personalizado (atualizado)
             },
           },
           keepUrlQueryParams: true
@@ -123,13 +139,17 @@ const LandingPage = () => {
 
     document.body.appendChild(script);
 
-    // Função de limpeza: remove o script e o bubble do Typebot quando o componente é desmontado
-    // ou quando shouldMountTypebotScript se torna falso
+    // Função de limpeza: remove o script e garante que o Typebot bubble seja fechado/removido
+    // quando o componente é desmontado ou shouldMountTypebotScript se torna falso
     return () => {
       document.body.removeChild(script);
-      const typebotBubble = document.querySelector('.typebot-bubble');
-      if (typebotBubble) {
-        typebotBubble.remove();
+      if (window.Typebot && typeof window.Typebot.close === 'function') {
+        window.Typebot.close();
+      } else {
+        const typebotBubble = document.querySelector('.typebot-bubble');
+        if (typebotBubble) {
+          typebotBubble.remove();
+        }
       }
     };
   }, [shouldMountTypebotScript]); // Este efeito roda apenas quando shouldMountTypebotScript muda
@@ -172,3 +192,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+
