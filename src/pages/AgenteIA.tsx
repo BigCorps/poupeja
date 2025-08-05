@@ -12,25 +12,12 @@ const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [iframeMinHeight, setIframeMinHeight] = useState('calc(100dvh - 100px - 20px)');
-
-  useEffect(() => {
-    const updateHeight = () => {
-      const isMobile = window.innerWidth <= 768;
-      const headerOffset = isMobile ? 195 : 100;
-      const footerOffset = 20; // espaço extra da borda inferior
-      setIframeMinHeight(`calc(100dvh - ${headerOffset + footerOffset}px)`);
-    };
-
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
 
   useEffect(() => {
     const getSessionAndUserData = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
         if (session?.user?.email && session?.user?.id) {
           setUserEmail(session.user.email);
         } else if (sessionError) {
@@ -42,6 +29,7 @@ const AgenteIA: React.FC = () => {
         setIsLoading(false);
       }
     };
+
     getSessionAndUserData();
   }, []);
 
@@ -55,12 +43,12 @@ const AgenteIA: React.FC = () => {
 
   return (
     <MainLayout>
-      <div className="flex flex-col h-full p-2 lg:p-4">
+      <div className="flex flex-col h-full p-2 lg:p-4 pb-6"> {/* <- espaço extra no final */}
         <div className="text-center mb-4 text-xl font-medium">
           Aguarde enquanto o Agente IA carrega suas informações...
         </div>
 
-        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl">
+        <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl mb-6"> {/* <- margem inferior aqui também */}
           <CardContent className="h-full w-full p-0">
             {(isLoading || !userEmail || !iframeLoaded) ? (
               <div className="flex items-center justify-center h-full p-4">
@@ -71,12 +59,15 @@ const AgenteIA: React.FC = () => {
             <iframe
               src={typebotUrl}
               title="Assistente Vixus"
-              className={`w-full border-none ${(!isLoading && userEmail && iframeLoaded) ? 'block' : 'hidden'}`}
-              style={{ minHeight: iframeMinHeight }}
+              className={`w-full h-full border-none ${(!isLoading && userEmail && iframeLoaded) ? 'block' : 'hidden'}`}
+              style={{ minHeight: 'calc(100vh - 100px)' }} // padrão restaurado
               onLoad={() => setIframeLoaded(true)}
             />
           </CardContent>
         </Card>
+
+        {/* Div fantasma para garantir espaçamento no final */}
+        <div style={{ height: '20px' }} />
       </div>
     </MainLayout>
   );
