@@ -226,55 +226,92 @@ const ProfilePage = () => {
 
     setUploading(true);
     try {
-      // Primeiro, verificar se o bucket existe ou tentar criar
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const avatarBucket = buckets?.find(bucket => bucket.name === 'avatars');
-      
-      if (!avatarBucket) {
-        // Tentar criar o bucket se não existir
-        const { error: bucketError } = await supabase.storage.createBucket('avatars', {
-          public: true,
-          allowedMimeTypes: ['image/*'],
-          fileSizeLimit: 5242880 // 5MB
+      // Converte imagem para base64 como fallback se o storage não funcionar
+      const convertToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = error => reject(error);
         });
-        
-        if (bucketError) {
-          console.error('Error creating bucket:', bucketError);
-          // Se não conseguir criar o bucket, usar um método alternativo
-          // Vamos tentar usar o bucket padrão do Supabase
+      };
+
+      // Primeiro, tentar verificar buckets disponíveis
+      let availableBuckets: string[] = [];
+      try {
+        const { data: buckets } = await supabase.storage.listBuckets();
+        availableBuckets = buckets?.map(b => b.name) || [];
+        console.log('Available buckets:', availableBuckets);
+      } catch (error) {
+        console.log('Could not list buckets:', error);
+      }
+
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `profile_${user?.id || Date.now()}_${Date.now()}.${fileExt}`;
+      
+      let uploadResult: any = null;
+      let bucketToUse = '';
+
+      // Tentar diferentes buckets na ordem de preferência
+      const bucketsToTry = ['avatars', 'images', 'uploads', 'public'];
+      
+      for (const bucketName of bucketsToTry) {
+        try {
+          console.log(`Trying bucket: ${bucketName}`);
+          
+          // Se o bucket não existe na lista, tentar criar
+          if (!availableBuckets.includes(bucketName)) {
+            console.log(`Creating bucket: ${bucketName}`);
+            await supabase.storage.createBucket(bucketName, {
+              public: true,
+              allowedMimeTypes: ['image/*'],
+              fileSizeLimit: 5242880 // 5MB
+            });
+          }
+
+          // Tentar upload
+          uploadResult = await supabase.storage
+            .from(bucketName)
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: true
+            });
+
+          if (!uploadResult.error) {
+            bucketToUse = bucketName;
+            console.log(`Upload successful in bucket: ${bucketName}`);
+            break;
+          } else {
+            console.log(`Upload failed in bucket ${bucketName}:`, uploadResult.error);
+          }
+        } catch (error) {
+          console.log(`Error with bucket ${bucketName}:`, error);
+          continue;
         }
       }
 
-      // Upload image to Supabase Storage
-      const fileExt = file.name.split('.').pop()?.toLowerCase();
-      const fileName = `${user?.id || 'user'}_${Date.now()}.${fileExt}`;
-      
-      // Tentar upload no bucket avatars primeiro
-      let uploadResult = await supabase.storage
-        .from('avatars')
-        .upload(`public/${fileName}`, file, {
-          cacheControl: '3600',
-          upsert: true
+      // Se todos os buckets falharam, usar base64
+      if (!uploadResult || uploadResult.error) {
+        console.log('All bucket uploads failed, using base64...');
+        const base64Image = await convertToBase64(file);
+        setProfileImage(base64Image);
+        
+        // Atualizar estado local
+        setCurrentUserData(prev => ({
+          ...prev,
+          profileImage: base64Image
+        }));
+
+        toast({
+          title: t('common.success'),
+          description: 'Imagem carregada com sucesso! Lembre-se de salvar o perfil.',
         });
-
-      // Se falhar, tentar bucket alternativo ou criar na pasta do usuário
-      if (uploadResult.error) {
-        console.log('Trying alternative upload method...');
-        uploadResult = await supabase.storage
-          .from('avatars')
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: true
-          });
+        return;
       }
 
-      if (uploadResult.error) {
-        throw uploadResult.error;
-      }
-
-      // Get the public URL
+      // Get the public URL se o upload funcionou
       const { data: urlData } = supabase.storage
-        .from('avatars')
+        .from(bucketToUse)
         .getPublicUrl(uploadResult.data.path);
 
       const newProfileImage = urlData.publicUrl;
@@ -293,11 +330,31 @@ const ProfilePage = () => {
 
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast({
-        title: t('common.error'),
-        description: 'Erro ao fazer upload da imagem. Verifique se o arquivo é uma imagem válida.',
-        variant: 'destructive',
-      });
+      
+      // Como último recurso, tentar converter para base64
+      try {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const base64 = e.target?.result as string;
+          setProfileImage(base64);
+          setCurrentUserData(prev => ({
+            ...prev,
+            profileImage: base64
+          }));
+          
+          toast({
+            title: t('common.success'),
+            description: 'Imagem carregada como preview. Lembre-se de salvar o perfil.',
+          });
+        };
+        reader.readAsDataURL(file);
+      } catch (base64Error) {
+        toast({
+          title: t('common.error'),
+          description: 'Erro ao processar a imagem. Tente uma imagem menor.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setUploading(false);
     }
