@@ -1,10 +1,16 @@
-
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { TrendingUp, Shield, Smartphone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
+
+// Declaração global para o objeto Typebot, para que o TypeScript o reconheça
+declare global {
+  interface Window {
+    Typebot: any;
+  }
+}
 
 const LandingHero = () => {
   const { companyName } = useBrandingConfig();
@@ -16,8 +22,51 @@ const LandingHero = () => {
     }
   }, []);
 
+  // --- useEffect para o Typebot Bubble ---
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@typebot.io/js@0/dist/web.js';
+    script.type = 'module';
+    script.async = true;
+
+    script.onload = () => {
+      if (window.Typebot) {
+        window.Typebot.initBubble({
+          typebot: "vixus-ia", // ID do seu Typebot
+          previewMessage: {
+            message: "Tire suas dúvidas comigo!",
+            autoShowDelay: 5000,
+          },
+          theme: {
+            button: {
+              backgroundColor: "#A7CF17", // Cor do botão
+              customIconSrc: "https://s3.typebot.io/public/workspaces/cmd0ug4ib0000l1049mwbs6ls/typebots/z3p568fijv5oygp8xkzf931d/hostAvatar?v=1754418298531", // Ícone personalizado
+            },
+          },
+          keepUrlQueryParams: true
+        });
+      }
+    };
+
+    document.body.appendChild(script);
+
+    // Função de limpeza: remove o script e o bubble do Typebot quando o componente é desmontado
+    return () => {
+      document.body.removeChild(script);
+      // Tenta remover o elemento do bubble do Typebot se ele foi adicionado
+      const typebotBubble = document.querySelector('.typebot-bubble');
+      if (typebotBubble) {
+        typebotBubble.remove();
+      }
+      // Tenta fechar o Typebot via API, caso ainda esteja ativo
+      if (window.Typebot && typeof window.Typebot.close === 'function') {
+        window.Typebot.close();
+      }
+    };
+  }, []); // O array de dependências vazio garante que este efeito rode apenas uma vez, na montagem do componente
+
   return (
-    <section className="py-20 md:py-32 w-full">
+    <section className="py-20 md:py-32 w-full relative">
       <div className="w-full px-4 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -82,3 +131,4 @@ const LandingHero = () => {
 };
 
 export default LandingHero;
+
