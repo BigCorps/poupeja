@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-import { MainLayout } from '@/components/layout/MainLayout';
+// Importação corrigida para o componente MainLayout
+import MainLayout from '@/components/layout/MainLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -18,7 +19,6 @@ export const AgenteIA: React.FC = () => {
   useEffect(() => {
     const getSession = async () => {
       try {
-        // Usa o cliente supabase.auth para obter a sessão
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (session?.user?.email) {
@@ -34,15 +34,13 @@ export const AgenteIA: React.FC = () => {
     };
 
     getSession();
-  }, []); // O array de dependências vazio garante que o useEffect rode apenas uma vez
+  }, []);
 
-  // URL do seu Typebot. A variável 'email' é adicionada automaticamente se existir um email.
   const typebotUrl = userEmail ? `https://typebot.co/bot-vixus?email=${userEmail}` : 'about:blank';
 
   return (
     <MainLayout>
       <div className="flex flex-col h-full p-4">
-        {/* Saudação estática */}
         <div className="text-center mb-4 text-2xl font-bold">
           {isLoading ? (
             <Skeleton className="h-8 w-48 mx-auto" />
