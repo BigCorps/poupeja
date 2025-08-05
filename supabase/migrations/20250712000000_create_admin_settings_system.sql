@@ -228,10 +228,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- BRANDING (4 campos essenciais)
 INSERT INTO public.poupeja_settings (category, key, value, description) VALUES
-  ('branding', 'company_name', 'PoupeJá', 'Nome da empresa exibido na aplicação'),
+  ('branding', 'company_name', 'APP VIXUS', 'Nome da empresa exibido na aplicação'),
   ('branding', 'logo_url', '', 'URL da logo da empresa'),
   ('branding', 'favicon_url', '', 'URL do favicon'),
-  ('branding', 'logo_alt_text', 'PoupeJá Logo', 'Texto alternativo da logo')
+  ('branding', 'logo_alt_text', 'Vixus Logo', 'Texto alternativo da logo')
 ON CONFLICT (category, key) DO NOTHING;
 
 -- STRIPE (2 campos essenciais com prefixo stripe_)
@@ -248,7 +248,7 @@ ON CONFLICT (category, key) DO NOTHING;
 
 -- CONTACT (1 campo essencial)
 INSERT INTO public.poupeja_settings (category, key, value, description) VALUES
-  ('contact', 'support_email', 'support@poupeja.com', 'Email de suporte da empresa')
+  ('contact', 'support_email', 'contato@vixusbr.com.br', 'Email de suporte da empresa')
 ON CONFLICT (category, key) DO NOTHING;
 
 -- SYSTEM (configurações do sistema)
