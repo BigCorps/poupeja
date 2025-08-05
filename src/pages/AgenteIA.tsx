@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import MainLayout from '@/components/layout/MainLayout';
-import { useAppContext } from '@/contexts/AppContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -12,13 +11,14 @@ const supabase = createClient(
 );
 
 const AgenteIA: React.FC = () => {
-  const { user } = useAppContext(); // Usa o contexto para acessar dados do usuário
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   // Novo estado para controlar se o iframe do Typebot já carregou
   const [iframeLoaded, setIframeLoaded] = useState(false);
   
-  // Estado local para dados atuais do usuário (sincronizado com o contexto)
+  // Estado local para dados atuais do usuário que armazena os dados atuais do usuário
   const [currentUserData, setCurrentUserData] = useState<{
     name: string | null;
     email: string | null;
@@ -33,20 +33,6 @@ const AgenteIA: React.FC = () => {
     isAdmin: false
   });
 
-  // Efeito para sincronizar com dados do contexto quando mudarem
-  useEffect(() => {
-    if (user) {
-      setCurrentUserData({
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        profileImage: user.profileImage,
-        isAdmin: user.isAdmin || false
-      });
-      setUserEmail(user.email);
-    }
-  }, [user]);
-
   useEffect(() => {
     const getSessionAndUserData = async () => {
       try {
@@ -55,16 +41,25 @@ const AgenteIA: React.FC = () => {
         if (session?.user?.email && session?.user?.id) {
           setUserEmail(session.user.email);
           
-          // Se não temos dados do usuário no contexto, busca no banco
-          if (!user || !user.name) {
-            const { data, error: userError } = await supabase
+          // Busca os dados do usuário na tabela poupeja_users igual ao ProfilePage
+          const { data, error: userError } = await supabase
+            .from('poupeja_users')
+            .select('name, phone, profile_image, is_admin')
+            .eq('id', session.user.id) // Usa 'id' igual ao ProfilePage
+            .single();
+          
+          if (userError) {
+            console.error('Erro ao buscar dados do usuário:', userError);
+            // Fallback: tenta buscar por user_id se 'id' não funcionar
+            const { data: fallbackData, error: fallbackError } = await supabase
               .from('poupeja_users')
               .select('name, phone, profile_image, is_admin')
               .eq('user_id', session.user.id)
               .single();
               
-            if (userError) {
-              console.error('Erro ao buscar o nome do usuário:', userError);
+            if (fallbackError) {
+              console.error('Erro no fallback:', fallbackError);
+              setUserName('Usuário');
               setCurrentUserData({
                 name: null,
                 email: session.user.email,
@@ -73,14 +68,28 @@ const AgenteIA: React.FC = () => {
                 isAdmin: false
               });
             } else {
+              const displayName = fallbackData?.name || 'Usuário';
+              setUserName(displayName);
+              setIsAdmin(fallbackData?.is_admin || false);
               setCurrentUserData({
-                name: data?.name || null,
+                name: fallbackData?.name || null,
                 email: session.user.email,
-                phone: data?.phone || null,
-                profileImage: data?.profile_image || null,
-                isAdmin: data?.is_admin || false
+                phone: fallbackData?.phone || null,
+                profileImage: fallbackData?.profile_image || null,
+                isAdmin: fallbackData?.is_admin || false
               });
             }
+          } else {
+            const displayName = data?.name || 'Usuário';
+            setUserName(displayName);
+            setIsAdmin(data?.is_admin || false);
+            setCurrentUserData({
+              name: data?.name || null,
+              email: session.user.email,
+              phone: data?.phone || null,
+              profileImage: data?.profile_image || null,
+              isAdmin: data?.is_admin || false
+            });
           }
         } else if (sessionError) {
           console.error('Erro ao obter a sessão:', sessionError);
@@ -92,13 +101,8 @@ const AgenteIA: React.FC = () => {
       }
     };
 
-    // Se não temos dados do usuário no contexto, busca no banco
-    if (!user) {
-      getSessionAndUserData();
-    } else {
-      setIsLoading(false);
-    }
-  }, [user]);
+    getSessionAndUserData();
+  }, []);
 
   // UseEffect para resetar o estado de carregamento do iframe se o email mudar
   useEffect(() => {
@@ -107,11 +111,24 @@ const AgenteIA: React.FC = () => {
     }
   }, [userEmail]);
 
+  // Função para atualizar dados do usuário após salvamento do perfil (para integração futura)
+  const updateCurrentUserData = (newData: { name?: string; email?: string; phone?: string; profileImage?: string }) => {
+    setCurrentUserData(prev => ({
+      ...prev,
+      ...newData
+    }));
+    
+    // Também atualiza o userName para reflexo imediato na interface
+    if (newData.name !== undefined) {
+      setUserName(newData.name || 'Usuário');
+    }
+  };
+
   // Função para determinar o nome de exibição
   const getDisplayName = () => {
-    // Para administradores, mantém o comportamento atual (mostra nome ou email)
-    if (currentUserData.isAdmin) {
-      return currentUserData.name || currentUserData.email || 'Administrador';
+    // Para administradores, mantém o comportamento atual (pode mostrar email)
+    if (isAdmin) {
+      return userName || userEmail || 'Administrador';
     }
     
     // Para usuários normais, prioriza o nome sobre o email
@@ -119,7 +136,7 @@ const AgenteIA: React.FC = () => {
       return currentUserData.name;
     }
     
-    // Se não tem nome cadastrado ou o nome é igual ao email, usa "Usuário"
+    // Se não tem nome cadastrado, usa "Usuário" em vez do email
     return 'Usuário';
   };
 
