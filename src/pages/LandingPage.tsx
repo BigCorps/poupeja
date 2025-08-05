@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { useBranding } from '@/contexts/BrandingContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useLocation } from 'react-router-dom'; // Importa o hook useLocation
 
 // Declaração global para o objeto Typebot, para que o TypeScript o reconheça
 declare global {
@@ -22,6 +23,10 @@ const LandingPage = () => {
   const { isLoading: brandingLoading, lastUpdated } = useBranding();
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);
   const [forcedTheme, setForcedTheme] = useState<string | null>(null);
+  const location = useLocation(); // Obtém o objeto de localização atual
+
+  // Estado para controlar se o script do Typebot deve ser montado
+  const [shouldMountTypebotScript, setShouldMountTypebotScript] = useState(false);
 
   // Aplicar tema antes mesmo do primeiro render
   useEffect(() => {
@@ -70,10 +75,28 @@ const LandingPage = () => {
         }
       }
     };
-  }, [lastUpdated, forcedTheme]); // Adicionado forcedTheme às dependências para garantir que o cleanup funcione corretamente
+  }, [lastUpdated, forcedTheme]);
 
-  // --- NOVO useEffect para o Typebot Bubble ---
+  // --- useEffect para controlar a montagem/desmontagem do script do Typebot ---
   useEffect(() => {
+    // Apenas monta o script se a rota atual for a da landing page ('/')
+    if (location.pathname === '/') {
+      setShouldMountTypebotScript(true);
+    } else {
+      setShouldMountTypebotScript(false);
+      // Garante que qualquer bubble existente seja removido ao navegar para fora da landing
+      const typebotBubble = document.querySelector('.typebot-bubble');
+      if (typebotBubble) {
+        typebotBubble.remove();
+      }
+    }
+  }, [location.pathname]); // Este efeito roda sempre que a rota muda
+
+  // --- useEffect para carregar e inicializar o Typebot Bubble ---
+  // Este efeito só será executado se shouldMountTypebotScript for verdadeiro
+  useEffect(() => {
+    if (!shouldMountTypebotScript) return; // Não faz nada se o script não deve ser montado
+
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/@typebot.io/js@0/dist/web.js';
     script.type = 'module';
@@ -84,7 +107,7 @@ const LandingPage = () => {
         window.Typebot.initBubble({
           typebot: "vixus-ia", // ID do seu Typebot
           previewMessage: {
-            message: "Tire suas dúvidas comigo",
+            message: "Tire suas dúvidas comigo!",
             autoShowDelay: 5000,
           },
           theme: {
@@ -100,6 +123,8 @@ const LandingPage = () => {
 
     document.body.appendChild(script);
 
+    // Função de limpeza: remove o script e o bubble do Typebot quando o componente é desmontado
+    // ou quando shouldMountTypebotScript se torna falso
     return () => {
       document.body.removeChild(script);
       const typebotBubble = document.querySelector('.typebot-bubble');
@@ -107,7 +132,7 @@ const LandingPage = () => {
         typebotBubble.remove();
       }
     };
-  }, []); // Este useEffect roda apenas uma vez na montagem do componente
+  }, [shouldMountTypebotScript]); // Este efeito roda apenas quando shouldMountTypebotScript muda
 
   // Mostrar um loading mínimo enquanto carrega o tema para evitar flash
   if (!isThemeLoaded || brandingLoading) {
