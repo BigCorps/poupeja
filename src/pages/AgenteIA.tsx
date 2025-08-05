@@ -66,7 +66,7 @@ const AgenteIA: React.FC = () => {
 
   // Calcula a altura mínima do iframe dinamicamente
   // Ajustado para mobile para considerar a barra de navegação inferior
-  const iframeMinHeight = isMobile ? 'calc(100vh - 200px)' : 'calc(100vh - 100px)'; 
+  const iframeMinHeight = isMobile ? 'calc(100vh - 180px)' : 'calc(100vh - 100px)'; 
 
   return (
     <MainLayout>
