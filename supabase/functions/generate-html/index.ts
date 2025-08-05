@@ -114,7 +114,7 @@ serve(async (req) => {
     console.log('[GENERATE-HTML] Config processado:', config)
 
     // Aplicar correção UTF-8
-    const companyName = fixUTF8(config.company_name || 'Poupei Já')
+    const companyName = fixUTF8(config.company_name || 'App Vixus')
     const companyDescription = fixUTF8(config.company_description || 'Seu assistente financeiro pessoal')
     const companyLogo = config.logo_url || '/placeholder.svg'
 
