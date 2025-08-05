@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Shield, Clock, Cash, Award } from 'lucide-react';
+import { Shield, Clock, Coins, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 
@@ -9,7 +9,7 @@ const LandingBenefits = () => {
   
   const benefits = [
     {
-      icon: Cash,
+      icon: Coins,
       title: "Pagamentos em Lote",
       description: "Faça pagamentos usando a API dos principais Bancos como Itaú e Inter."
     },
