@@ -35,7 +35,7 @@ const ContactConfigManager: React.FC = () => {
         setFormData({
           contactPhone: contactSettings.contact_phone?.value || '',
           supportEmail: contactSettings.support_email?.value || '',
-          whatsappMessage: contactSettings.whatsapp_message?.value || 'Olá! Preciso de ajuda com o PoupeJá.',
+          whatsappMessage: contactSettings.whatsapp_message?.value || 'Olá! Preciso de ajuda com o App Vixus.',
         });
       }
     } catch (err) {
