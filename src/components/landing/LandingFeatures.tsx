@@ -23,8 +23,8 @@ const LandingFeatures = () => {
     },
     {
       icon: Calendar,
-      title: "Agendamento",
-      description: "Programe pagamentos recorrentes e nunca esqueça uma conta"
+      title: "Pagamentos",
+      description: "Faça pagamentos recorrentes em lote com apenas 1 clique e nunca esqueça uma conta"
     },
     {
       icon: PieChart,
@@ -33,8 +33,8 @@ const LandingFeatures = () => {
     },
     {
       icon: TrendingUp,
-      title: "Dashboard Inteligente",
-      description: "Visão geral completa da sua situação financeira"
+      title: "DRE e Fluxo de Caixa",
+      description: "Visão geral completa da sua situação do seu fluxo de caixa"
     }
   ];
 
