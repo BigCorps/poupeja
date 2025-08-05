@@ -79,21 +79,35 @@ const LandingPage = () => {
 
   // --- NOVO useEffect para controlar a montagem/desmontagem do script do Typebot com base na rota ---
   useEffect(() => {
+    // Função de limpeza agressiva para o Typebot
+    const cleanupTypebot = () => {
+      // Tenta fechar o bubble do Typebot usando a API, se disponível
+      if (window.Typebot && typeof window.Typebot.close === 'function') {
+        window.Typebot.close();
+      }
+      // Remove qualquer elemento com as classes comuns do Typebot
+      const typebotElements = document.querySelectorAll('.typebot-bubble, .typebot-container, #typebot-chat-button');
+      typebotElements.forEach(el => el.remove());
+
+      // Remove o script do Typebot se ele foi anexado ao body
+      const existingScript = document.querySelector('script[src="https://cdn.jsdelivr.net/npm/@typebot.io/js@0/dist/web.js"]');
+      if (existingScript && existingScript.parentNode) {
+        existingScript.parentNode.removeChild(existingScript);
+      }
+    };
+
     // Define se o script deve ser montado APENAS se a rota for a página inicial ('/')
     if (location.pathname === '/') {
       setShouldMountTypebotScript(true);
     } else {
       setShouldMountTypebotScript(false);
-      // Tenta fechar o bubble do Typebot imediatamente ao sair da rota '/'
-      if (window.Typebot && typeof window.Typebot.close === 'function') {
-        window.Typebot.close();
-      } else {
-        // Fallback: remove manualmente o elemento do bubble se Typebot.close() não funcionar
-        const typebotBubble = document.querySelector('.typebot-bubble');
-        if (typebotBubble) {
-          typebotBubble.remove();
-        }
-      }
+      // Tenta limpar imediatamente ao sair da rota '/'
+      cleanupTypebot();
+
+      // Adiciona um pequeno atraso para tentar limpar novamente, caso o bubble apareça depois de um micro-render
+      const timeoutId = setTimeout(cleanupTypebot, 500); // Tenta novamente após 500ms
+
+      return () => clearTimeout(timeoutId); // Limpa o timeout se o componente for desmontado antes
     }
   }, [location.pathname]); // Este efeito roda sempre que a rota muda
 
@@ -102,13 +116,9 @@ const LandingPage = () => {
   useEffect(() => {
     if (!shouldMountTypebotScript) {
       // Se o script não deve ser montado, garante que ele não esteja ativo
+      // A limpeza já é feita no useEffect anterior, mas é um bom fallback
       if (window.Typebot && typeof window.Typebot.close === 'function') {
         window.Typebot.close();
-      } else {
-        const typebotBubble = document.querySelector('.typebot-bubble');
-        if (typebotBubble) {
-          typebotBubble.remove();
-        }
       }
       return; // Não faz nada se o script não deve ser montado
     }
@@ -142,15 +152,9 @@ const LandingPage = () => {
     // Função de limpeza: remove o script e garante que o Typebot bubble seja fechado/removido
     // quando o componente é desmontado ou shouldMountTypebotScript se torna falso
     return () => {
-      document.body.removeChild(script);
-      if (window.Typebot && typeof window.Typebot.close === 'function') {
-        window.Typebot.close();
-      } else {
-        const typebotBubble = document.querySelector('.typebot-bubble');
-        if (typebotBubble) {
-          typebotBubble.remove();
-        }
-      }
+      // A limpeza principal já é feita no useEffect de controle de rota
+      // Mas esta é uma camada extra de segurança
+      cleanupTypebot(); // Chama a função de limpeza agressiva
     };
   }, [shouldMountTypebotScript]); // Este efeito roda apenas quando shouldMountTypebotScript muda
 
