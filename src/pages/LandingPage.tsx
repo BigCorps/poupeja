@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import LandingHero from '@/components/landing/LandingHero';
 import LandingFeatures from '@/components/landing/LandingFeatures';
@@ -10,6 +9,13 @@ import { motion } from 'framer-motion';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { useBranding } from '@/contexts/BrandingContext';
 import { supabase } from '@/integrations/supabase/client';
+
+// Declaração global para o objeto Typebot, para que o TypeScript o reconheça
+declare global {
+  interface Window {
+    Typebot: any;
+  }
+}
 
 const LandingPage = () => {
   const { companyName } = useBrandingConfig();
@@ -64,7 +70,44 @@ const LandingPage = () => {
         }
       }
     };
-  }, [lastUpdated]); // Reagir a mudanças no branding
+  }, [lastUpdated, forcedTheme]); // Adicionado forcedTheme às dependências para garantir que o cleanup funcione corretamente
+
+  // --- NOVO useEffect para o Typebot Bubble ---
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@typebot.io/js@0/dist/web.js';
+    script.type = 'module';
+    script.async = true;
+
+    script.onload = () => {
+      if (window.Typebot) {
+        window.Typebot.initBubble({
+          typebot: "bot-app", // ID do seu Typebot
+          previewMessage: {
+            message: "Tire suas dúvidas aqui!",
+            autoShowDelay: 5000,
+          },
+          theme: {
+            button: {
+              backgroundColor: "#FFFFFF",
+              customIconSrc: "https://s3.typebot.io/public/workspaces/cmd0ug4ib0000l1049mwbs6ls/typebots/xc4stqlbl62vp5znxjscr5fx/guestAvatar?v=1753710561172",
+            },
+          },
+          keepUrlQueryParams: true
+        });
+      }
+    };
+
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+      const typebotBubble = document.querySelector('.typebot-bubble');
+      if (typebotBubble) {
+        typebotBubble.remove();
+      }
+    };
+  }, []); // Este useEffect roda apenas uma vez na montagem do componente
 
   // Mostrar um loading mínimo enquanto carrega o tema para evitar flash
   if (!isThemeLoaded || brandingLoading) {
