@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import MainLayout from '@/components/layout/MainLayout';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 
 // Inicializa o cliente Supabase fora do componente para evitar recriação
@@ -12,26 +11,9 @@ const supabase = createClient(
 
 const AgenteIA: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   // Novo estado para controlar se o iframe do Typebot já carregou
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  
-  // Estado local para dados atuais do usuário que armazena os dados atuais do usuário
-  const [currentUserData, setCurrentUserData] = useState<{
-    name: string | null;
-    email: string | null;
-    phone: string | null;
-    profileImage: string | null;
-    isAdmin?: boolean;
-  }>({
-    name: null,
-    email: null,
-    phone: null,
-    profileImage: null,
-    isAdmin: false
-  });
 
   useEffect(() => {
     const getSessionAndUserData = async () => {
@@ -147,11 +129,7 @@ const AgenteIA: React.FC = () => {
     <MainLayout>
       <div className="flex flex-col h-full p-2 lg:p-4">
         <div className="text-center mb-4 text-2xl font-bold">
-          {isLoading ? (
-            <Skeleton className="h-8 w-48 mx-auto" />
-          ) : (
-            `Olá, ${getDisplayName()}!`
-          )}
+          Aguarde enquanto o Agente IA carrega suas informações...
         </div>
         
         <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl">
