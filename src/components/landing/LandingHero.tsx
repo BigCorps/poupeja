@@ -29,7 +29,7 @@ const LandingHero = () => {
           </h1>
           
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            A ferramenta completa para controlar suas finanças, definir metas e 
+            A ferramenta completa para controlar as finanças empresariais, pessoais, definir metas e 
             alcançar a liberdade financeira que você sempre sonhou.
           </p>
           
