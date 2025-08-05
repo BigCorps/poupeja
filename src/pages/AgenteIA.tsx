@@ -27,10 +27,7 @@ const AgenteIA: React.FC = () => {
     isAdmin: false
   });
   const [isLoading, setIsLoading] = useState(true);
-  // Estados para controlar o lazy load do iframe
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [showChat, setShowChat] = useState(false);
-  const [iframePreloaded, setIframePreloaded] = useState(false);
 
   useEffect(() => {
     const getSessionAndUserData = async () => {
@@ -103,24 +100,17 @@ const AgenteIA: React.FC = () => {
     getSessionAndUserData();
   }, []);
 
-  // UseEffect para resetar o estado de carregamento do iframe se o email mudar
+  // UseEffect para carregar o iframe assim que os dados estiverem prontos
   useEffect(() => {
-    if (userEmail) {
-      setIframeLoaded(false);
-      setShowChat(false);
-      // Pré-carrega o iframe assim que o userEmail estiver disponível
+    if (userEmail && !isLoading) {
+      // Pequeno delay para garantir que a UI está estável
       const timer = setTimeout(() => {
-        setIframePreloaded(true);
-      }, 500); // Delay de 500ms para garantir que os dados do usuário foram carregados
+        setIframeLoaded(false); // Reset para mostrar loading se necessário
+      }, 100);
       
       return () => clearTimeout(timer);
     }
-  }, [userEmail]);
-
-  // Função para mostrar o chat
-  const handleShowChat = () => {
-    setShowChat(true);
-  };
+  }, [userEmail, isLoading]);
 
   // Função para atualizar dados do usuário após salvamento do perfil (para integração futura)
   const updateCurrentUserData = (newData: { name?: string; email?: string; phone?: string; profileImage?: string }) => {
