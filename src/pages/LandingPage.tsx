@@ -84,13 +84,13 @@ const LandingPage = () => {
         window.Typebot.initBubble({
           typebot: "bot-app", // ID do seu Typebot
           previewMessage: {
-            message: "Tire suas dúvidas aqui!",
+            message: "Tire suas dúvidas comigo",
             autoShowDelay: 5000,
           },
           theme: {
             button: {
-              backgroundColor: "#FFFFFF",
-              customIconSrc: "https://s3.typebot.io/public/workspaces/cmd0ug4ib0000l1049mwbs6ls/typebots/xc4stqlbl62vp5znxjscr5fx/guestAvatar?v=1753710561172",
+              backgroundColor: "#A7CF17",
+              customIconSrc: "https://s3.typebot.io/public/workspaces/cmd0ug4ib0000l1049mwbs6ls/typebots/z3p568fijv5oygp8xkzf931d/hostAvatar?v=1754418298531",
             },
           },
           keepUrlQueryParams: true
