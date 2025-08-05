@@ -284,7 +284,7 @@ const BrandingConfigManager: React.FC = () => {
               id="companyName"
               value={formData.companyName}
               onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-              placeholder="PoupeJá"
+              placeholder="APP VIXUS"
               disabled={isUpdating}
             />
           </div>
