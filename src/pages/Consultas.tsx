@@ -58,7 +58,7 @@ const Consultas: React.FC = () => {
     <MainLayout>
       <div className="flex flex-col h-full p-2 lg:p-4 pb-6">
         <div className="text-center mb-4 text-xl font-medium">
-          Relatórios de consultas ao CPF e CNPJ em segundos.
+          Diversas consultas Grátis ou Premium para facilitar sua gestão.
         </div>
         
         <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl mb-6">
