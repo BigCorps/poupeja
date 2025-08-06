@@ -7,7 +7,7 @@ const PagamentosEmLote: React.FC = () => {
     <MainLayout>
       <div className="flex flex-col h-full p-2 lg:p-4 pb-6">
         <div className="text-center mb-4 text-xl font-medium">
-          Pagamentos em Lote: Em Breve!
+          Pagamentos em Lote
         </div>
         
         <Card className="flex-1 overflow-hidden border border-[#A7CF17] rounded-xl mb-6">
