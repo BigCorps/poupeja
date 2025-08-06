@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot, ScanLine, CreditCard } from 'lucide-react'; // Added ScanLine and CreditCard
+import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot, ScanLine, CreditCard, Layers } from 'lucide-react'; // Added Layers for Pagamentos em Lote
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,9 +59,9 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       color: 'text-green-800 dark:text-green-200',
       bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
     },
-    // NOVO: Cobrança
+    // Cobrança
     {
-      icon: ScanLine, // Ícone para Cobrança
+      icon: ScanLine,
       label: 'Cobranças',
       action: () => {
         navigate('/cobranca');
@@ -70,12 +70,23 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       color: 'text-green-800 dark:text-green-200',
       bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
     },
-    // NOVO: Pagamentos
+    // Pagamentos
     {
-      icon: CreditCard, // Ícone para Pagamentos
+      icon: CreditCard,
       label: 'Pagamentos',
       action: () => {
         navigate('/pagamentos');
+        setIsQuickActionsOpen(false);
+      },
+      color: 'text-green-800 dark:text-green-200',
+      bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+    },
+    // NOVO: Pagamentos em Lote
+    {
+      icon: Layers, // Ícone para Pagamentos em Lote
+      label: 'Pagamentos em Lote',
+      action: () => {
+        navigate('/pagamentos-em-lote');
         setIsQuickActionsOpen(false);
       },
       color: 'text-green-800 dark:text-green-200',
@@ -85,10 +96,9 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Wallet,
       label: 'API Bancos',
       action: () => {
-        navigate('/connected-banks'); // Adicionado o href para a nova página
+        navigate('/connected-banks');
         setIsQuickActionsOpen(false);
       },
-      // Estilos atualizados
       color: 'text-green-800 dark:text-green-200',
       bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
     }
@@ -151,12 +161,12 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       label: '',
       href: '#'
     },
-    { // 👈 "Saldo" no lugar de "Planos"
+    { // "Saldo"
       icon: Wallet,
       label: 'Saldo',
       href: '/saldo'
     },
-    { // 👈 "Agente IA" no lugar de "Configurações"
+    { // "Agente IA"
       icon: Bot,
       label: 'Agente IA',
       href: '/agente-ia'
