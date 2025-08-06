@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import LandingHero from '@/components/landing/LandingHero';
 import LandingFeatures from '@/components/landing/LandingFeatures';
 import LandingPricing from '@/components/landing/LandingPricing';
@@ -9,12 +9,16 @@ import { motion } from 'framer-motion';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { useBranding } from '@/contexts/BrandingContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useLocation } from 'react-router-dom'; // Importa o hook useLocation
+
+import { Bubble } from '@typebot.io/react'; // Importa o componente Bubble do pacote Typebot React
 
 const LandingPage = () => {
   const { companyName } = useBrandingConfig();
   const { isLoading: brandingLoading, lastUpdated } = useBranding();
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);
   const [forcedTheme, setForcedTheme] = useState<string | null>(null);
+  const location = useLocation(); // Obtém o objeto de localização atual
 
   // Aplicar tema antes mesmo do primeiro render
   useEffect(() => {
@@ -98,9 +102,28 @@ const LandingPage = () => {
           <p className="max-w-6xl mx-auto">&copy; 2025 {companyName} - Transforme sua vida financeira</p>
         </div>
       </footer>
+
+      {/* Renderiza o Typebot Bubble APENAS se a rota for a página inicial ('/') */}
+      {location.pathname === '/' && (
+        <Bubble
+          typebot="vixus-ia" // ID do seu Typebot
+          previewMessage={{
+            message: "Tire suas dúvidas comigo!",
+            autoShowDelay: 5000,
+          }}
+          theme={{
+            button: {
+              backgroundColor: "#A7CF17", // Cor do botão
+              customIconSrc: "https://s3.typebot.io/public/workspaces/cmd0ug4ib0000l1049mwbs6ls/typebots/z3p568fijv5oygp8xkzf931d/hostAvatar?v=1754418298531", // Ícone personalizado
+            },
+          }}
+          apiHost="https://typebot.io" // Adicione esta linha se o seu Typebot estiver hospedado em typebot.io
+          // Se precisar de parâmetros de URL, pode passá-los aqui. Ex:
+          // defaultVariables={{ email: 'user@example.com' }}
+        />
+      )}
     </div>
   );
 };
 
 export default LandingPage;
-
