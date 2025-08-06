@@ -34,10 +34,17 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
-import AgenteIA from './pages/AgenteIA';
 // Importação da nova página para a API de Bancos
 import ConnectedBanksPage from "./pages/ConnectedBanksPage";
 import "./App.css";
+
+import React, { Suspense, lazy } from 'react'; // ✅ Importe lazy e Suspense
+
+// ✅ Define os componentes para carregamento preguiçoso (lazy loading)
+const LazyAgenteIA = lazy(() => import('./pages/AgenteIA'));
+const LazyCobranca = lazy(() => import('./pages/Cobranca')); // ✅ NOVO: Lazy loading para Cobranca
+const LazyPagamentos = lazy(() => import('./pages/Pagamentos')); // ✅ NOVO: Lazy loading para Pagamentos
+
 
 const queryClient = new QueryClient();
 
@@ -71,8 +78,31 @@ function App() {
                           <Route path="/schedule" element={<SchedulePage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/categories" element={<CategoriesPage />} />
-                          <Route path="/agente-ia" element={<AgenteIA />} />
-                          {/* Nova rota para a página da API de Bancos */}
+                          
+                          {/* ✅ Rotas para as novas seções com Lazy Loading */}
+                          <Route path="/cobranca" 
+                            element={
+                              <Suspense fallback={<div>Carregando Cobrança...</div>}>
+                                <LazyCobranca />
+                              </Suspense>
+                            } 
+                          />
+                          <Route path="/pagamentos" 
+                            element={
+                              <Suspense fallback={<div>Carregando Pagamentos...</div>}>
+                                <LazyPagamentos />
+                              </Suspense>
+                            } 
+                          />
+
+                          {/* ✅ Rota para Agente IA agora com Lazy Loading */}
+                          <Route path="/agente-ia" 
+                            element={
+                              <Suspense fallback={<div>Carregando Agente IA...</div>}>
+                                <LazyAgenteIA />
+                              </Suspense>
+                            } 
+                          />
                           <Route path="/connected-banks" element={<ConnectedBanksPage />} />
                           <Route path="/plans" element={<PlansPage />} />
                           <Route path="/checkout/:planType" element={<CheckoutPage />} />
