@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard, Layers } from 'lucide-react'; // Added Layers for Pagamentos em Lote
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -141,17 +141,23 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: t('nav.reports'),
       href: '/reports'
     },
-    // ✅ NOVO: Cobranças (com 's')
+    // Cobranças
     {
       icon: ScanLine,
       label: 'Cobranças',
       href: '/cobranca'
     },
-    // ✅ NOVO: Pagamentos
+    // Pagamentos
     {
       icon: CreditCard,
       label: 'Pagamentos',
       href: '/pagamentos'
+    },
+    // ✅ NOVO: Pagamentos em Lote - Posicionado entre Pagamentos e Agente IA
+    {
+      icon: Layers, // Ícone para Pagamentos em Lote (exemplo)
+      label: 'Pagamentos em Lote',
+      href: '/pagamentos-em-lote'
     },
     {
       icon: Bot,
@@ -184,11 +190,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: t('nav.plans'),
       href: '/plans'
     },
-    // ✅ REMOVIDO: Cobrança e Pagamentos foram movidos para o menu principal
     {
       icon: Wallet,
-      label: 'API Bancos', // Alterado de "Bancos Conectados" para "API Bancos"
-      href: '/connected-banks' // Adicionado o href para a nova página
+      label: 'API Bancos',
+      href: '/connected-banks'
     },
     {
       icon: Settings,
