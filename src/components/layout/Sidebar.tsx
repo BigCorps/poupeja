@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard } from 'lucide-react'; // Added ScanLine and CreditCard
+import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard } from 'lucide-react';
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -141,6 +141,18 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: t('nav.reports'),
       href: '/reports'
     },
+    // ✅ NOVO: Cobranças (com 's')
+    {
+      icon: ScanLine,
+      label: 'Cobranças',
+      href: '/cobranca'
+    },
+    // ✅ NOVO: Pagamentos
+    {
+      icon: CreditCard,
+      label: 'Pagamentos',
+      href: '/pagamentos'
+    },
     {
       icon: Bot,
       label: 'Agente IA',
@@ -172,18 +184,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: t('nav.plans'),
       href: '/plans'
     },
-    // NOVO: Cobrança
-    {
-      icon: ScanLine, // Ícone para Cobrança
-      label: 'Cobrança',
-      href: '/cobranca'
-    },
-    // NOVO: Pagamentos
-    {
-      icon: CreditCard, // Ícone para Pagamentos
-      label: 'Pagamentos',
-      href: '/pagamentos'
-    },
+    // ✅ REMOVIDO: Cobrança e Pagamentos foram movidos para o menu principal
     {
       icon: Wallet,
       label: 'API Bancos', // Alterado de "Bancos Conectados" para "API Bancos"
