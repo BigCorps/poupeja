@@ -2,6 +2,7 @@ import React from 'react';
 import Sidebar from './Sidebar';
 import MobileNavBar from './MobileNavBar';
 import MobileHeader from './MobileHeader';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 import { useAppContext } from '@/contexts/AppContext';
