@@ -62,7 +62,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     // NOVO: Cobrança
     {
       icon: ScanLine, // Ícone para Cobrança
-      label: 'Cobrança',
+      label: 'Cobranças',
       action: () => {
         navigate('/cobranca');
         setIsQuickActionsOpen(false);
