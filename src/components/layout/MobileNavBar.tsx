@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot } from 'lucide-react';
+import { LayoutDashboard, Receipt, Settings, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot, ScanLine, CreditCard } from 'lucide-react'; // Added ScanLine and CreditCard
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -56,6 +56,28 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
         setIsQuickActionsOpen(false);
       },
       // Estilos atualizados
+      color: 'text-green-800 dark:text-green-200',
+      bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+    },
+    // NOVO: Cobrança
+    {
+      icon: ScanLine, // Ícone para Cobrança
+      label: 'Cobrança',
+      action: () => {
+        navigate('/cobranca');
+        setIsQuickActionsOpen(false);
+      },
+      color: 'text-green-800 dark:text-green-200',
+      bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+    },
+    // NOVO: Pagamentos
+    {
+      icon: CreditCard, // Ícone para Pagamentos
+      label: 'Pagamentos',
+      action: () => {
+        navigate('/pagamentos');
+        setIsQuickActionsOpen(false);
+      },
       color: 'text-green-800 dark:text-green-200',
       bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
     },
@@ -240,4 +262,3 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
 };
 
 export default MobileNavBar;
-
