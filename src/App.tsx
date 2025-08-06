@@ -36,6 +36,10 @@ import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
 // Importação da nova página para a API de Bancos
 import ConnectedBanksPage from "./pages/ConnectedBanksPage";
+// ✅ NOVO: Importação das páginas de Termos e Privacidade
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+
 import "./App.css";
 
 import React, { Suspense, lazy } from 'react'; // ✅ Importe lazy e Suspense
@@ -44,7 +48,7 @@ import React, { Suspense, lazy } from 'react'; // ✅ Importe lazy e Suspense
 const LazyAgenteIA = lazy(() => import('./pages/AgenteIA'));
 const LazyCobranca = lazy(() => import('./pages/Cobranca'));
 const LazyPagamentos = lazy(() => import('./pages/Pagamentos'));
-const LazyConsultas = lazy(() => import('./pages/Consultas')); // ✅ NOVO: Lazy loading para Consultas
+const LazyConsultas = lazy(() => import('./pages/Consultas')); // ✅ Lazy loading para Consultas
 
 // Importação direta do componente PagamentosEmLote (NÃO terá lazy loading)
 import PagamentosEmLote from './pages/PagamentosEmLote';
@@ -99,7 +103,7 @@ function App() {
                           />
                           <Route path="/pagamentos-em-lote" element={<PagamentosEmLote />} />
                           
-                          {/* ✅ NOVO: Rota para Consultas COM Lazy Loading */}
+                          {/* Rota para Consultas COM Lazy Loading */}
                           <Route path="/consultas" 
                             element={
                               <Suspense fallback={<div>Carregando Consultas...</div>}>
@@ -131,6 +135,11 @@ function App() {
                               </AdminRoute>
                             }
                           />
+
+                          {/* ✅ NOVO: Rotas para Termos e Privacidade */}
+                          <Route path="/terms" element={<Terms />} />
+                          <Route path="/privacy" element={<Privacy />} />
+
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </BrowserRouter>
