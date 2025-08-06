@@ -108,7 +108,7 @@ const LandingPage = () => {
         <Bubble
           typebot="vixus-ia" // ID do seu Typebot
           previewMessage={{
-            message: "Tire suas dúvidas comigo!☺️",
+            message: "Tire suas dúvidas comigo! ☺️",
             autoShowDelay: 5000,
           }}
           theme={{
