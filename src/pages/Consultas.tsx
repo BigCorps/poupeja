@@ -65,7 +65,7 @@ const Consultas: React.FC = () => {
           <CardContent className="h-full w-full p-0">
             {(isLoading || !userEmail || !iframeLoaded) ? (
               <div className="flex items-center justify-center h-full p-4">
-                <p>Carregando assistente...</p>
+                <p>Carregando consultas...</p>
               </div>
             ) : null}
             
