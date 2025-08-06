@@ -114,7 +114,7 @@ const LandingPage = () => {
           theme={{
             button: {
               backgroundColor: "#A7CF17", // Cor do botão
-              customIconSrc: "https://s3.typebot.io/public/workspaces/cmd0ug4ib0000l1049mwbs6ls/typebots/z3p568fijv5oygp8xkzf931d/hostAvatar?v=1754418298531", // Ícone personalizado
+              customIconSrc: "https://s3.typebot.io/public/workspaces/cmd0ug4ib0000l1049mwbs6ls/typebots/luwixowumtr0l07rhs07bpen/hostAvatar?v=1754491478372", // Ícone personalizado
             },
           }}
           apiHost="https://typebot.io" // Adicione esta linha se o seu Typebot estiver hospedado em typebot.io
