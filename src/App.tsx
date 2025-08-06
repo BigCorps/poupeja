@@ -5,8 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
-import { SubscriptionProvider } from "@/contexts/SubscriptionProvider";
-import { BrandingProvider } from "@/contexts/BrandingProvider";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
 import { AppProvider } from "@/contexts/AppContext";
 import { SaldoProvider } from "@/contexts/SaldoContext"; // Importação do SaldoProvider
 import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
@@ -34,19 +34,17 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
+// Importação da nova página para a API de Bancos
 import ConnectedBanksPage from "./pages/ConnectedBanksPage";
 import "./App.css";
 
-import React, { Suspense, lazy } from 'react'; // Importe lazy e Suspense
+import React, { Suspense, lazy } from 'react'; // ✅ Importe lazy e Suspense
 
-// Define os componentes com iframe (AgenteIA, Cobranca, Pagamentos) para carregamento preguiçoso (lazy loading)
+// ✅ Define os componentes para carregamento preguiçoso (lazy loading)
 const LazyAgenteIA = lazy(() => import('./pages/AgenteIA'));
-const LazyCobranca = lazy(() => import('./pages/Cobranca'));
-const LazyPagamentos = lazy(() => import('./pages/Pagamentos'));
-
-// Importação direta do componente PagamentosEmLote (NÃO terá lazy loading)
+const LazyCobranca = lazy(() => import('./pages/Cobranca')); // ✅ NOVO: Lazy loading para Cobranca
+const LazyPagamentos = lazy(() => import('./pages/Pagamentos')); // ✅ NOVO: Lazy loading para Pagamentos
 import PagamentosEmLote from './pages/PagamentosEmLote';
-
 
 const queryClient = new QueryClient();
 
@@ -81,7 +79,7 @@ function App() {
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/categories" element={<CategoriesPage />} />
                           
-                          {/* Rotas para as seções COM Lazy Loading (com iframe do Typebot) */}
+                          {/* ✅ Rotas para as novas seções com Lazy Loading */}
                           <Route path="/cobranca" 
                             element={
                               <Suspense fallback={<div>Carregando Cobrança...</div>}>
@@ -96,6 +94,8 @@ function App() {
                               </Suspense>
                             } 
                           />
+
+                          {/* ✅ Rota para Agente IA agora com Lazy Loading */}
                           <Route path="/agente-ia" 
                             element={
                               <Suspense fallback={<div>Carregando Agente IA...</div>}>
@@ -103,10 +103,7 @@ function App() {
                               </Suspense>
                             } 
                           />
-
-                          {/* Rota para Pagamentos em Lote SEM Lazy Loading (importação direta) */}
                           <Route path="/pagamentos-em-lote" element={<PagamentosEmLote />} />
-
                           <Route path="/connected-banks" element={<ConnectedBanksPage />} />
                           <Route path="/plans" element={<PlansPage />} />
                           <Route path="/checkout/:planType" element={<CheckoutPage />} />
