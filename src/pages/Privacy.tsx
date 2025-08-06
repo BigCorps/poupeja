@@ -1,12 +1,12 @@
 import React from 'react';
-import MainLayout from '@/components/layout/MainLayout';
+import AuthLayout from '@/components/layout/AuthLayout'; // ✅ Usando o novo layout
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const Privacy: React.FC = () => {
   return (
-    <MainLayout>
-      <div className="container mx-auto py-6 md:py-12">
+    <AuthLayout>
+      <div className="container mx-auto py-6 md:py-12 w-full max-w-4xl">
         <h1 className="text-3xl font-bold mb-6 text-center">Aviso de Privacidade</h1>
         <Card>
           <CardContent className="p-6 md:p-8">
@@ -93,7 +93,7 @@ const Privacy: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    </MainLayout>
+    </AuthLayout>
   );
 };
 
