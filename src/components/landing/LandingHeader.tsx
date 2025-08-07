@@ -76,7 +76,7 @@ const LandingHeader = () => {
             className="inline-flex sm:hidden"
             size="sm"
           >
-            Economizar
+            Cadastro
           </Button>
         </div>
       </div>
