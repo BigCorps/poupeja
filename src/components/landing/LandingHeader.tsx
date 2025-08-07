@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
+import { ThemeToggle } from '@/components/theme/ThemeToggle'; // ✅ Importando o ThemeToggle
 
 const LandingHeader = () => {
   const { companyName, logoUrl, logoAltText } = useBrandingConfig();
@@ -26,9 +27,8 @@ const LandingHeader = () => {
           <img 
             src={logoUrl} 
             alt={logoAltText}
-            className="h-10 object-contain" // Aumentado o tamanho e removido o container
+            className="h-10 object-contain"
             onError={(e) => {
-              // Fallback para primeira letra do nome da empresa
               const target = e.currentTarget as HTMLImageElement;
               target.style.display = 'none';
               const nextSibling = target.nextElementSibling as HTMLElement;
@@ -41,7 +41,10 @@ const LandingHeader = () => {
         </div>
         
         <div className="flex items-center space-x-2 md:space-x-4">
-          {/* Novo botão de Contato */}
+          {/* ✅ Adicionado o ThemeToggle aqui */}
+          <ThemeToggle /> 
+
+          {/* Botão de Contato */}
           <Button variant="ghost" asChild>
             <a 
               href="https://vixusbr.com.br/#contato"
