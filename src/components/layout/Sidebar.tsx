@@ -156,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     // Pagamentos em Lote
     {
       icon: Layers, 
-      label: 'Pagamentos em Lote',
+      label: 'Contas',
       href: '/pagamentos-em-lote'
     },
     // ✅ NOVO: Consultas - Posicionado entre Pagamentos em Lote e Agente IA
