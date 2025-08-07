@@ -84,7 +84,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     // Pagamentos em Lote
     {
       icon: Layers, 
-      label: 'Pagamentos em Lote',
+      label: 'Contas',
       action: () => {
         navigate('/pagamentos-em-lote');
         setIsQuickActionsOpen(false);
