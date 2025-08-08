@@ -1,5 +1,4 @@
-// pages/TransactionsPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import TransactionList from '@/components/common/TransactionList';
@@ -11,14 +10,7 @@ import { useAppContext } from '@/contexts/AppContext';
 import { Transaction } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/hooks/useUser'; // Assumindo que você tem um hook para o usuário
-
-// Supondo que você tenha um hook ou contexto para o status da assinatura
-const useUserPlan = () => {
-  // Você precisará implementar a lógica real para buscar o plano do usuário
-  // por enquanto, vamos simular que ele tem um plano premium
-  return { plan: 'premium', isLoading: false };
-};
+// import { useUserPlan } from '@/hooks/useUserPlan'; // Importe este hook quando for implementar a lógica de planos
 
 const TransactionsPage = () => {
   const [formOpen, setFormOpen] = useState(false);
@@ -27,52 +19,60 @@ const TransactionsPage = () => {
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   
   const { transactions, deleteTransaction } = useAppContext();
-  const { plan } = useUserPlan(); // Obtém o plano do usuário
   const isMobile = useIsMobile();
 
-  // Função para filtrar as transações com base no viewMode
+  // No futuro, descomente a linha abaixo e use o estado do plano para controlar o acesso
+  // const { plan } = useUserPlan();
+  // const hasPremiumPlan = plan === 'premium';
+  
+  // Por enquanto, o acesso à seção PJ está liberado para todos para testes
+  const hasPremiumPlan = true;
+
+  const handleAddTransaction = useCallback(() => {
+    setEditingTransaction(null);
+    setFormOpen(true);
+  }, []);
+
+  const handleEditTransaction = useCallback((transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setFormOpen(true);
+  }, []);
+
+  const handleDeleteTransaction = useCallback((id: string) => {
+    deleteTransaction(id);
+  }, [deleteTransaction]);
+
   useEffect(() => {
-    // Nota: Aqui a lógica de filtro de categorias será mais robusta no futuro
-    // mas por enquanto, vamos fazer um filtro simples. O ideal é que a API já retorne os dados filtrados.
+    // Esta é uma lógica de filtragem simples. No futuro, é recomendado que a API
+    // já retorne os dados filtrados para melhor performance.
     const getFilteredTransactions = () => {
+      // Filtrar transações por tipo de categoria com base no modo de visualização
+      // Aqui assumimos que os tipos de categoria para PJ são 'operational_', 'investment_', 'financing_'.
       if (viewMode === 'PJ') {
-        // Exemplo de como você filtraria por um tipo de categoria PJ
         return transactions.filter(t => 
-          t.category?.type?.includes('operational') ||
-          t.category?.type?.includes('investment') ||
-          t.category?.type?.includes('financing')
+          t.category && (
+            t.category.type.startsWith('operational') ||
+            t.category.type.startsWith('investment') ||
+            t.category.type.startsWith('financing')
+          )
         );
       }
-      // Padrão para PF
+      // Padrão para PF (income e expense)
       return transactions.filter(t => 
-        t.category?.type === 'income' || t.category?.type === 'expense'
+        t.category && (
+          t.category.type === 'income' || t.category.type === 'expense'
+        )
       );
     };
     setFilteredTransactions(getFilteredTransactions());
   }, [viewMode, transactions]);
 
-  const handleAddTransaction = () => {
-    setEditingTransaction(null);
-    setFormOpen(true);
-  };
-
-  const handleEditTransaction = (transaction: Transaction) => {
-    setEditingTransaction(transaction);
-    setFormOpen(true);
-  };
-
-  const handleDeleteTransaction = (id: string) => {
-    deleteTransaction(id);
-  };
-
-  // Verificamos se o usuário tem o plano premium
-  const hasPremiumPlan = plan === 'premium';
-
   return (
     <MainLayout>
+      {/* O SubscriptionGuard deve ser ajustado para o contexto de planos */}
       <SubscriptionGuard feature="movimentações ilimitadas">
         <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8">
-          {/* Cabeçalho da página (Desktop e Mobile) */}
+          {/* Cabeçalho da página com os botões PF/PJ */}
           <div className="mb-6 flex items-center justify-between">
             <h1 className="text-xl md:text-3xl font-semibold">Transações</h1>
             <div className="flex items-center space-x-2">
@@ -103,9 +103,7 @@ const TransactionsPage = () => {
           </div>
           
           {/* Content Container */}
-          <div className={cn(
-            isMobile ? "space-y-4" : ""
-          )}>
+          <div className={cn(isMobile ? "space-y-4" : "")}>
             {isMobile ? (
               <TransactionList 
                 transactions={filteredTransactions}
