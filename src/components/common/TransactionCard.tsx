@@ -46,6 +46,21 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
     return '******';
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return <Badge variant="success">{t('paymentStatus.paid')}</Badge>;
+      case 'pending':
+        return <Badge variant="warning">{t('paymentStatus.pending')}</Badge>;
+      case 'overdue':
+        return <Badge variant="destructive">{t('paymentStatus.overdue')}</Badge>;
+      case 'projected':
+        return <Badge variant="info">{t('paymentStatus.projected')}</Badge>;
+      default:
+        return null;
+    }
+  };
+
   const iconColor = transaction.type === 'income' ? '#26DE81' : '#EF4444';
   const isIncome = transaction.type === 'income';
 
@@ -113,7 +128,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
       <div className="space-y-2 mb-3">
         <div className="flex items-center gap-2">
           <CategoryIcon 
-            icon={transaction.type === 'income' ? 'trending-up' : transaction.type === 'expense' ? transaction.category.toLowerCase().includes('food') ? 'utensils' : 'shopping-bag' : 'circle'} 
+            icon={transaction.type === 'income' ? 'trending-up' : transaction.category?.name.toLowerCase().includes('food') ? 'utensils' : 'shopping-bag'} 
             color={iconColor} 
             size={16}
           />
@@ -123,7 +138,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
               ? "bg-green-50 text-green-600 border-green-200"
               : "bg-red-50 text-red-600 border-red-200"
           )}>
-            {transaction.category}
+            {transaction.category?.name || 'N/A'}
           </Badge>
         </div>
         
@@ -133,6 +148,34 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
           </p>
         )}
       </div>
+
+      {/* New PJ fields */}
+      {transaction.supplier && (
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
+          <span className="text-sm font-medium text-muted-foreground">{t('common.supplier')}:</span>
+          <span className="text-sm text-foreground">{transaction.supplier}</span>
+        </div>
+      )}
+      {transaction.due_date && (
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
+          <span className="text-sm font-medium text-muted-foreground">{t('common.dueDate')}:</span>
+          <span className="text-sm text-foreground">{formatDate(transaction.due_date)}</span>
+        </div>
+      )}
+      {transaction.original_amount && (
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
+          <span className="text-sm font-medium text-muted-foreground">{t('common.originalAmount')}:</span>
+          <span className="text-sm text-foreground">{formatCurrency(transaction.original_amount, currency)}</span>
+        </div>
+      )}
+      {transaction.payment_status && (
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
+          <span className="text-sm font-medium text-muted-foreground">{t('common.status')}:</span>
+          <span className="text-sm text-foreground">
+            {getStatusBadge(transaction.payment_status)}
+          </span>
+        </div>
+      )}
 
       {/* Goal (if exists) */}
       {transaction.goalId && (
