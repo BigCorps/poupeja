@@ -1,4 +1,5 @@
 # 💰 PoupeJá - Sistema Completo de Gestão Financeira
+
 Sistema completo de gestão financeira pessoal com foco em facilidade de uso, automação e redistribuição para múltiplas organizações.
 
 ## 🚀 Características Principais
