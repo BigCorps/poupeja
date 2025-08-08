@@ -18,7 +18,7 @@ interface Category {
   color: string;
   icon: string | null;
   is_default: boolean | null;
-  parent_id?: string | null;
+  parent_id: string | null;
 }
 
 interface AppState {
@@ -35,6 +35,8 @@ interface AppState {
   customStartDate: string | null;
   customEndDate: string | null;
   filteredTransactions: Transaction[];
+  // Novo estado para o tipo de conta (PF ou PJ)
+  accountType: 'PF' | 'PJ';
 }
 
 interface AppContextType extends AppState {
@@ -45,9 +47,11 @@ interface AppContextType extends AppState {
   logout: () => Promise<void>;
   setCustomDateRange: (start: Date | null, end: Date | null) => void;
   setTimeRange: (range: string) => void;
+  // Ação para definir o tipo de conta
+  setAccountType: (type: 'PF' | 'PJ') => void;
   
   // Data fetching methods
-  getTransactions: (startDate?: string, endDate?: string) => Promise<Transaction[]>;
+  getTransactions: (startDate: string, endDate: string) => Promise<Transaction[]>;
   getGoals: () => Promise<Goal[]>;
   recalculateGoalAmounts: () => Promise<boolean>;
   updateUserProfile: (data: any) => Promise<void>;
@@ -97,7 +101,8 @@ type AppAction =
   | { type: 'DELETE_GOAL'; payload: string }
   | { type: 'ADD_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
   | { type: 'UPDATE_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
-  | { type: 'DELETE_SCHEDULED_TRANSACTION'; payload: string };
+  | { type: 'DELETE_SCHEDULED_TRANSACTION'; payload: string }
+  | { type: 'SET_ACCOUNT_TYPE'; payload: 'PF' | 'PJ' };
 
 // ===================================================
 // ESTADO INICIAL E REDUCER
@@ -117,6 +122,8 @@ const initialAppState: AppState = {
   customStartDate: null,
   customEndDate: null,
   filteredTransactions: [],
+  // Definir o tipo de conta inicial
+  accountType: 'PF',
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -201,6 +208,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ...state,
         scheduledTransactions: state.scheduledTransactions.filter(st => st.id !== action.payload)
       };
+    // Novo case para o tipo de conta
+    case 'SET_ACCOUNT_TYPE':
+      return { ...state, accountType: action.payload };
     default:
       return state;
   }
@@ -257,6 +267,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       original_amount: dbTransaction.original_amount,
       late_interest_amount: dbTransaction.late_interest_amount,
       payment_status: dbTransaction.payment_status || 'paid',
+      account_type: dbTransaction.account_type || 'PF',
     };
   };
 
@@ -569,13 +580,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, []);
 
+  // Nova função para mudar o tipo de conta
+  const setAccountType = useCallback((type: 'PF' | 'PJ') => {
+    dispatch({ type: 'SET_ACCOUNT_TYPE', payload: type });
+  }, []);
+
   // Data fetching methods (memoized to prevent unnecessary re-renders)
-  const getTransactions = useCallback(async (startDate?: string, endDate?: string): Promise<Transaction[]> => {
+  const getTransactions = useCallback(async (startDate: string, endDate: string): Promise<Transaction[]> => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
     try {
       console.log('AppContext: Fetching transactions...');
       const user = await getCurrentUser();
       
-      let query = supabase
+      const { data, error } = await supabase
         .from('poupeja_transactions')
         .select(`
           id,
@@ -604,30 +622,43 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           original_amount,
           late_interest_amount,
           payment_status,
+          account_type,
           category_id
         `)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        // Adiciona o filtro para o tipo de conta
+        .eq('account_type', state.accountType)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: false });
 
-      if (startDate) {
-        query = query.gte('date', startDate);
-      }
-      if (endDate) {
-        query = query.lte('date', endDate);
-      }
-
-      const { data, error } = await query.order('date', { ascending: false });
-  
       if (error) throw error;
       
-      const transactions = (data || []).map(transformTransaction);
+      // Valida se os dados foram retornados antes de mapeá-los
+      if (!data) {
+        dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
+        return [];
+      }
+      
+      const formattedTransactions = data.map(t => ({
+        ...t,
+        // Garante que a categoria é um objeto ou null
+        category: t.category ? (Array.isArray(t.category) ? t.category[0] : t.category) : null,
+        goal_id: t.goal_id || null,
+      }));
+
+      const transactions = formattedTransactions.map(transformTransaction);
       console.log('AppContext: Transactions fetched successfully:', transactions.length);
       dispatch({ type: 'SET_TRANSACTIONS', payload: transactions });
       return transactions;
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to fetch transactions' });
       throw error;
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, []);
+  }, [state.accountType]);
 
   const getGoals = useCallback(async (): Promise<Goal[]> => {
     try {
@@ -707,6 +738,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           original_amount: transaction.original_amount,
           late_interest_amount: transaction.late_interest_amount,
           payment_status: transaction.payment_status || 'paid',
+          account_type: transaction.account_type || state.accountType,
         })
         .select(`
           *,
@@ -750,6 +782,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           original_amount: transaction.original_amount,
           late_interest_amount: transaction.late_interest_amount,
           payment_status: transaction.payment_status,
+          account_type: transaction.account_type,
         })
         .eq('id', id)
         .select(`
