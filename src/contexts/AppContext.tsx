@@ -18,6 +18,7 @@ interface Category {
   color: string;
   icon: string | null;
   is_default: boolean | null;
+  parent_id?: string | null;
 }
 
 interface AppState {
@@ -28,7 +29,7 @@ interface AppState {
   isLoading: boolean;
   error: string | null;
   user: User | null;
-  session: any | null; // ✅ Adicionado para armazenar a sessão do Supabase
+  session: any | null;
   hideValues: boolean;
   timeRange: TimeRange;
   customStartDate: string | null;
@@ -44,23 +45,28 @@ interface AppContextType extends AppState {
   logout: () => Promise<void>;
   setCustomDateRange: (start: Date | null, end: Date | null) => void;
   setTimeRange: (range: string) => void;
+  
   // Data fetching methods
-  getTransactions: () => Promise<Transaction[]>;
+  getTransactions: (startDate?: string, endDate?: string) => Promise<Transaction[]>;
   getGoals: () => Promise<Goal[]>;
   recalculateGoalAmounts: () => Promise<boolean>;
   updateUserProfile: (data: any) => Promise<void>;
+  
   // Transaction actions
   addTransaction: (transaction: Omit<Transaction, 'id' | 'created_at'>) => Promise<void>;
   updateTransaction: (id: string, transaction: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  
   // Category actions
   addCategory: (category: Omit<Category, 'id' | 'created_at'>) => Promise<void>;
   updateCategory: (id: string, category: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+  
   // Goal actions
   addGoal: (goal: Omit<Goal, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   updateGoal: (id: string, goal: Partial<Goal>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
+  
   // Scheduled Transaction actions
   addScheduledTransaction: (transaction: Omit<ScheduledTransaction, 'id' | 'created_at'>) => Promise<void>;
   updateScheduledTransaction: (id: string, transaction: Partial<ScheduledTransaction>) => Promise<void>;
@@ -75,7 +81,7 @@ type AppAction =
   | { type: 'SET_CATEGORIES'; payload: Category[] }
   | { type: 'SET_GOALS'; payload: Goal[] }
   | { type: 'SET_SCHEDULED_TRANSACTIONS'; payload: ScheduledTransaction[] }
-  | { type: 'SET_SESSION'; payload: any | null } // ✅ Adicionada nova ação
+  | { type: 'SET_SESSION'; payload: any | null }
   | { type: 'TOGGLE_HIDE_VALUES' }
   | { type: 'SET_TIME_RANGE'; payload: TimeRange }
   | { type: 'SET_CUSTOM_DATE_RANGE'; payload: { startDate: string | null; endDate: string | null } }
@@ -105,7 +111,7 @@ const initialAppState: AppState = {
   isLoading: true,
   error: null,
   user: null,
-  session: null, // ✅ Inicializamos a sessão como nula
+  session: null,
   hideValues: false,
   timeRange: 'last30days',
   customStartDate: null,
@@ -121,7 +127,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, error: action.payload };
     case 'SET_USER':
       return { ...state, user: action.payload };
-    case 'SET_SESSION': // ✅ Tratamos a nova ação para a sessão
+    case 'SET_SESSION':
       return { ...state, session: action.payload };
     case 'SET_TRANSACTIONS':
       return { ...state, transactions: action.payload };
@@ -240,6 +246,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       goal_id: dbTransaction.goal_id,
       user_id: dbTransaction.user_id,
       created_at: dbTransaction.created_at,
+      // Novos campos adicionados
+      is_recurring: dbTransaction.is_recurring || false,
+      is_paid: dbTransaction.is_paid || true,
+      account_id: dbTransaction.account_id,
+      currency: dbTransaction.currency || 'BRL',
+      supplier: dbTransaction.supplier,
+      due_date: dbTransaction.due_date,
+      payment_date: dbTransaction.payment_date,
+      original_amount: dbTransaction.original_amount,
+      late_interest_amount: dbTransaction.late_interest_amount,
+      payment_status: dbTransaction.payment_status || 'paid',
     };
   };
 
@@ -370,7 +387,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         await Promise.all([
           supabase.from('poupeja_transactions').select(`
             *,
-            category:poupeja_categories(id, name, icon, color, type)
+            category:poupeja_categories(id, name, icon, color, type, parent_id)
           `).eq('user_id', user.id),
           supabase.from('poupeja_categories').select('*').eq('user_id', user.id)
         ]);
@@ -398,7 +415,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (!mounted) return;
       
       if (session?.user) {
-        dispatch({ type: 'SET_SESSION', payload: session }); // ✅ Salva a sessão
+        dispatch({ type: 'SET_SESSION', payload: session });
         dispatch({ type: 'SET_USER', payload: session.user });
         
         // Only load data if we haven't initialized yet or user changed
@@ -406,7 +423,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           await loadUserData(session.user);
         }
       } else {
-        dispatch({ type: 'SET_SESSION', payload: null }); // ✅ Atualiza a sessão
+        dispatch({ type: 'SET_SESSION', payload: null });
         dispatch({ type: 'SET_USER', payload: null });
         dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
         dispatch({ type: 'SET_CATEGORIES', payload: [] });
@@ -468,7 +485,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         supabase.from('poupeja_transactions')
           .select(`
             *,
-            category:poupeja_categories(id, name, icon, color, type)
+            category:poupeja_categories(id, name, icon, color, type, parent_id)
           `)
           .eq('user_id', user.id)
           .order('date', { ascending: false }),
@@ -477,7 +494,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         supabase.from('poupeja_scheduled_transactions')
           .select(`
             *,
-            category:poupeja_categories(id, name, icon, color, type)
+            category:poupeja_categories(id, name, icon, color, type, parent_id)
           `)
           .eq('user_id', user.id)
       ]);
@@ -535,7 +552,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
     dispatch({ type: 'SET_USER', payload: null });
-    dispatch({ type: 'SET_SESSION', payload: null }); // ✅ Limpa a sessão
+    dispatch({ type: 'SET_SESSION', payload: null });
   }, []);
 
   const setTimeRange = useCallback((range: string) => {
@@ -553,18 +570,52 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   // Data fetching methods (memoized to prevent unnecessary re-renders)
-  const getTransactions = useCallback(async (): Promise<Transaction[]> => {
+  const getTransactions = useCallback(async (startDate?: string, endDate?: string): Promise<Transaction[]> => {
     try {
       console.log('AppContext: Fetching transactions...');
       const user = await getCurrentUser();
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from('poupeja_transactions')
         .select(`
-          *,
-          category:poupeja_categories(id, name, icon, color, type)
+          id,
+          created_at,
+          date,
+          amount,
+          description,
+          type,
+          is_recurring,
+          is_paid,
+          category:poupeja_categories(
+            id,
+            name,
+            icon,
+            color,
+            type,
+            parent_id
+          ),
+          goal_id,
+          account_id,
+          currency,
+          user_id,
+          supplier,
+          due_date,
+          payment_date,
+          original_amount,
+          late_interest_amount,
+          payment_status,
+          category_id
         `)
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
+        .eq('user_id', user.id);
+
+      if (startDate) {
+        query = query.gte('date', startDate);
+      }
+      if (endDate) {
+        query = query.lte('date', endDate);
+      }
+
+      const { data, error } = await query.order('date', { ascending: false });
   
       if (error) throw error;
       
@@ -644,12 +695,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           category_id: transaction.category_id,
           description: transaction.description,
           date: transaction.date,
-          goal_id: transaction.goalId,
+          goal_id: transaction.goalId || transaction.goal_id,
           user_id: user.id,
+          is_recurring: transaction.is_recurring || false,
+          is_paid: transaction.is_paid !== undefined ? transaction.is_paid : true,
+          account_id: transaction.account_id,
+          currency: transaction.currency || 'BRL',
+          supplier: transaction.supplier,
+          due_date: transaction.due_date,
+          payment_date: transaction.payment_date,
+          original_amount: transaction.original_amount,
+          late_interest_amount: transaction.late_interest_amount,
+          payment_status: transaction.payment_status || 'paid',
         })
         .select(`
           *,
-          category:poupeja_categories(id, name, icon, color, type)
+          category:poupeja_categories(id, name, icon, color, type, parent_id)
         `)
         .single();
   
@@ -658,7 +719,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.log('AppContext: Transaction added successfully:', transformedTransaction);
       dispatch({ type: 'ADD_TRANSACTION', payload: transformedTransaction });
       
-      if (transaction.goalId) {
+      if (transaction.goalId || transaction.goal_id) {
         console.log('AppContext: Recalculating goal amounts...');
         await recalculateGoalAmounts();
       }
@@ -678,12 +739,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           category_id: transaction.category_id,
           description: transaction.description,
           date: transaction.date,
-          goal_id: transaction.goalId,
+          goal_id: transaction.goalId || transaction.goal_id,
+          is_recurring: transaction.is_recurring,
+          is_paid: transaction.is_paid,
+          account_id: transaction.account_id,
+          currency: transaction.currency,
+          supplier: transaction.supplier,
+          due_date: transaction.due_date,
+          payment_date: transaction.payment_date,
+          original_amount: transaction.original_amount,
+          late_interest_amount: transaction.late_interest_amount,
+          payment_status: transaction.payment_status,
         })
         .eq('id', id)
         .select(`
           *,
-          category:poupeja_categories(id, name, icon, color, type)
+          category:poupeja_categories(id, name, icon, color, type, parent_id)
         `)
         .single();
   
@@ -691,7 +762,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const transformedTransaction = transformTransaction(data);
       dispatch({ type: 'UPDATE_TRANSACTION', payload: transformedTransaction });
       
-      if (transaction.goalId) {
+      if (transaction.goalId || transaction.goal_id) {
         await recalculateGoalAmounts();
       }
     } catch (error) {
@@ -867,7 +938,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         })
         .select(`
           *,
-          category:poupeja_categories(id, name, icon, color, type)
+          category:poupeja_categories(id, name, icon, color, type, parent_id)
         `)
         .single();
   
@@ -897,7 +968,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         .eq('id', id)
         .select(`
           *,
-          category:poupeja_categories(id, name, icon, color, type)
+          category:poupeja_categories(id, name, icon, color, type, parent_id)
         `)
         .single();
   
