@@ -3,19 +3,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { Transaction, Goal, ScheduledTransaction, User, TimeRange } from '@/types';
 import { setupAuthListener, getCurrentSession } from '@/services/authService';
 import { recalculateGoalAmounts as recalculateGoalAmountsService } from '@/services/goalService';
-import { addDays, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, isAfter, isBefore } from 'date-fns';
+import { addDays, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, isAfter, isBefore, subDays } from 'date-fns';
 
 // ===================================================
 // TIPOS E INTERFACES
 // ===================================================
 
-// Use database types directly from Supabase
+// O tipo 'type' da categoria foi atualizado para incluir os novos ENUMs de fluxo de caixa
+type CategoryType = 'income' | 'expense' | 'operational_inflow' | 'operational_outflow' | 'investment_inflow' | 'investment_outflow' | 'financing_inflow' | 'financing_outflow';
+
 interface Category {
   id: string;
   created_at: string;
   user_id: string;
   name: string;
-  type: 'income' | 'expense';
+  type: CategoryType;
   color: string;
   icon: string | null;
   is_default: boolean | null;
@@ -45,10 +47,10 @@ interface AppContextType extends AppState {
   toggleHideValues: () => void;
   logout: () => Promise<void>;
   setCustomDateRange: (start: Date | null, end: Date | null) => void;
-  setTimeRange: (range: string) => void;
+  setTimeRange: (range: TimeRange) => void;
   setAccountType: (type: 'PF' | 'PJ') => void;
   
-  // Data fetching methods
+  // Métodos de busca de dados
   getTransactions: (startDate: string, endDate: string) => Promise<Transaction[]>;
   getCategories: () => Promise<Category[]>;
   getGoals: () => Promise<Goal[]>;
@@ -56,22 +58,19 @@ interface AppContextType extends AppState {
   recalculateGoalAmounts: () => Promise<boolean>;
   updateUserProfile: (data: any) => Promise<void>;
   
-  // Transaction actions
+  // Ações de CRUD
   addTransaction: (transaction: Omit<Transaction, 'id' | 'created_at'>) => Promise<void>;
   updateTransaction: (id: string, transaction: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   
-  // Category actions
   addCategory: (category: Omit<Category, 'id' | 'created_at'>) => Promise<void>;
   updateCategory: (id: string, category: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   
-  // Goal actions
   addGoal: (goal: Omit<Goal, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   updateGoal: (id: string, goal: Partial<Goal>) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
   
-  // Scheduled Transaction actions
   addScheduledTransaction: (transaction: Omit<ScheduledTransaction, 'id' | 'created_at'>) => Promise<void>;
   updateScheduledTransaction: (id: string, transaction: Partial<ScheduledTransaction>) => Promise<void>;
   deleteScheduledTransaction: (id: string) => Promise<void>;
@@ -228,52 +227,24 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   // Helper function to get current user with better error handling
-  const getCurrentUser = async () => {
+  const getCurrentUser = useCallback(async () => {
     try {
       const session = await getCurrentSession();
       if (!session?.user) {
-        throw new Error('User not authenticated');
+        throw new Error('Usuário não autenticado');
       }
       return session.user;
     } catch (error) {
-      console.error('Error getting current user:', error);
+      console.error('Erro ao obter usuário atual:', error);
       throw error;
     }
-  };
-
-  // Helper function to transform database types to proper types
-  const transformTransaction = (dbTransaction: any): Transaction => {
-    return {
-      id: dbTransaction.id,
-      type: dbTransaction.type as 'income' | 'expense',
-      amount: dbTransaction.amount,
-      category: dbTransaction.category?.name || 'Unknown',
-      categoryIcon: dbTransaction.category?.icon || 'circle',
-      categoryColor: dbTransaction.category?.color || '#607D8B',
-      description: dbTransaction.description || '',
-      date: dbTransaction.date,
-      goalId: dbTransaction.goal_id,
-      categoryId: dbTransaction.category_id,
-      userId: dbTransaction.user_id,
-      supplier: dbTransaction.supplier || '',
-      dueDate: dbTransaction.due_date,
-      paymentDate: dbTransaction.payment_date,
-      originalAmount: dbTransaction.original_amount,
-      lateInterestAmount: dbTransaction.late_interest_amount,
-      paymentStatus: dbTransaction.payment_status,
-      accountId: dbTransaction.account_id,
-      isRecurring: dbTransaction.is_recurring,
-      isPaid: dbTransaction.is_paid,
-      accountType: dbTransaction.account_type,
-    };
-  };
+  }, []);
 
   const getTransactions = useCallback(async (startDate: string, endDate: string) => {
     if (!state.user?.id) {
-      console.warn('User not authenticated, skipping transaction fetch.');
+      console.warn('Usuário não autenticado, pulando a busca de transações.');
       return [];
     }
 
@@ -332,8 +303,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return formattedTransactions as Transaction[];
       
     } catch (error: any) {
-      console.error('Error fetching transactions:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to fetch transactions' });
+      console.error('Erro ao buscar transações:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao buscar transações' });
       return [];
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -352,8 +323,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'SET_CATEGORIES', payload: data as Category[] });
       return data as Category[];
     } catch (error) {
-      console.error('Error fetching categories:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to fetch categories' });
+      console.error('Erro ao buscar categorias:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Falha ao buscar categorias' });
       return [];
     }
   }, [state.user]);
@@ -371,8 +342,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'SET_GOALS', payload: goalsWithRecalculatedAmounts });
       return goalsWithRecalculatedAmounts;
     } catch (error) {
-      console.error('Error fetching goals:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to fetch goals' });
+      console.error('Erro ao buscar metas:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Falha ao buscar metas' });
       return [];
     }
   }, [state.user, state.transactions]);
@@ -389,8 +360,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: data as ScheduledTransaction[] });
       return data as ScheduledTransaction[];
     } catch (error) {
-      console.error('Error fetching scheduled transactions:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to fetch scheduled transactions' });
+      console.error('Erro ao buscar transações agendadas:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Falha ao buscar transações agendadas' });
       return [];
     }
   }, [state.user]);
@@ -402,8 +373,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'SET_GOALS', payload: updatedGoals });
       return true;
     } catch (error) {
-      console.error('Error recalculating goal amounts:', error);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to recalculate goal amounts' });
+      console.error('Erro ao recalcular valores das metas:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Falha ao recalcular valores das metas' });
       return false;
     }
   }, [state.goals, state.transactions, dispatch]);
@@ -419,8 +390,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'ADD_TRANSACTION', payload: data as Transaction });
     } catch (error: any) {
-      console.error('Error adding transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to add transaction' });
+      console.error('Erro ao adicionar transação:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao adicionar transação' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -438,8 +409,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'UPDATE_TRANSACTION', payload: data as Transaction });
     } catch (error: any) {
-      console.error('Error updating transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to update transaction' });
+      console.error('Erro ao atualizar transação:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao atualizar transação' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -455,8 +426,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'DELETE_TRANSACTION', payload: id });
     } catch (error: any) {
-      console.error('Error deleting transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to delete transaction' });
+      console.error('Erro ao deletar transação:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao deletar transação' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -473,8 +444,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'ADD_CATEGORY', payload: data as Category });
     } catch (error: any) {
-      console.error('Error adding category:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to add category' });
+      console.error('Erro ao adicionar categoria:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao adicionar categoria' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -492,8 +463,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'UPDATE_CATEGORY', payload: data as Category });
     } catch (error: any) {
-      console.error('Error updating category:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to update category' });
+      console.error('Erro ao atualizar categoria:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao atualizar categoria' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -509,8 +480,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'DELETE_CATEGORY', payload: id });
     } catch (error: any) {
-      console.error('Error deleting category:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to delete category' });
+      console.error('Erro ao deletar categoria:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao deletar categoria' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -527,8 +498,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'ADD_GOAL', payload: data as Goal });
     } catch (error: any) {
-      console.error('Error adding goal:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to add goal' });
+      console.error('Erro ao adicionar meta:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao adicionar meta' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -546,8 +517,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'UPDATE_GOAL', payload: data as Goal });
     } catch (error: any) {
-      console.error('Error updating goal:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to update goal' });
+      console.error('Erro ao atualizar meta:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao atualizar meta' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -563,8 +534,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'DELETE_GOAL', payload: id });
     } catch (error: any) {
-      console.error('Error deleting goal:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to delete goal' });
+      console.error('Erro ao deletar meta:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao deletar meta' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -581,8 +552,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'ADD_SCHEDULED_TRANSACTION', payload: data as ScheduledTransaction });
     } catch (error: any) {
-      console.error('Error adding scheduled transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to add scheduled transaction' });
+      console.error('Erro ao adicionar transação agendada:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao adicionar transação agendada' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -600,8 +571,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'UPDATE_SCHEDULED_TRANSACTION', payload: data as ScheduledTransaction });
     } catch (error: any) {
-      console.error('Error updating scheduled transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to update scheduled transaction' });
+      console.error('Erro ao atualizar transação agendada:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao atualizar transação agendada' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -617,23 +588,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (error) throw error;
       dispatch({ type: 'DELETE_SCHEDULED_TRANSACTION', payload: id });
     } catch (error: any) {
-      console.error('Error deleting scheduled transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to delete scheduled transaction' });
+      console.error('Erro ao deletar transação agendada:', error);
+      dispatch({ type: 'SET_ERROR', payload: error.message || 'Falha ao deletar transação agendada' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, []);
 
-  const fetchUserData = useCallback(async () => {
+  // Função para buscar todos os dados iniciais do usuário
+  const fetchAllUserData = useCallback(async () => {
     if (state.user?.id) {
-      await Promise.all([
-        getCategories(),
-        getTransactions(format(startOfMonth(new Date()), 'yyyy-MM-dd'), format(endOfMonth(new Date()), 'yyyy-MM-dd')),
-        getGoals(),
-        getScheduledTransactions(),
-      ]);
+      dispatch({ type: 'SET_LOADING', payload: true });
+      try {
+        const [categories, goals, scheduledTransactions] = await Promise.all([
+          getCategories(),
+          getGoals(),
+          getScheduledTransactions(),
+        ]);
+
+        // A busca de transações é feita separadamente no useEffect para reagir à mudança de timeRange
+        // await getTransactions(format(startOfMonth(new Date()), 'yyyy-MM-dd'), format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+        
+      } catch (error) {
+        console.error('Erro ao buscar dados iniciais do usuário:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Falha ao carregar dados iniciais' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
     }
-  }, [state.user, getCategories, getTransactions, getGoals, getScheduledTransactions]);
+  }, [state.user, getCategories, getGoals, getScheduledTransactions]);
 
   const toggleHideValues = useCallback(() => {
     dispatch({ type: 'TOGGLE_HIDE_VALUES' });
@@ -653,8 +636,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     dispatch({ type: 'SET_CUSTOM_DATE_RANGE', payload: { startDate: startDate ? format(startDate, 'yyyy-MM-dd') : null, endDate: endDate ? format(endDate, 'yyyy-MM-dd') : null } });
   }, []);
 
-  const setTimeRange = useCallback((range: string) => {
-    dispatch({ type: 'SET_TIME_RANGE', payload: range as TimeRange });
+  const setTimeRange = useCallback((range: TimeRange) => {
+    dispatch({ type: 'SET_TIME_RANGE', payload: range });
   }, []);
 
   const setAccountType = useCallback((type: 'PF' | 'PJ') => {
@@ -666,29 +649,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     console.log('Update user profile not yet implemented:', data);
   }, []);
 
+  // Efeito para o listener de autenticação
   useEffect(() => {
     const authListener = setupAuthListener(async (session) => {
       dispatch({ type: 'SET_SESSION', payload: session });
       dispatch({ type: 'SET_USER', payload: session?.user || null });
-      if (session) {
-        await fetchUserData();
-      } else {
-        dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
-        dispatch({ type: 'SET_CATEGORIES', payload: [] });
-        dispatch({ type: 'SET_GOALS', payload: [] });
-        dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
-        dispatch({ type: 'SET_USER', payload: null });
-      }
-      setIsInitialized(true);
     });
 
     return () => {
       authListener.unsubscribe();
     };
-  }, [fetchUserData]);
+  }, []);
 
+  // Efeito para buscar os dados quando o usuário autenticar
   useEffect(() => {
-    if (isInitialized && state.user) {
+    if (state.user?.id) {
+      fetchAllUserData();
+    }
+  }, [state.user, fetchAllUserData]);
+
+  // Efeito para buscar as transações quando o timeRange ou accountType mudar
+  useEffect(() => {
+    if (state.user?.id) {
       let startDate: string | null = null;
       let endDate: string | null = null;
       
@@ -726,28 +708,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         getTransactions(startDate, endDate);
       }
     }
-  }, [state.timeRange, state.customStartDate, state.customEndDate, state.user, isInitialized, getTransactions]);
+  }, [state.timeRange, state.customStartDate, state.customEndDate, state.user, state.accountType, getTransactions]);
 
   const filteredTransactions = useMemo(() => {
     if (!state.transactions) return [];
-
     let filtered = state.transactions;
-
-    // Filter by date range
-    if (state.customStartDate && state.customEndDate) {
-      filtered = filtered.filter(t => {
-        const transactionDate = new Date(t.date);
-        const start = new Date(state.customStartDate!);
-        const end = new Date(state.customEndDate!);
-        return isAfter(transactionDate, start) && isBefore(transactionDate, end);
-      });
-    }
-
-    // Filter by account type
-    filtered = filtered.filter(t => t.accountType === state.accountType);
-
+    // O filtro por accountType já é feito na busca do getTransactions
     return filtered;
-  }, [state.transactions, state.customStartDate, state.customEndDate, state.accountType]);
+  }, [state.transactions]);
 
   useEffect(() => {
     dispatch({ type: 'SET_FILTERED_TRANSACTIONS', payload: filteredTransactions });
@@ -755,7 +723,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const value = useMemo(() => ({
     ...state,
-    fetchUserData,
+    fetchUserData: fetchAllUserData,
     toggleHideValues,
     logout,
     setCustomDateRange,
@@ -781,7 +749,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     updateUserProfile,
   }), [
     state,
-    fetchUserData,
+    fetchAllUserData,
     toggleHideValues,
     logout,
     setCustomDateRange,
