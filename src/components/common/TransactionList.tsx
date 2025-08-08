@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Table,
@@ -17,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Transaction } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/transactionUtils';
-import { MoreHorizontal, TrendingUp, TrendingDown, Target, ArrowUp, ArrowDown } from 'lucide-react';
+import { MoreHorizontal, Target, ArrowUp, ArrowDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -54,6 +53,21 @@ const TransactionList: React.FC<TransactionListProps> = ({
   // Helper to render masked values
   const renderHiddenValue = () => {
     return '******';
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return <Badge variant="success">{t('paymentStatus.paid')}</Badge>;
+      case 'pending':
+        return <Badge variant="warning">{t('paymentStatus.pending')}</Badge>;
+      case 'overdue':
+        return <Badge variant="destructive">{t('paymentStatus.overdue')}</Badge>;
+      case 'projected':
+        return <Badge variant="info">{t('paymentStatus.projected')}</Badge>;
+      default:
+        return null;
+    }
   };
 
   if (transactions.length === 0) {
@@ -101,7 +115,10 @@ const TransactionList: React.FC<TransactionListProps> = ({
             <TableHead>{t('common.date')}</TableHead>
             <TableHead>{t('common.category')}</TableHead>
             <TableHead>{t('common.description')}</TableHead>
-            <TableHead>{t('nav.goals')}</TableHead>
+            <TableHead>{t('common.supplier')}</TableHead>
+            <TableHead>{t('common.dueDate')}</TableHead>
+            <TableHead className="text-right">{t('common.originalAmount')}</TableHead>
+            <TableHead className="text-right">{t('common.status')}</TableHead>
             <TableHead className="text-right">{t('common.amount')}</TableHead>
             <TableHead className="w-10"></TableHead>
           </TableRow>
@@ -142,7 +159,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <CategoryIcon 
-                      icon={transaction.type === 'income' ? 'trending-up' : transaction.type === 'expense' ? transaction.category.toLowerCase().includes('food') ? 'utensils' : 'shopping-bag' : 'circle'} 
+                      icon={transaction.type === 'income' ? 'trending-up' : transaction.category?.name.toLowerCase().includes('food') ? 'utensils' : 'shopping-bag'} 
                       color={iconColor} 
                       size={16}
                     />
@@ -152,20 +169,24 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         ? "bg-green-50 text-green-600 hover:bg-green-100 border-green-200"
                         : "bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
                     )}>
-                      {transaction.category}
+                      {transaction.category?.name || 'N/A'}
                     </Badge>
                   </div>
                 </TableCell>
                 <TableCell className="text-xs md:text-sm">
                   {transaction.description}
                 </TableCell>
-                <TableCell>
-                  {transaction.goalId && (
-                    <div className="flex items-center gap-1">
-                      <Target className="h-3 w-3 text-metacash-blue" />
-                      <span className="text-xs">{getGoalName(transaction.goalId)}</span>
-                    </div>
-                  )}
+                <TableCell className="text-xs md:text-sm">
+                  {transaction.supplier || 'N/A'}
+                </TableCell>
+                <TableCell className="text-xs md:text-sm">
+                  {transaction.due_date ? formatDate(transaction.due_date) : 'N/A'}
+                </TableCell>
+                <TableCell className="text-right font-medium text-xs md:text-sm">
+                  {transaction.original_amount ? formatCurrency(transaction.original_amount, currency) : 'N/A'}
+                </TableCell>
+                <TableCell className="text-right text-xs md:text-sm">
+                  {transaction.payment_status ? getStatusBadge(transaction.payment_status) : 'N/A'}
                 </TableCell>
                 <TableCell className={cn(
                   "text-right font-semibold text-xs md:text-sm",
