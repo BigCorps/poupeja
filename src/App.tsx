@@ -7,8 +7,8 @@ import { ThemeProvider } from "next-themes";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
-// ✅ CORREÇÃO AQUI: o caminho correto é 'context' (singular)
-import { AppProvider } from "@/context/AppContext";
+// ✅ CORREÇÃO: Mantendo 'contexts' (plural) conforme a estrutura do seu projeto
+import { AppProvider } from "@/contexts/AppContext";
 import { SaldoProvider } from "@/contexts/SaldoContext"; // Importação do SaldoProvider
 import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
 import Index from "./pages/Index";
