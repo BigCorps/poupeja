@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,15 +10,59 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-// Caminho de importação corrigido para o diretório atual.
-// Assume que o arquivo ColorPicker.tsx está na mesma pasta que CategoryForm.tsx.
 import ColorPicker from './ColorPicker';
-// Caminho e nome do componente corrigidos.
-// Assume que o arquivo IconSelector.tsx está na mesma pasta que CategoryForm.tsx.
 import IconSelector from './IconSelector';
-import CategoryPicker from '@/components/CategoryPicker';
-import { Category } from '@/types/categories';
 
+// Importa os componentes do Shadcn para o seletor de categorias
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+// Importa o tipo de categoria e o hook de contexto
+import { Category } from '@/types/categories';
+import { useApp } from '@/context/AppContext';
+
+// =========================================================================
+// Componente para selecionar uma categoria pai
+// =========================================================================
+interface CategorySelectorProps {
+  value: string;
+  onValueChange: (parentId: string | null) => void;
+  currentCategoryId?: string;
+}
+
+const CategorySelector: React.FC<CategorySelectorProps> = ({ value, onValueChange, currentCategoryId }) => {
+  const { categories } = useApp();
+
+  // Filtra apenas as categorias que podem ser pais (sem pai ou categorias diferentes da atual)
+  const parentCategories = categories.filter(
+    (cat) => !cat.parent_id && cat.id !== currentCategoryId
+  );
+
+  return (
+    <Select value={value} onValueChange={(val) => onValueChange(val || null)}>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Selecione uma categoria pai" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="null">Nenhuma</SelectItem>
+        {parentCategories.map((category) => (
+          <SelectItem key={category.id} value={category.id}>
+            {category.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
+// =========================================================================
+// Componente principal do formulário
+// =========================================================================
 interface CategoryFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,7 +85,8 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ open, onOpenChange, initial
     if (initialData) {
       setFormData({
         ...initialData,
-        parent_id: initialData.parent_id || null
+        parent_id: initialData.parent_id || null,
+        type: initialData.type,
       });
     } else {
       setFormData({
@@ -60,9 +105,9 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ open, onOpenChange, initial
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleParentCategoryChange = (parentId: string | null) => {
+  const handleParentCategoryChange = useCallback((parentId: string | null) => {
     setFormData(prev => ({ ...prev, parent_id: parentId }));
-  };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,15 +139,16 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ open, onOpenChange, initial
               />
             </div>
             
-            {/* Seletor de Categoria Pai */}
+            {/* Seletor de Categoria Pai - usa o componente recém-criado */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="parent_id" className="text-right">
                 Categoria Pai
               </Label>
               <div className="col-span-3">
-                <CategoryPicker 
+                <CategorySelector 
                   value={formData.parent_id || ''}
                   onValueChange={handleParentCategoryChange}
+                  currentCategoryId={initialData?.id}
                 />
               </div>
             </div>
