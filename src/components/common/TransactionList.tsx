@@ -31,59 +31,43 @@ interface TransactionListProps {
   onEdit?: (transaction: Transaction) => void;
   onDelete?: (id: string) => void;
   hideValues?: boolean;
-  viewMode?: 'PF' | 'PJ';
 }
 
 const TransactionList: React.FC<TransactionListProps> = ({
   transactions,
   onEdit,
   onDelete,
-  hideValues = false,
-  viewMode = 'PF'
+  hideValues = false
 }) => {
   const { goals } = useAppContext();
   const { t, currency } = usePreferences();
   const isMobile = useIsMobile();
 
-  // Helper para obter nome da meta
+  // Helper to get goal name
   const getGoalName = (goalId?: string) => {
     if (!goalId) return null;
     const goal = goals.find(g => g.id === goalId);
     return goal ? goal.name : null;
   };
 
-  // Helper para valores mascarados
+  // Helper to render masked values
   const renderHiddenValue = () => {
     return '******';
   };
 
-  // Helper para badges de status usando traduções
   const getStatusBadge = (status: string) => {
-    const statusVariants = {
-      'paid': 'success',
-      'pending': 'warning',
-      'overdue': 'destructive',
-      'projected': 'info'
-    };
-
-    const variant = statusVariants[status] || 'outline';
-    const text = t(`paymentStatus.${status}`, status);
-
-    return (
-      <Badge variant={variant as any}>
-        {text}
-      </Badge>
-    );
-  };
-
-  // Helper para obter o tipo da transação traduzido
-  const getTransactionTypeText = (type: string) => {
-    return t(`transactionTypes.${type}`, type);
-  };
-
-  // Helper para determinar se é entrada ou saída
-  const isInflow = (type: string) => {
-    return type === 'income' || type.includes('_inflow');
+    switch (status) {
+      case 'paid':
+        return <Badge variant="success">{t('paymentStatus.paid')}</Badge>;
+      case 'pending':
+        return <Badge variant="warning">{t('paymentStatus.pending')}</Badge>;
+      case 'overdue':
+        return <Badge variant="destructive">{t('paymentStatus.overdue')}</Badge>;
+      case 'projected':
+        return <Badge variant="info">{t('paymentStatus.projected')}</Badge>;
+      default:
+        return null;
+    }
   };
 
   if (transactions.length === 0) {
@@ -96,20 +80,15 @@ const TransactionList: React.FC<TransactionListProps> = ({
             </svg>
           </div>
           <div className="space-y-2">
-            <p className="font-medium text-foreground">{t('pages.transactions.noTransactions')}</p>
-            <p className="text-sm text-muted-foreground">
-              {viewMode === 'PF' 
-                ? t('pages.transactions.noTransactionsPF')
-                : t('pages.transactions.noTransactionsPJ')
-              }
-            </p>
+            <p className="font-medium text-foreground">{t('common.noData')}</p>
+            <p className="text-sm text-muted-foreground">{t('transactions.empty')}</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Layout mobile com cards
+  // Mobile card layout
   if (isMobile) {
     return (
       <div className="space-y-3">
@@ -122,3 +101,132 @@ const TransactionList: React.FC<TransactionListProps> = ({
             hideValues={hideValues}
             index={index}
           />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="border rounded-lg overflow-hidden shadow-sm">
+      <Table>
+        <TableHeader className="bg-muted/30">
+          <TableRow>
+            <TableHead>{t('common.type')}</TableHead>
+            <TableHead>{t('common.date')}</TableHead>
+            <TableHead>{t('common.category')}</TableHead>
+            <TableHead>{t('common.description')}</TableHead>
+            <TableHead>{t('common.supplier')}</TableHead>
+            <TableHead>{t('common.dueDate')}</TableHead>
+            <TableHead className="text-right">{t('common.originalAmount')}</TableHead>
+            <TableHead className="text-right">{t('common.status')}</TableHead>
+            <TableHead className="text-right">{t('common.amount')}</TableHead>
+            <TableHead className="w-10"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {transactions.map((transaction, index) => {
+            // Use different icons and colors based on transaction type
+            const iconColor = transaction.type === 'income' ? '#26DE81' : '#EF4444';
+            
+            return (
+              <motion.tr
+                key={transaction.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05, duration: 0.3 }}
+                className="group"
+              >
+                <TableCell>
+                  {transaction.type === 'income' ? (
+                    <div className="flex items-center">
+                      <div className="w-7 h-7 rounded-full bg-metacash-success flex items-center justify-center mr-2">
+                        <ArrowUp className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs md:text-sm">{t('income.title')}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <div className="w-7 h-7 rounded-full bg-metacash-error flex items-center justify-center mr-2">
+                        <ArrowDown className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs md:text-sm">{t('expense.title')}</span>
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell className="font-medium text-xs md:text-sm">
+                  {formatDate(transaction.date)}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <CategoryIcon 
+                      icon={transaction.type === 'income' ? 'trending-up' : transaction.category?.name.toLowerCase().includes('food') ? 'utensils' : 'shopping-bag'} 
+                      color={iconColor} 
+                      size={16}
+                    />
+                    <Badge variant="outline" className={cn(
+                      "text-xs",
+                      transaction.type === 'income' 
+                        ? "bg-green-50 text-green-600 hover:bg-green-100 border-green-200"
+                        : "bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
+                    )}>
+                      {transaction.category?.name || 'N/A'}
+                    </Badge>
+                  </div>
+                </TableCell>
+                <TableCell className="text-xs md:text-sm">
+                  {transaction.description}
+                </TableCell>
+                <TableCell className="text-xs md:text-sm">
+                  {transaction.supplier || 'N/A'}
+                </TableCell>
+                <TableCell className="text-xs md:text-sm">
+                  {transaction.due_date ? formatDate(transaction.due_date) : 'N/A'}
+                </TableCell>
+                <TableCell className="text-right font-medium text-xs md:text-sm">
+                  {transaction.original_amount ? formatCurrency(transaction.original_amount, currency) : 'N/A'}
+                </TableCell>
+                <TableCell className="text-right text-xs md:text-sm">
+                  {transaction.payment_status ? getStatusBadge(transaction.payment_status) : 'N/A'}
+                </TableCell>
+                <TableCell className={cn(
+                  "text-right font-semibold text-xs md:text-sm",
+                  transaction.type === 'income' ? 'text-metacash-success' : 'text-metacash-error'
+                )}>
+                  {transaction.type === 'income' ? '+' : '-'}
+                  {hideValues ? renderHiddenValue() : formatCurrency(transaction.amount, currency)}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">{t('common.edit')}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {onEdit && (
+                        <DropdownMenuItem onClick={() => onEdit(transaction)}>
+                          {t('common.edit')}
+                        </DropdownMenuItem>
+                      )}
+                      {onDelete && (
+                        <DropdownMenuItem 
+                          onClick={() => onDelete(transaction.id)}
+                          className="text-metacash-error"
+                        >
+                          {t('common.delete')}
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </motion.tr>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
+export default TransactionList;
