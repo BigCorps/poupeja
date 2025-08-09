@@ -1,14 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Trash2, Edit, MoreVertical } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { Category } from '@/types/categories';
-import { getCategoriesByType, addCategory, updateCategory, deleteCategory } from '@/services/categoryService';
-import { useToast } from "@/hooks/use-toast";
+import { useApp } from '@/contexts/AppContext'; // Importando o hook principal do contexto
 import CategoryForm from '@/components/categories/CategoryForm';
 import CategoryIcon from '@/components/categories/CategoryIcon';
 import {
@@ -27,39 +24,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Category, TransactionType } from '@/types/categories';
 
 const CategoriesPage: React.FC = () => {
   const { t } = usePreferences();
-  const { toast } = useToast();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { 
+    categories, 
+    isLoading, 
+    addCategory, 
+    updateCategory, 
+    deleteCategory 
+  } = useApp(); // Usando o hook useApp para acessar o estado e as ações
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [categoryType, setCategoryType] = useState<'expense' | 'income'>('expense');
+  const [categoryType, setCategoryType] = useState<TransactionType>('expense');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Load categories from Supabase on mount and whenever they change
-    const loadCategories = async () => {
-      setLoading(true);
-      try {
-        const loadedCategories = await getCategoriesByType(categoryType);
-        setCategories(loadedCategories);
-      } catch (error) {
-        console.error('Error loading categories:', error);
-        toast({
-          title: t('common.error'),
-          description: t('common.errorFetching'),
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCategories();
-  }, [categoryType, toast, t]);
+  // Filtra as categorias com base no tipo selecionado na aba
+  const filteredCategories = useMemo(() => {
+    return categories.filter(category => category.type === categoryType);
+  }, [categories, categoryType]);
 
   const handleAddCategory = () => {
     setEditingCategory(null);
@@ -78,76 +63,129 @@ const CategoriesPage: React.FC = () => {
 
   const confirmDeleteCategory = async () => {
     if (categoryToDelete) {
-      try {
-        const success = await deleteCategory(categoryToDelete.id);
-        if (success) {
-          const updatedCategories = await getCategoriesByType(categoryType);
-          setCategories(updatedCategories);
-          toast({
-            title: t('categories.deleted'),
-            description: `${categoryToDelete.name} ${t('categories.wasDeleted')}`,
-          });
-        } else {
-          toast({
-            title: t('common.error'),
-            description: t('categories.defaultCantDelete'),
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error('Error deleting category:', error);
-        toast({
-          title: t('common.error'),
-          description: t('common.somethingWentWrong'),
-          variant: "destructive",
-        });
-      } finally {
-        setDeleteDialogOpen(false);
-        setCategoryToDelete(null);
-      }
+      // Use a ação deleteCategory do AppContext
+      await deleteCategory(categoryToDelete.id);
+      setDeleteDialogOpen(false);
+      setCategoryToDelete(null);
     }
   };
 
   const handleSaveCategory = async (category: Omit<Category, 'id'> | Category) => {
-    try {
-      if ('id' in category) {
-        // Update existing category
-        const updatedCategory = await updateCategory(category as Category);
-        if (updatedCategory) {
-          toast({
-            title: "Categoria atualizada",
-            description: `A categoria ${category.name} foi atualizada com sucesso.`,
-          });
-        }
-      } else {
-        // Add new category - ensure type is set correctly
-        const newCategory = await addCategory({
-          ...category,
-          type: categoryType // Make sure to use the current categoryType
-        });
-        if (newCategory) {
-          toast({
-            title: "Categoria adicionada",
-            description: `A categoria ${category.name} foi adicionada com sucesso.`,
-          });
-        }
-      }
-      
-      // Refresh categories list
-      const updatedCategories = await getCategoriesByType(categoryType);
-      setCategories(updatedCategories);
-      setCategoryFormOpen(false);
-    } catch (error) {
-      console.error('Error saving category:', error);
-      toast({
-        title: t('common.error'),
-        description: t('common.somethingWentWrong'),
-        variant: "destructive",
+    // Use as ações do AppContext para adicionar ou atualizar
+    if ('id' in category) {
+      await updateCategory(category as Category);
+    } else {
+      await addCategory({
+        ...category,
+        type: categoryType, // Garantir que o tipo está correto
       });
     }
+    setCategoryFormOpen(false);
   };
+  
+  // Função para renderizar as categorias, tratando subcategorias
+  const renderCategoriesList = (categoriesToRender: Category[]) => {
+    const categoriesByParent = categoriesToRender.reduce((acc, cat) => {
+      const parts = cat.name.split(' - ');
+      const mainCategoryName = parts[0];
+      if (!acc[mainCategoryName]) {
+        acc[mainCategoryName] = [];
+      }
+      acc[mainCategoryName].push(cat);
+      return acc;
+    }, {} as Record<string, Category[]>);
 
-  if (loading) {
+    return (
+      <ul className="space-y-2">
+        {Object.entries(categoriesByParent).map(([mainCategoryName, subcategories]) => (
+          <React.Fragment key={mainCategoryName}>
+            {subcategories.length === 1 && !subcategories[0].name.includes(' - ') ? (
+              // Categoria sem subcategoria
+              <li key={subcategories[0].id} className="bg-card p-3 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CategoryIcon icon={subcategories[0].icon} color={subcategories[0].color} />
+                  <span>{subcategories[0].name}</span>
+                </div>
+                <div>
+                  {subcategories[0].is_default ? (
+                    <Button variant="ghost" size="sm" onClick={() => handleEditCategory(subcategories[0])}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditCategory(subcategories[0])}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          {t('common.edit')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => handleDeleteCategory(subcategories[0])}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {t('common.delete')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </li>
+            ) : (
+              // Categoria com subcategorias
+              <li key={mainCategoryName} className="bg-card p-3 rounded-lg space-y-2">
+                <h3 className="font-semibold text-lg">{mainCategoryName}</h3>
+                <ul className="pl-6 space-y-2">
+                  {subcategories.map(subcat => (
+                    <li key={subcat.id} className="bg-muted p-2 rounded-lg flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <CategoryIcon icon={subcat.icon} color={subcat.color} />
+                        <span>{subcat.name.split(' - ')[1] || subcat.name}</span>
+                      </div>
+                      <div>
+                        {subcat.is_default ? (
+                          <Button variant="ghost" size="sm" onClick={() => handleEditCategory(subcat)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditCategory(subcat)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                {t('common.edit')}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeleteCategory(subcat)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {t('common.delete')}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            )}
+          </React.Fragment>
+        ))}
+      </ul>
+    );
+  };
+  
+  if (isLoading) {
     return (
       <MainLayout title={t('categories.title')}>
         <div className="flex justify-center py-8">
@@ -172,110 +210,45 @@ const CategoriesPage: React.FC = () => {
           <Tabs 
             defaultValue="expense" 
             value={categoryType}
-            onValueChange={(value) => setCategoryType(value as 'expense' | 'income')}
+            onValueChange={(value) => setCategoryType(value as TransactionType)}
             className="w-full"
           >
-            <TabsList className="grid grid-cols-2 mb-4">
+            <TabsList className="grid grid-cols-2 lg:grid-cols-4 mb-4">
               <TabsTrigger value="expense" className="data-[state=active]:bg-red-500 data-[state=active]:text-white">
                 {t('common.expense')}
               </TabsTrigger>
               <TabsTrigger value="income" className="data-[state=active]:bg-green-500 data-[state=active]:text-white">
                 {t('common.income')}
               </TabsTrigger>
+              <TabsTrigger value="operational" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">
+                Fluxo Operacional
+              </TabsTrigger>
+              <TabsTrigger value="investment" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
+                Fluxo de Investimento
+              </TabsTrigger>
+              <TabsTrigger value="financing" className="data-[state=active]:bg-purple-500 data-[state=active]:text-white">
+                Fluxo de Financiamento
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="expense" className="mt-0">
-              <ul className="space-y-2">
-                {categories.map((category) => (
-                  <li 
-                    key={category.id} 
-                    className="bg-card p-3 rounded-lg flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <CategoryIcon 
-                        icon={category.icon} 
-                        color={category.color} 
-                      />
-                      <span>{category.name}</span>
-                    </div>
-                    <div>
-                      {category.isDefault ? (
-                        <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              {t('common.edit')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDeleteCategory(category)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {t('common.delete')}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {renderCategoriesList(filteredCategories.filter(cat => cat.type === 'expense'))}
             </TabsContent>
             
             <TabsContent value="income" className="mt-0">
-              <ul className="space-y-2">
-                {categories.map((category) => (
-                  <li 
-                    key={category.id} 
-                    className="bg-card p-3 rounded-lg flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <CategoryIcon 
-                        icon={category.icon} 
-                        color={category.color} 
-                      />
-                      <span>{category.name}</span>
-                    </div>
-                    <div>
-                      {category.isDefault ? (
-                        <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              {t('common.edit')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDeleteCategory(category)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {t('common.delete')}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {renderCategoriesList(filteredCategories.filter(cat => cat.type === 'income'))}
+            </TabsContent>
+
+            <TabsContent value="operational" className="mt-0">
+              {renderCategoriesList(filteredCategories.filter(cat => cat.type.includes('operational')))}
+            </TabsContent>
+            
+            <TabsContent value="investment" className="mt-0">
+              {renderCategoriesList(filteredCategories.filter(cat => cat.type.includes('investment')))}
+            </TabsContent>
+
+            <TabsContent value="financing" className="mt-0">
+              {renderCategoriesList(filteredCategories.filter(cat => cat.type.includes('financing')))}
             </TabsContent>
           </Tabs>
         </div>
@@ -294,7 +267,7 @@ const CategoriesPage: React.FC = () => {
               <AlertDialogTitle>{t('categories.deleteConfirmation')}</AlertDialogTitle>
               <AlertDialogDescription>
                 {t('categories.deleteWarning')}
-                {categoryToDelete?.isDefault && (
+                {categoryToDelete?.is_default && (
                   <p className="mt-2 text-destructive font-medium">
                     {t('categories.defaultWarning')}
                   </p>
@@ -303,7 +276,7 @@ const CategoriesPage: React.FC = () => {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-              <AlertDialogAction 
+              <AlertDialogAction
                 onClick={confirmDeleteCategory}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
