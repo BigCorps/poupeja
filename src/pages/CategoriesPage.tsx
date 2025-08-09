@@ -117,18 +117,21 @@ const CategoriesPage: React.FC = () => {
     <MainLayout title={t('categories.title')}>
       <SubscriptionGuard feature="categorias personalizadas">
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 sm:space-x-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center sm:space-x-4 mb-4">
             <h1 className="text-2xl font-bold">{t('categories.title')}</h1>
             <div className="flex space-x-2">
-              <Button 
+              <Button
                 variant={viewMode === 'mainCategories' ? 'default' : 'outline'}
                 onClick={() => setViewMode('mainCategories')}
               >
                 Categorias
               </Button>
-              <Button 
+              <Button
                 variant={viewMode === 'subcategories' ? 'default' : 'outline'}
-                onClick={() => setViewMode('subcategories')}
+                onClick={() => {
+                  setViewMode('subcategories');
+                  setSelectedParentCategory(null); // Reseta a seleção ao mudar para subcategorias
+                }}
               >
                 Subcategorias
               </Button>
@@ -137,22 +140,15 @@ const CategoriesPage: React.FC = () => {
           
           <Separator />
           
-          <div className="flex justify-between items-center">
-            {viewMode === 'subcategories' && selectedParentCategory ? (
-              <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm" onClick={() => setSelectedParentCategory(null)}>
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <h2 className="text-xl font-semibold">Subcategorias de {selectedParentCategory.name}</h2>
-              </div>
-            ) : (
+          <div className="flex justify-between items-center mt-4">
+            {viewMode === 'mainCategories' ? (
               <Tabs
                 defaultValue="expense"
                 value={categoryType}
                 onValueChange={(value) => setCategoryType(value as 'expense' | 'income')}
                 className="w-full"
               >
-                <TabsList className="grid grid-cols-2 mb-4">
+                <TabsList className="grid grid-cols-2">
                   <TabsTrigger value="expense" className="data-[state=active]:bg-red-500 data-[state=active]:text-white">
                     {t('common.expense')}
                   </TabsTrigger>
@@ -161,8 +157,22 @@ const CategoriesPage: React.FC = () => {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
+            ) : (
+              // Modo Subcategorias
+              <>
+                {selectedParentCategory ? (
+                  <div className="flex items-center space-x-2">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedParentCategory(null)}>
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <h2 className="text-xl font-semibold">Subcategorias de {selectedParentCategory.name}</h2>
+                  </div>
+                ) : (
+                  <h2 className="text-xl font-semibold">Subcategorias</h2>
+                )}
+              </>
             )}
-
+            
             <Button 
               onClick={viewMode === 'mainCategories' ? handleAddCategory : handleAddSubcategory}
               disabled={viewMode === 'subcategories' && !selectedParentCategory}
@@ -172,67 +182,17 @@ const CategoriesPage: React.FC = () => {
             </Button>
           </div>
 
-          {viewMode === 'mainCategories' ? (
-            <div className="space-y-4">
-              <ul className="space-y-4">
-                {mainCategories
-                  .filter(cat => cat.type === categoryType)
-                  .map((category) => (
-                    <li key={category.id} className="bg-card p-3 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <CategoryIcon icon={category.icon} color={category.color} />
-                        <span className="font-semibold">{category.name}</span>
-                      </div>
-                      <div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              {t('common.edit')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeleteCategory(category)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {t('common.delete')}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          ) : (
-            <div>
-              {!selectedParentCategory ? (
-                <div className="space-y-4">
-                  <h2 className="text-lg font-medium">Selecione uma categoria principal:</h2>
-                  <ul className="space-y-2">
-                    {mainCategories.map(category => (
-                      <li key={category.id} className="bg-card p-3 rounded-lg cursor-pointer hover:bg-accent" onClick={() => setSelectedParentCategory(category)}>
+          <div className="mt-4">
+            {viewMode === 'mainCategories' ? (
+              <TabsContent value={categoryType} className="mt-0">
+                <ul className="space-y-4">
+                  {mainCategories
+                    .filter(cat => cat.type === categoryType)
+                    .map((category) => (
+                      <li key={category.id} className="bg-card p-3 rounded-lg flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <CategoryIcon icon={category.icon} color={category.color} />
                           <span className="font-semibold">{category.name}</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <ul className="space-y-4">
-                    {subCategoriesForSelectedParent.map(subcat => (
-                      <li key={subcat.id} className="bg-card p-3 rounded-lg flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <CategoryIcon icon={subcat.icon} color={subcat.color} />
-                          <span className="font-semibold">{subcat.name}</span>
                         </div>
                         <div>
                           <DropdownMenu>
@@ -242,13 +202,13 @@ const CategoriesPage: React.FC = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditCategory(subcat)}>
+                              <DropdownMenuItem onClick={() => handleEditCategory(category)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 {t('common.edit')}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
-                                onClick={() => handleDeleteCategory(subcat)}
+                                onClick={() => handleDeleteCategory(category)}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 {t('common.delete')}
@@ -258,11 +218,63 @@ const CategoriesPage: React.FC = () => {
                         </div>
                       </li>
                     ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
+                </ul>
+              </TabsContent>
+            ) : (
+              <div>
+                {!selectedParentCategory ? (
+                  <div className="space-y-4">
+                    <h2 className="text-lg font-medium">Selecione uma categoria principal:</h2>
+                    <ul className="space-y-2">
+                      {mainCategories.map(category => (
+                        <li key={category.id} className="bg-card p-3 rounded-lg cursor-pointer hover:bg-accent" onClick={() => setSelectedParentCategory(category)}>
+                          <div className="flex items-center gap-3">
+                            <CategoryIcon icon={category.icon} color={category.color} />
+                            <span className="font-semibold">{category.name}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <ul className="space-y-4">
+                      {subCategoriesForSelectedParent.map(subcat => (
+                        <li key={subcat.id} className="bg-card p-3 rounded-lg flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <CategoryIcon icon={subcat.icon} color={subcat.color} />
+                            <span className="font-semibold">{subcat.name}</span>
+                          </div>
+                          <div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditCategory(subcat)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  {t('common.edit')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDeleteCategory(subcat)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  {t('common.delete')}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <CategoryForm
