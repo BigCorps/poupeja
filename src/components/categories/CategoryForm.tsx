@@ -12,8 +12,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 // Caminho de importação corrigido para o diretório atual.
 // Assume que o arquivo ColorPicker.tsx está na mesma pasta que CategoryForm.tsx.
-import ColorPicker from './ColorPicker'; 
-import { IconPicker } from '@/components/IconPicker';
+import ColorPicker from './ColorPicker';
+// Caminho e nome do componente corrigidos.
+// Assume que o arquivo IconSelector.tsx está na mesma pasta que CategoryForm.tsx.
+import IconSelector from './IconSelector';
 import CategoryPicker from '@/components/CategoryPicker';
 import { Category } from '@/types/categories';
 
@@ -123,7 +125,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ open, onOpenChange, initial
                 Ícone
               </Label>
               <div className="col-span-3">
-                <IconPicker
+                <IconSelector
                   icon={formData.icon}
                   onIconChange={(newIcon) => setFormData(prev => ({ ...prev, icon: newIcon }))}
                 />
