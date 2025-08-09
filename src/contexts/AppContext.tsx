@@ -7,6 +7,7 @@ import React, {
   useState,
   useMemo,
   useCallback,
+  useRef
 } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction, Goal, ScheduledTransaction, User, TimeRange } from '@/types';
@@ -18,6 +19,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 // TIPOS E INTERFACES
 // ===================================================
 
+// Use database types directly from Supabase
 interface Category {
   id: string;
   created_at: string;
@@ -47,15 +49,13 @@ interface AppState {
 }
 
 interface AppContextType extends AppState {
+  // Ações básicas
   dispatch: React.Dispatch<AppAction>;
   toggleHideValues: () => void;
   logout: () => void;
   setCustomDateRange: (startDate: string, endDate: string) => void;
   setTimeRange: (timeRange: TimeRange) => void;
-  getTransactions: () => Promise<void>;
-  getCategories: () => Promise<void>;
-  getGoals: () => Promise<void>;
-  getScheduledTransactions: () => Promise<void>;
+  // Funções CRUD - Otimizadas para usar listeners
   addTransaction: (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
   updateTransaction: (transaction: Transaction) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
@@ -237,13 +237,15 @@ const transformCategory = (data: any): Category => ({
   created_at: new Date(data.created_at),
 });
 
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   // ===================================================
-  // FUNÇÕES DE BUSCA DE DADOS
+  // FUNÇÕES DE BUSCA DE DADOS COM useCallback
   // ===================================================
-  // Funções de busca com useCallback para otimização
+  // Estas funções buscam os dados mais recentes do Supabase.
+  // Elas são otimizadas com useCallback para evitar re-renderizações desnecessárias.
   const getTransactions = useCallback(async (): Promise<void> => {
     if (!state.user?.id) return;
     try {
@@ -313,78 +315,122 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state.user]);
 
+
   // ===================================================
-  // LÓGICA DE AUTENTICAÇÃO E BUSCA INICIAL
+  // LÓGICA DE AUTENTICAÇÃO E INICIALIZAÇÃO DE DADOS
   // ===================================================
+  // Este useEffect escuta a autenticação e gerencia o estado inicial.
   useEffect(() => {
-    // Configura o listener de autenticação.
+    // Escuta as mudanças de autenticação
     const { data: { subscription } } = setupAuthListener((session) => {
       dispatch({ type: 'SET_SESSION', payload: session });
       dispatch({ type: 'SET_USER', payload: session ? session.user : null });
     });
-    // Limpa a inscrição ao desmontar o componente
+
+    // Função de limpeza para desinscrever o listener de auth.
     return () => {
       subscription?.unsubscribe();
     };
   }, []);
 
+  // ===================================================
+  // LÓGICA DE LISTENERS EM TEMPO REAL E BUSCA INICIAL
+  // ===================================================
+  // Este useEffect é executado APENAS quando o usuário é autenticado.
   useEffect(() => {
-    if (state.user) {
-      console.log('User authenticated, fetching initial data...');
-      dispatch({ type: 'SET_LOADING', payload: true });
-      Promise.all([
-        getTransactions(),
-        getCategories(),
-        getGoals(),
-        getScheduledTransactions()
-      ]).then(() => {
+    let channels: RealtimeChannel[] = [];
+    
+    const initializeDataAndListeners = async () => {
+      if (state.user) {
+        console.log('User authenticated, fetching initial data and setting up listeners...');
+        dispatch({ type: 'SET_LOADING', payload: true });
+
+        // Fetch de todos os dados iniciais
+        await Promise.all([
+          getTransactions(),
+          getCategories(),
+          getGoals(),
+          getScheduledTransactions()
+        ]).then(() => {
+          dispatch({ type: 'SET_LOADING', payload: false });
+        }).catch(err => {
+          console.error('Error fetching initial data:', err);
+          dispatch({ type: 'SET_LOADING', payload: false });
+          dispatch({ type: 'SET_ERROR', payload: 'Erro ao buscar dados iniciais.' });
+        });
+        
+        // Setup real-time listeners only AFTER initial data is fetched
+        const userId = state.user.id;
+        
+        // Listener de Transações
+        const transactionsChannel = supabase
+          .channel('poupeja_transactions')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'poupeja_transactions', filter: `user_id=eq.${userId}` }, () => {
+            getTransactions();
+          })
+          .subscribe();
+        channels.push(transactionsChannel);
+
+        // Listener de Categorias
+        const categoriesChannel = supabase
+          .channel('poupeja_categories')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'poupeja_categories', filter: `user_id=eq.${userId}` }, () => {
+            getCategories();
+          })
+          .subscribe();
+        channels.push(categoriesChannel);
+        
+        // Listener de Metas
+        const goalsChannel = supabase
+          .channel('poupeja_goals')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'poupeja_goals', filter: `user_id=eq.${userId}` }, () => {
+            getGoals();
+          })
+          .subscribe();
+        channels.push(goalsChannel);
+
+        // Listener de Transações Agendadas
+        const scheduledTransactionsChannel = supabase
+          .channel('poupeja_scheduled_transactions')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'poupeja_scheduled_transactions', filter: `user_id=eq.${userId}` }, () => {
+            getScheduledTransactions();
+          })
+          .subscribe();
+        channels.push(scheduledTransactionsChannel);
+        
+        // Recalcular as metas após o fetch inicial
+        recalculateGoalAmountsService(state.goals, state.transactions, dispatch);
+      } else {
+        // Se o usuário não está logado, limpa todos os dados
         dispatch({ type: 'SET_LOADING', payload: false });
-      }).catch(err => {
-        console.error('Error fetching initial data:', err);
-        dispatch({ type: 'SET_LOADING', payload: false });
-        dispatch({ type: 'SET_ERROR', payload: 'Erro ao buscar dados iniciais.' });
+        dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
+        dispatch({ type: 'SET_CATEGORIES', payload: [] });
+        dispatch({ type: 'SET_GOALS', payload: [] });
+        dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
+      }
+    };
+    
+    initializeDataAndListeners();
+
+    // Função de limpeza: desinscreve de todos os listeners quando o componente é desmontado
+    // ou quando o state.user muda (ou seja, quando o usuário faz logout).
+    return () => {
+      console.log('Cleaning up real-time listeners...');
+      channels.forEach(channel => {
+        if (channel) {
+          channel.unsubscribe();
+        }
       });
-      
-      // Setup real-time listeners after user is available
-      const channels: RealtimeChannel[] = [];
-      const userId = state.user.id;
+    };
+  }, [state.user]); // Este useEffect é re-executado apenas quando o usuário loga ou desloga
 
-      // Listener de Transações
-      const transactionsChannel = supabase
-        .channel('poupeja_transactions')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'poupeja_transactions', filter: `user_id=eq.${userId}` }, () => {
-          getTransactions();
-        })
-        .subscribe();
-      channels.push(transactionsChannel);
-
-      // Listener de Categorias
-      const categoriesChannel = supabase
-        .channel('poupeja_categories')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'poupeja_categories', filter: `user_id=eq.${userId}` }, () => {
-          getCategories();
-        })
-        .subscribe();
-      channels.push(categoriesChannel);
-
-      return () => {
-        channels.forEach(channel => channel.unsubscribe());
-        console.log('Listeners unsubscribed.');
-      };
-
-    } else {
-      dispatch({ type: 'SET_LOADING', payload: false });
-      dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
-      dispatch({ type: 'SET_CATEGORIES', payload: [] });
-      dispatch({ type: 'SET_GOALS', payload: [] });
-      dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
-    }
-  }, [state.user, getTransactions, getCategories, getGoals, getScheduledTransactions]);
 
   // ===================================================
   // OUTRAS FUNÇÕES DE AÇÃO (CRUD)
   // ===================================================
 
+  // Funções CRUD agora apenas disparam a requisição,
+  // e o listener de tempo real irá atualizar o estado.
   const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'>) => {
     if (!state.user) return;
     try {
@@ -505,9 +551,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state.user]);
 
+  // ===================================================
+  // LÓGICA DE FILTRAGEM
+  // ===================================================
+
   const filterTransactions = useCallback(() => {
     const { transactions, timeRange, customStartDate, customEndDate } = state;
-    // Lógica de filtragem de transações (mantida do código anterior)
     const now = new Date();
     let startDate: Date;
     let endDate: Date;
@@ -585,7 +634,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_CUSTOM_DATE_RANGE', payload: { startDate, endDate } });
   }, []);
 
-  // Memóiza o valor do contexto para evitar re-renderizações desnecessárias
+
   const value = useMemo(() => ({
     ...state,
     dispatch,
@@ -593,10 +642,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     logout,
     setCustomDateRange,
     setTimeRange,
-    getTransactions,
-    getCategories,
-    getGoals,
-    getScheduledTransactions,
     addTransaction,
     updateTransaction,
     deleteTransaction,
@@ -615,10 +660,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     logout,
     setCustomDateRange,
     setTimeRange,
-    getTransactions,
-    getCategories,
-    getGoals,
-    getScheduledTransactions,
     addTransaction,
     updateTransaction,
     deleteTransaction,
