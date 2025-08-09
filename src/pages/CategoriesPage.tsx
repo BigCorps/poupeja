@@ -3,7 +3,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Trash2, Edit, MoreVertical } from 'lucide-react';
+import { Plus, Trash2, Edit, MoreVertical, ArrowLeft } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useApp } from '@/contexts/AppContext';
 import CategoryForm from '@/components/categories/CategoryForm';
@@ -25,28 +25,39 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Category, TransactionType } from '@/types/categories';
+import { Separator } from '@/components/ui/separator';
+
+type ViewMode = 'mainCategories' | 'subcategories';
 
 const CategoriesPage: React.FC = () => {
   const { t } = usePreferences();
-  const { 
-    categories, 
-    isLoading, 
-    addCategory, 
-    updateCategory, 
-    deleteCategory 
-  } = useApp();
+  const { categories, isLoading, addCategory, updateCategory, deleteCategory } = useApp();
+  
+  const [viewMode, setViewMode] = useState<ViewMode>('mainCategories');
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryType, setCategoryType] = useState<'expense' | 'income'>('expense');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [selectedParentCategory, setSelectedParentCategory] = useState<Category | null>(null);
 
-  // Filtra as categorias com base no tipo selecionado na aba
-  const filteredCategories = useMemo(() => {
-    return categories.filter(category => category.type === categoryType);
-  }, [categories, categoryType]);
+  // Filtra as categorias principais (sem parent_id)
+  const mainCategories = useMemo(() => {
+    return categories.filter(cat => !cat.parent_id);
+  }, [categories]);
+
+  // Filtra as subcategorias para a categoria principal selecionada
+  const subCategoriesForSelectedParent = useMemo(() => {
+    if (!selectedParentCategory) return [];
+    return categories.filter(cat => cat.parent_id === selectedParentCategory.id);
+  }, [categories, selectedParentCategory]);
 
   const handleAddCategory = () => {
+    setEditingCategory(null);
+    setCategoryFormOpen(true);
+  };
+
+  const handleAddSubcategory = () => {
     setEditingCategory(null);
     setCategoryFormOpen(true);
   };
@@ -63,35 +74,35 @@ const CategoriesPage: React.FC = () => {
 
   const confirmDeleteCategory = async () => {
     if (categoryToDelete) {
-      await deleteCategory(categoryToDelete.id);
-      setDeleteDialogOpen(false);
-      setCategoryToDelete(null);
+      try {
+        await deleteCategory(categoryToDelete.id);
+      } catch (error) {
+        console.error("Erro ao deletar categoria:", error);
+      } finally {
+        setDeleteDialogOpen(false);
+        setCategoryToDelete(null);
+      }
     }
   };
 
   const handleSaveCategory = async (category: Omit<Category, 'id'> | Category) => {
-    if ('id' in category) {
-      await updateCategory(category as Category);
-    } else {
-      await addCategory({
-        ...category,
-        type: categoryType,
-      });
+    try {
+      if ('id' in category) {
+        await updateCategory(category as Category);
+      } else {
+        await addCategory({
+          ...category,
+          type: categoryType,
+          parent_id: viewMode === 'subcategories' ? selectedParentCategory?.id || null : null,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao salvar categoria:", error);
+    } finally {
+      setCategoryFormOpen(false);
     }
-    setCategoryFormOpen(false);
   };
 
-  // Agrupa as categorias por parent_id para criar a visualização hierárquica
-  const categoriesByParent = useMemo(() => {
-    const parentCategories = filteredCategories.filter(cat => !cat.parent_id);
-    const subCategories = filteredCategories.filter(cat => cat.parent_id);
-
-    return parentCategories.map(parent => ({
-      ...parent,
-      subcategories: subCategories.filter(sub => sub.parent_id === parent.id),
-    }));
-  }, [filteredCategories]);
-  
   if (isLoading) {
     return (
       <MainLayout title={t('categories.title')}>
@@ -106,44 +117,124 @@ const CategoriesPage: React.FC = () => {
     <MainLayout title={t('categories.title')}>
       <SubscriptionGuard feature="categorias personalizadas">
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 sm:space-x-4">
             <h1 className="text-2xl font-bold">{t('categories.title')}</h1>
-            <Button onClick={handleAddCategory}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t('categories.add')}
-            </Button>
+            <div className="flex space-x-2">
+              <Button 
+                variant={viewMode === 'mainCategories' ? 'default' : 'outline'}
+                onClick={() => setViewMode('mainCategories')}
+              >
+                Categorias
+              </Button>
+              <Button 
+                variant={viewMode === 'subcategories' ? 'default' : 'outline'}
+                onClick={() => setViewMode('subcategories')}
+              >
+                Subcategorias
+              </Button>
+            </div>
           </div>
           
-          <Tabs 
-            defaultValue="expense" 
-            value={categoryType}
-            onValueChange={(value) => setCategoryType(value as 'expense' | 'income')}
-            className="w-full"
-          >
-            <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="expense" className="data-[state=active]:bg-red-500 data-[state=active]:text-white">
-                {t('common.expense')}
-              </TabsTrigger>
-              <TabsTrigger value="income" className="data-[state=active]:bg-green-500 data-[state=active]:text-white">
-                {t('common.income')}
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="expense" className="mt-0">
+          <Separator />
+          
+          <div className="flex justify-between items-center">
+            {viewMode === 'subcategories' && selectedParentCategory ? (
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedParentCategory(null)}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <h2 className="text-xl font-semibold">Subcategorias de {selectedParentCategory.name}</h2>
+              </div>
+            ) : (
+              <Tabs
+                defaultValue="expense"
+                value={categoryType}
+                onValueChange={(value) => setCategoryType(value as 'expense' | 'income')}
+                className="w-full"
+              >
+                <TabsList className="grid grid-cols-2 mb-4">
+                  <TabsTrigger value="expense" className="data-[state=active]:bg-red-500 data-[state=active]:text-white">
+                    {t('common.expense')}
+                  </TabsTrigger>
+                  <TabsTrigger value="income" className="data-[state=active]:bg-green-500 data-[state=active]:text-white">
+                    {t('common.income')}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
+            <Button 
+              onClick={viewMode === 'mainCategories' ? handleAddCategory : handleAddSubcategory}
+              disabled={viewMode === 'subcategories' && !selectedParentCategory}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {viewMode === 'mainCategories' ? 'Adicionar Categoria' : 'Adicionar Subcategoria'}
+            </Button>
+          </div>
+
+          {viewMode === 'mainCategories' ? (
+            <div className="space-y-4">
               <ul className="space-y-4">
-                {categoriesByParent.filter(cat => cat.type === 'expense').map((category) => (
-                  <li key={category.id} className="bg-card p-3 rounded-lg flex flex-col">
-                    <div className="flex items-center justify-between">
+                {mainCategories
+                  .filter(cat => cat.type === categoryType)
+                  .map((category) => (
+                    <li key={category.id} className="bg-card p-3 rounded-lg flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CategoryIcon icon={category.icon} color={category.color} />
                         <span className="font-semibold">{category.name}</span>
                       </div>
                       <div>
-                        {category.is_default ? (
-                          <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              {t('common.edit')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDeleteCategory(category)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              {t('common.delete')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : (
+            <div>
+              {!selectedParentCategory ? (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-medium">Selecione uma categoria principal:</h2>
+                  <ul className="space-y-2">
+                    {mainCategories.map(category => (
+                      <li key={category.id} className="bg-card p-3 rounded-lg cursor-pointer hover:bg-accent" onClick={() => setSelectedParentCategory(category)}>
+                        <div className="flex items-center gap-3">
+                          <CategoryIcon icon={category.icon} color={category.color} />
+                          <span className="font-semibold">{category.name}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <ul className="space-y-4">
+                    {subCategoriesForSelectedParent.map(subcat => (
+                      <li key={subcat.id} className="bg-card p-3 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <CategoryIcon icon={subcat.icon} color={subcat.color} />
+                          <span className="font-semibold">{subcat.name}</span>
+                        </div>
+                        <div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm">
@@ -151,140 +242,27 @@ const CategoriesPage: React.FC = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                              <DropdownMenuItem onClick={() => handleEditCategory(subcat)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 {t('common.edit')}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
-                                onClick={() => handleDeleteCategory(category)}
+                                onClick={() => handleDeleteCategory(subcat)}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 {t('common.delete')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        )}
-                      </div>
-                    </div>
-                    {/* Renderiza subcategorias */}
-                    {category.subcategories.length > 0 && (
-                      <ul className="mt-2 pl-8 space-y-2">
-                        {category.subcategories.map(subcat => (
-                          <li key={subcat.id} className="bg-muted p-2 rounded-lg flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <CategoryIcon icon={subcat.icon} color={subcat.color} />
-                              <span>{subcat.name}</span>
-                            </div>
-                            <div>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEditCategory(subcat)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    {t('common.edit')}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => handleDeleteCategory(subcat)}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    {t('common.delete')}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </TabsContent>
-            
-            <TabsContent value="income" className="mt-0">
-              <ul className="space-y-4">
-                {categoriesByParent.filter(cat => cat.type === 'income').map((category) => (
-                  <li key={category.id} className="bg-card p-3 rounded-lg flex flex-col">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <CategoryIcon icon={category.icon} color={category.color} />
-                        <span className="font-semibold">{category.name}</span>
-                      </div>
-                      <div>
-                        {category.is_default ? (
-                          <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                {t('common.edit')}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDeleteCategory(category)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                {t('common.delete')}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
-                    </div>
-                    {/* Renderiza subcategorias */}
-                    {category.subcategories.length > 0 && (
-                      <ul className="mt-2 pl-8 space-y-2">
-                        {category.subcategories.map(subcat => (
-                          <li key={subcat.id} className="bg-muted p-2 rounded-lg flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <CategoryIcon icon={subcat.icon} color={subcat.color} />
-                              <span>{subcat.name}</span>
-                            </div>
-                            <div>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEditCategory(subcat)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    {t('common.edit')}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => handleDeleteCategory(subcat)}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    {t('common.delete')}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </TabsContent>
-          </Tabs>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <CategoryForm
@@ -293,6 +271,8 @@ const CategoriesPage: React.FC = () => {
           initialData={editingCategory}
           onSave={handleSaveCategory}
           categoryType={categoryType}
+          parentId={viewMode === 'subcategories' ? selectedParentCategory?.id : null}
+          parentName={selectedParentCategory?.name}
         />
 
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -301,11 +281,6 @@ const CategoriesPage: React.FC = () => {
               <AlertDialogTitle>{t('categories.deleteConfirmation')}</AlertDialogTitle>
               <AlertDialogDescription>
                 {t('categories.deleteWarning')}
-                {categoryToDelete?.is_default && (
-                  <p className="mt-2 text-destructive font-medium">
-                    {t('categories.defaultWarning')}
-                  </p>
-                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
