@@ -249,7 +249,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   }, [open, initialData, form]);
 
-  // Filtra as categorias com base no personType e no tipo de fluxo (PJ)
   const availableCategories = categories.filter(c => {
     if (personType === 'PF') {
       return form.watch('type') === 'income' ? c.type === 'income' : c.type === 'expense';
@@ -458,7 +457,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                     />
                   </div>
                   
-                  {/* Seletor de categorias hierárquicas para PJ */}
                   <HierarchicalCategorySelector form={form} allCategories={availableCategories} />
 
                   <DescriptionField form={form} />
