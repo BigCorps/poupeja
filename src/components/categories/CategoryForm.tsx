@@ -10,7 +10,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import ColorPicker from './ColorPicker'; // Caminho de importação corrigido para o diretório atual
+// Caminho de importação corrigido para o diretório atual.
+// Assume que o arquivo ColorPicker.tsx está na mesma pasta que CategoryForm.tsx.
+import ColorPicker from './ColorPicker'; 
 import { IconPicker } from '@/components/IconPicker';
 import CategoryPicker from '@/components/CategoryPicker';
 import { Category } from '@/types/categories';
