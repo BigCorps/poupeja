@@ -240,19 +240,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Helper function to transform database types to proper types
   const transformTransaction = (dbTransaction: any): Transaction => {
     return {
-      id: dbTransaction.id,
-      type: dbTransaction.type as 'income' | 'expense',
-      amount: dbTransaction.amount,
+      id: dbTransaction.id || '',
+      type: (dbTransaction.type as 'income' | 'expense') || 'expense',
+      amount: dbTransaction.amount || 0,
       category: dbTransaction.category?.name || 'Unknown',
       categoryIcon: dbTransaction.category?.icon || 'circle',
       categoryColor: dbTransaction.category?.color || '#607D8B',
       description: dbTransaction.description || '',
-      date: dbTransaction.date,
-      goalId: dbTransaction.goal_id,
-      category_id: dbTransaction.category_id,
-      goal_id: dbTransaction.goal_id,
-      user_id: dbTransaction.user_id,
-      created_at: dbTransaction.created_at,
+      date: dbTransaction.date || new Date().toISOString(),
+      goalId: dbTransaction.goal_id || null,
+      category_id: dbTransaction.category_id || null,
+      goal_id: dbTransaction.goal_id || null,
+      user_id: dbTransaction.user_id || '',
+      created_at: dbTransaction.created_at || new Date().toISOString(),
     };
   };
 
