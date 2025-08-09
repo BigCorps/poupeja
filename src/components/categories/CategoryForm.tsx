@@ -24,7 +24,8 @@ import {
 
 // Importa o tipo de categoria e o hook de contexto
 import { Category } from '@/types/categories';
-import { useApp } from '@/context/AppContext';
+// Caminho de importação corrigido para um caminho relativo
+import { useApp } from '../../context/AppContext';
 
 // =========================================================================
 // Componente para selecionar uma categoria pai
