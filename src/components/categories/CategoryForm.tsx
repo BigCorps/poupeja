@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import ColorPicker from '@/components/ColorPicker';
+import ColorPicker from '../ColorPicker'; // Caminho de importação corrigido
 import { IconPicker } from '@/components/IconPicker';
 import CategoryPicker from '@/components/CategoryPicker';
 import { Category } from '@/types/categories';
