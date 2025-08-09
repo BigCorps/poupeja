@@ -172,8 +172,17 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
 };
 
 // ===================================================
-// PROVEDOR DE CONTEXTO
+// FUNÇÕES DE TRANSFORMAÇÃO (MOCK)
+// Aparentemente, essas funções estavam ausentes no seu arquivo. Elas são necessárias
+// para evitar erros de referência no `getGoals` e `getCategories`.
 // ===================================================
+const transformGoal = (data: any): Goal => {
+  return data;
+};
+
+const transformCategory = (data: any): Category => {
+  return data;
+};
 
 const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
@@ -243,7 +252,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         dispatch({ type: 'SET_ERROR', payload: error.message });
         dispatch({ type: 'SET_CATEGORIES', payload: [] });
       } else {
-        dispatch({ type: 'SET_CATEGORIES', payload: data || [] });
+        dispatch({ type: 'SET_CATEGORIES', payload: (data || []).map(transformCategory) });
       }
     } catch (err) {
       console.error("Erro inesperado ao buscar categorias:", err);
