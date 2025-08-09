@@ -10,7 +10,17 @@ import { useAppContext } from '@/contexts/AppContext';
 import { Transaction } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-// import { useUserPlan } from '@/hooks/useUserPlan'; // Importe este hook quando for implementar a lógica de planos
+// import { useUserPlan } from '@/hooks/useUserPlan';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const TransactionsPage = () => {
   const [formOpen, setFormOpen] = useState(false);
@@ -18,14 +28,9 @@ const TransactionsPage = () => {
   const [viewMode, setViewMode] = useState<'PF' | 'PJ'>('PF');
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   
-  const { transactions, deleteTransaction } = useAppContext();
+  const { transactions, deleteTransaction, categories } = useAppContext();
   const isMobile = useIsMobile();
-
-  // No futuro, descomente a linha abaixo e use o estado do plano para controlar o acesso
-  // const { plan } = useUserPlan();
-  // const hasPremiumPlan = plan === 'premium';
   
-  // Por enquanto, o acesso à seção PJ está liberado para todos para testes
   const hasPremiumPlan = true;
 
   const handleAddTransaction = useCallback(() => {
@@ -43,10 +48,7 @@ const TransactionsPage = () => {
   }, [deleteTransaction]);
 
   useEffect(() => {
-    // Esta é uma lógica de filtragem simples. No futuro, é recomendado que a API
-    // já retorne os dados filtrados para melhor performance.
     const getFilteredTransactions = () => {
-      // Filtrar transações por tipo de categoria com base no modo de visualização
       if (viewMode === 'PJ') {
         return transactions.filter(t => 
           t.category && (
@@ -56,7 +58,6 @@ const TransactionsPage = () => {
           )
         );
       }
-      // Padrão para PF (income e expense)
       return transactions.filter(t => 
         t.category && (
           t.category.type === 'income' || t.category.type === 'expense'
@@ -66,12 +67,107 @@ const TransactionsPage = () => {
     setFilteredTransactions(getFilteredTransactions());
   }, [viewMode, transactions]);
 
+  const getCategoryNameById = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : 'N/A';
+  }
+
+  const renderTable = (data: Transaction[]) => {
+    if (data.length === 0) {
+      return (
+        <div className="flex items-center justify-center p-6 text-muted-foreground">
+          Nenhum dado disponível
+        </div>
+      );
+    }
+    
+    // Mapeamento para exibir os cabeçalhos de coluna de forma mais profissional
+    const displayHeaders = ['Fornecedor', 'Descrição', 'Categoria', 'Valor Original', 'Data de Vencimento', 'Status'];
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {displayHeaders.map((header, index) => (
+              <TableHead key={index}>{header}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((transaction, index) => (
+            <TableRow key={index} onClick={() => handleEditTransaction(transaction)}>
+              <TableCell>{transaction.supplier || 'N/A'}</TableCell>
+              <TableCell>{transaction.description || 'N/A'}</TableCell>
+              <TableCell>{getCategoryNameById(transaction.categoryId) || 'N/A'}</TableCell>
+              <TableCell>
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                }).format(transaction.originalAmount || 0)}
+              </TableCell>
+              <TableCell>
+                {transaction.dueDate ? format(parseISO(transaction.dueDate), "dd/MM/yyyy") : 'N/A'}
+              </TableCell>
+              <TableCell>{transaction.paymentStatus || 'N/A'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
+  const renderTablePF = (data: Transaction[]) => {
+    if (data.length === 0) {
+      return (
+        <div className="flex items-center justify-center p-6 text-muted-foreground">
+          Nenhum dado disponível
+        </div>
+      );
+    }
+    
+    // Mapeamento para exibir os cabeçalhos de coluna de forma mais profissional
+    const displayHeaders = ['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor'];
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {displayHeaders.map((header, index) => (
+              <TableHead key={index}>{header}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((transaction, index) => (
+            <TableRow key={index} onClick={() => handleEditTransaction(transaction)}>
+              <TableCell>{format(parseISO(transaction.transactionDate), "dd/MM/yyyy")}</TableCell>
+              <TableCell>
+                <span className={cn(
+                  "font-semibold",
+                  transaction.type === 'income' ? "text-green-500" : "text-red-500"
+                )}>
+                  {transaction.type === 'income' ? 'Receita' : 'Despesa'}
+                </span>
+              </TableCell>
+              <TableCell>{getCategoryNameById(transaction.categoryId) || 'N/A'}</TableCell>
+              <TableCell>{transaction.description || 'N/A'}</TableCell>
+              <TableCell>
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                }).format(transaction.amount || 0)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
   return (
     <MainLayout>
-      {/* O SubscriptionGuard deve ser ajustado para o contexto de planos */}
       <SubscriptionGuard feature="movimentações ilimitadas">
         <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8">
-          {/* Cabeçalho da página com os botões PF/PJ */}
           <div className="mb-6 flex items-center justify-between">
             <h1 className="text-xl md:text-3xl font-semibold">Transações</h1>
             <div className="flex items-center space-x-2">
@@ -92,7 +188,6 @@ const TransactionsPage = () => {
                 </Button>
               )}
             </div>
-            {/* Botão Adicionar Transação (Desktop) */}
             {!isMobile && (
               <Button onClick={handleAddTransaction} size="lg">
                 <Plus className="mr-2 h-4 w-4" />
@@ -101,7 +196,6 @@ const TransactionsPage = () => {
             )}
           </div>
           
-          {/* Content Container */}
           <div className={cn(isMobile ? "space-y-4" : "")}>
             {isMobile ? (
               <TransactionList 
@@ -117,18 +211,13 @@ const TransactionsPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <TransactionList 
-                    transactions={filteredTransactions}
-                    onEdit={handleEditTransaction}
-                    onDelete={handleDeleteTransaction}
-                  />
+                  {viewMode === 'PF' ? renderTablePF(filteredTransactions) : renderTable(filteredTransactions)}
                 </CardContent>
               </Card>
             )}
           </div>
         </div>
 
-        {/* Mobile Floating Action Button */}
         {isMobile && (
           <div className="fixed bottom-20 right-4 z-50">
             <Button 
@@ -147,8 +236,6 @@ const TransactionsPage = () => {
           onOpenChange={setFormOpen}
           initialData={editingTransaction}
           mode={editingTransaction ? 'edit' : 'create'}
-          // Alteração principal: a prop "viewMode" foi renomeada para "personType"
-          // no novo componente TransactionForm para melhor clareza.
           personType={viewMode}
         />
       </SubscriptionGuard>
