@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ColorPicker } from '@/components/ColorPicker/ColorPicker'; // Corrigido para garantir o caminho correto
+import ColorPicker from '@/components/ColorPicker'; // Importação corrigida para exportação padrão
 import { IconPicker } from '@/components/IconPicker';
 import CategoryPicker from '@/components/CategoryPicker';
 import { Category } from '@/types/categories';
@@ -110,8 +110,8 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ open, onOpenChange, initial
               </Label>
               <div className="col-span-3">
                 <ColorPicker
-                  color={formData.color}
-                  onColorChange={(newColor) => setFormData(prev => ({ ...prev, color: newColor }))}
+                  selectedColor={formData.color}
+                  onSelectColor={(newColor) => setFormData(prev => ({ ...prev, color: newColor }))}
                 />
               </div>
             </div>
