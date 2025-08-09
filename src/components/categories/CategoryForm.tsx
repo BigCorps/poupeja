@@ -1,188 +1,136 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+
+import React from 'react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useForm } from 'react-hook-form';
+import { Category } from '@/types/categories';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import ColorPicker from './ColorPicker';
 import IconSelector from './IconSelector';
 
-// Importa os componentes do Shadcn para o seletor de categorias
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-// Caminho de importação corrigido para o alias @ para maior robustez
-import { useApp } from '@/contexts/AppContext';
-import { Category } from '@/types';
-
-// =========================================================================
-// Componente para selecionar uma categoria pai
-// =========================================================================
-interface CategorySelectorProps {
-  value: string;
-  onValueChange: (parentId: string | null) => void;
-  currentCategoryId?: string;
-}
-
-const CategorySelector: React.FC<CategorySelectorProps> = ({ value, onValueChange, currentCategoryId }) => {
-  const { categories } = useApp();
-
-  // Filtra apenas as categorias que podem ser pais (sem pai ou categorias diferentes da atual)
-  const parentCategories = categories.filter(
-    (cat) => !cat.parent_id && cat.id !== currentCategoryId
-  );
-
-  return (
-    <Select value={value} onValueChange={(val) => onValueChange(val || null)}>
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder="Selecione uma categoria pai" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="null">Nenhuma</SelectItem>
-        {parentCategories.map((category) => (
-          <SelectItem key={category.id} value={category.id}>
-            {category.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
-
-// =========================================================================
-// Componente principal do formulário
-// =========================================================================
 interface CategoryFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialData?: Category | null;
+  initialData: Category | null;
   onSave: (category: Omit<Category, 'id'> | Category) => void;
-  categoryType: 'operational_inflow' | 'operational_outflow' | 'investment_inflow' | 'investment_outflow' | 'financing_inflow' | 'financing_outflow';
+  categoryType?: 'income' | 'expense'; // Add categoryType prop
 }
 
-const CategoryForm: React.FC<CategoryFormProps> = ({ open, onOpenChange, initialData, onSave, categoryType }) => {
-  const [formData, setFormData] = useState<Omit<Category, 'id' | 'user_id' | 'created_at'> | Category>({
-    name: '',
-    color: '#000000',
-    icon: '',
-    is_default: false,
-    parent_id: null,
-    type: categoryType,
+const CategoryForm: React.FC<CategoryFormProps> = ({
+  open,
+  onOpenChange,
+  initialData,
+  onSave,
+  categoryType = 'expense' // Default to expense
+}) => {
+  const { t } = usePreferences();
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<Omit<Category, 'type'> & { id?: string }>({
+    defaultValues: initialData || {
+      name: '',
+      color: '#607D8B',
+      icon: 'circle',
+    }
   });
 
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        ...initialData,
-        parent_id: initialData.parent_id || null,
-        type: initialData.type,
-      });
-    } else {
-      setFormData({
-        name: '',
-        color: '#000000',
-        icon: '',
-        is_default: false,
-        parent_id: null,
-        type: categoryType,
-      });
-    }
-  }, [initialData, categoryType]);
+  const selectedColor = watch('color');
+  const selectedIcon = watch('icon');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  // Initialize form when initialData changes
+  React.useEffect(() => {
+    if (initialData) {
+      setValue('name', initialData.name);
+      setValue('color', initialData.color);
+      setValue('icon', initialData.icon);
+      if (initialData.id) {
+        setValue('id', initialData.id);
+      }
+    } else {
+      // Reset form when initialData is null (for new categories)
+      setValue('name', '');
+      setValue('color', '#607D8B');
+      setValue('icon', 'circle');
+    }
+  }, [initialData, setValue]);
+
+  const handleColorChange = (color: string) => {
+    setValue('color', color);
   };
 
-  const handleParentCategoryChange = useCallback((parentId: string | null) => {
-    setFormData(prev => ({ ...prev, parent_id: parentId }));
-  }, []);
+  const handleIconChange = (icon: string) => {
+    setValue('icon', icon);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData as Omit<Category, 'user_id' | 'created_at'> | Category);
+  const onSubmit = (data: Omit<Category, 'type'> & { id?: string }) => {
+    console.log('Form submitted with data:', data);
+    console.log('Category type being used:', categoryType);
+    
+    if (initialData) {
+      onSave({
+        ...data,
+        id: initialData.id,
+        type: initialData.type,
+        isDefault: initialData.isDefault
+      });
+    } else {
+      onSave({
+        name: data.name,
+        color: data.color,
+        icon: data.icon,
+        type: categoryType // Use the categoryType prop instead of hardcoded 'expense'
+      });
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{initialData ? 'Editar Categoria' : 'Adicionar Categoria'}</DialogTitle>
-          <DialogDescription>
-            {initialData ? 'Faça alterações na sua categoria existente.' : 'Adicione uma nova categoria para organizar suas finanças.'}
-          </DialogDescription>
+          <DialogTitle>
+            {initialData ? t('categories.edit') : t('categories.add')}
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nome
-              </Label>
-              <Input
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="col-span-3"
-              />
-            </div>
-            
-            {/* Seletor de Categoria Pai - usa o componente recém-criado */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="parent_id" className="text-right">
-                Categoria Pai
-              </Label>
-              <div className="col-span-3">
-                <CategorySelector 
-                  value={formData.parent_id || ''}
-                  onValueChange={handleParentCategoryChange}
-                  currentCategoryId={initialData?.id}
-                />
-              </div>
-            </div>
-
-            {/* Outros campos (cor e ícone) */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="color" className="text-right">
-                Cor
-              </Label>
-              <div className="col-span-3">
-                <ColorPicker
-                  selectedColor={formData.color}
-                  onSelectColor={(newColor) => setFormData(prev => ({ ...prev, color: newColor }))}
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="icon" className="text-right">
-                Ícone
-              </Label>
-              <div className="col-span-3">
-                <IconSelector
-                  icon={formData.icon}
-                  onIconChange={(newIcon) => setFormData(prev => ({ ...prev, icon: newIcon }))}
-                />
-              </div>
-            </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">{t('categories.name')}</Label>
+            <Input
+              id="name"
+              {...register('name', { required: true })}
+              className={errors.name ? "border-destructive" : ""}
+            />
+            {errors.name && (
+              <p className="text-sm text-destructive">{t('validation.required')}</p>
+            )}
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+          
+          <div className="space-y-2">
+            <Label>{t('categories.color')}</Label>
+            <ColorPicker 
+              selectedColor={selectedColor} 
+              onSelectColor={handleColorChange}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label>{t('categories.icon')}</Label>
+            <IconSelector
+              selectedIcon={selectedIcon}
+              onSelectIcon={handleIconChange}
+            />
+          </div>
+
+          <DialogFooter className="pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              {t('common.cancel')}
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit">
+              {initialData ? t('common.save') : t('common.add')}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
