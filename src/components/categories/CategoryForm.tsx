@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 
 // Caminho de importação corrigido para o alias @ para maior robustez
-import { useApp } from '@/context/AppContext';
+import { useApp } from '@/contexts/AppContext';
 import { Category } from '@/types';
 
 // =========================================================================
