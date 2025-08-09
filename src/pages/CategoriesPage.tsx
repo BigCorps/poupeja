@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Trash2, Edit, MoreVertical, ArrowLeft } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useApp } from '@/contexts/AppContext';
@@ -117,8 +117,8 @@ const CategoriesPage: React.FC = () => {
     <MainLayout title={t('categories.title')}>
       <SubscriptionGuard feature="categorias personalizadas">
         <div className="space-y-4">
-          {/* Seção do cabeçalho da página (Título + botões de navegação) */}
-          <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 sm:space-x-4">
+          {/* Cabeçalho da página: Título e botões de navegação */}
+          <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">{t('categories.title')}</h1>
             <div className="flex space-x-2">
               <Button 
@@ -138,9 +138,10 @@ const CategoriesPage: React.FC = () => {
           
           <Separator />
           
-          {/* Seção de filtros e botão de adicionar (alinhado à direita) */}
-          <div className="flex justify-between items-center mt-4">
+          {/* Controles de filtro e botão de ação */}
+          <div className="flex justify-between items-center">
             {viewMode === 'subcategories' && selectedParentCategory ? (
+              // Exibe o título da subcategoria e o botão de voltar
               <div className="flex items-center space-x-2">
                 <Button variant="ghost" size="sm" onClick={() => setSelectedParentCategory(null)}>
                   <ArrowLeft className="h-4 w-4" />
@@ -148,13 +149,13 @@ const CategoriesPage: React.FC = () => {
                 <h2 className="text-xl font-semibold">Subcategorias de {selectedParentCategory.name}</h2>
               </div>
             ) : (
+              // Exibe as abas de Despesa/Receita
               <Tabs
                 defaultValue="expense"
                 value={categoryType}
                 onValueChange={(value) => setCategoryType(value as 'expense' | 'income')}
-                className="flex-grow max-w-sm" // Ocupa o espaço e tem um limite de largura
               >
-                <TabsList className="grid grid-cols-2">
+                <TabsList className="grid grid-cols-2 w-72">
                   <TabsTrigger value="expense" className="data-[state=active]:bg-red-500 data-[state=active]:text-white">
                     {t('common.expense')}
                   </TabsTrigger>
@@ -173,45 +174,44 @@ const CategoriesPage: React.FC = () => {
               {viewMode === 'mainCategories' ? 'Adicionar Categoria' : 'Adicionar Subcategoria'}
             </Button>
           </div>
-
+          
+          {/* Seção principal de conteúdo (lista de categorias) */}
           <div className="mt-4">
             {viewMode === 'mainCategories' ? (
-              <TabsContent value={categoryType} className="mt-0">
-                <ul className="space-y-4">
-                  {mainCategories
-                    .filter(cat => cat.type === categoryType)
-                    .map((category) => (
-                      <li key={category.id} className="bg-card p-3 rounded-lg flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <CategoryIcon icon={category.icon} color={category.color} />
-                          <span className="font-semibold">{category.name}</span>
-                        </div>
-                        <div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                {t('common.edit')}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDeleteCategory(category)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                {t('common.delete')}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </li>
-                    ))}
-                </ul>
-              </TabsContent>
+              <ul className="space-y-4">
+                {mainCategories
+                  .filter(cat => cat.type === categoryType)
+                  .map((category) => (
+                    <li key={category.id} className="bg-card p-3 rounded-lg flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <CategoryIcon icon={category.icon} color={category.color} />
+                        <span className="font-semibold">{category.name}</span>
+                      </div>
+                      <div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              {t('common.edit')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDeleteCategory(category)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              {t('common.delete')}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </li>
+                  ))}
+              </ul>
             ) : (
               <div>
                 {!selectedParentCategory ? (
