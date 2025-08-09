@@ -7,7 +7,6 @@ import React, {
   useState,
   useMemo,
   useCallback,
-  useRef
 } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction, Goal, ScheduledTransaction, User, TimeRange } from '@/types';
@@ -48,30 +47,24 @@ interface AppState {
 }
 
 interface AppContextType extends AppState {
-  // Ações básicas
   dispatch: React.Dispatch<AppAction>;
   toggleHideValues: () => void;
   logout: () => void;
   setCustomDateRange: (startDate: string, endDate: string) => void;
   setTimeRange: (timeRange: TimeRange) => void;
-  // Ações de fetch
   getTransactions: () => Promise<void>;
   getCategories: () => Promise<void>;
   getGoals: () => Promise<void>;
   getScheduledTransactions: () => Promise<void>;
-  // Ações de transação
   addTransaction: (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
   updateTransaction: (transaction: Transaction) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
-  // Ações de categoria
   addCategory: (category: Omit<Category, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
   updateCategory: (category: Category) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
-  // Ações de meta
   addGoal: (goal: Omit<Goal, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
   updateGoal: (goal: Goal) => Promise<void>;
   deleteGoal: (goalId: string) => Promise<void>;
-  // Ações de transação agendada
   addScheduledTransaction: (scheduledTransaction: Omit<ScheduledTransaction, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
   updateScheduledTransaction: (scheduledTransaction: ScheduledTransaction) => Promise<void>;
   deleteScheduledTransaction: (scheduledTransactionId: string) => Promise<void>;
@@ -246,147 +239,37 @@ const transformCategory = (data: any): Category => ({
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const listenersRef = useRef<RealtimeChannel[]>([]);
 
   // ===================================================
-  // LÓGICA DE AUTENTICAÇÃO E INICIALIZAÇÃO
+  // FUNÇÕES DE BUSCA DE DADOS
   // ===================================================
-  useEffect(() => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    // Escutando mudanças na autenticação
-    const { data: { subscription: authSubscription } } = setupAuthListener((session) => {
-      dispatch({ type: 'SET_SESSION', payload: session });
-      if (session) {
-        dispatch({ type: 'SET_USER', payload: session.user });
-      } else {
-        dispatch({ type: 'SET_USER', payload: null });
-        // Limpar dados quando o usuário faz logout
-        dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
-        dispatch({ type: 'SET_CATEGORIES', payload: [] });
-        dispatch({ type: 'SET_GOALS', payload: [] });
-        dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
-      }
-    });
-
-    // Função de limpeza para o listener de autenticação
-    return () => {
-      authSubscription?.unsubscribe();
-    };
-  }, []);
-
-  // ===================================================
-  // LÓGICA DOS LISTENERS EM TEMPO REAL
-  // ===================================================
-  // Este useEffect agora gerencia todos os listeners de forma centralizada
-  useEffect(() => {
-    if (state.user?.id) {
-      console.log('AppContext: Setting up real-time listeners...');
-      const userId = state.user.id;
-      
-      // Funções de subscribe e unsubscribe
-      const subscribeToChannel = (table: string, onUpdate: (payload: any) => void) => {
-        const channel = supabase
-          .channel(`public:${table}`)
-          .on('postgres_changes', { event: '*', schema: 'public', table: table, filter: `user_id=eq.${userId}` }, onUpdate)
-          .subscribe();
-        listenersRef.current.push(channel);
-        return channel;
-      };
-
-      const unsubscribeAll = () => {
-        listenersRef.current.forEach(listener => {
-          console.log('AppContext: Unsubscribing from a listener...');
-          if (listener) {
-            listener.unsubscribe();
-          }
-        });
-        listenersRef.current = [];
-      };
-
-      // Desinscreve de qualquer listener anterior antes de criar novos
-      unsubscribeAll();
-
-      // Listener de Transações
-      subscribeToChannel('poupeja_transactions', () => getTransactions());
-      
-      // Listener de Categorias
-      subscribeToChannel('poupeja_categories', () => getCategories());
-      
-      // Listener de Metas
-      subscribeToChannel('poupeja_goals', () => getGoals());
-
-      // Listener de Transações Agendadas
-      subscribeToChannel('poupeja_scheduled_transactions', () => getScheduledTransactions());
-      
-      return () => {
-        console.log('AppContext: useEffect cleanup - unsubscribing all listeners.');
-        unsubscribeAll();
-      };
-    }
-  }, [state.user?.id]); // Re-executa o efeito quando o usuário loga ou desloga
-
-  // ===================================================
-  // FUNÇÕES DE BUSCA DE DADOS INICIAIS
-  // ===================================================
-  // Este useEffect busca os dados iniciais APENAS QUANDO o user está disponível
-  useEffect(() => {
-    if (state.user?.id) {
-      console.log('AppContext: User authenticated, fetching initial data...');
-      dispatch({ type: 'SET_LOADING', payload: true });
-      Promise.all([
-        getTransactions(),
-        getCategories(),
-        getGoals(),
-        getScheduledTransactions()
-      ]).then(() => {
-        dispatch({ type: 'SET_LOADING', payload: false });
-        recalculateGoalAmountsService(state.goals, state.transactions, state.dispatch);
-      }).catch(err => {
-        console.error('Error fetching initial data:', err);
-        dispatch({ type: 'SET_LOADING', payload: false });
-        dispatch({ type: 'SET_ERROR', payload: 'Erro ao buscar dados iniciais.' });
-      });
-    } else {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  }, [state.user?.id, getTransactions, getCategories, getGoals, getScheduledTransactions]);
-
-
-  // ===================================================
-  // FUNÇÕES DE AÇÃO (CRUD)
-  // ===================================================
-
+  // Funções de busca com useCallback para otimização
   const getTransactions = useCallback(async (): Promise<void> => {
+    if (!state.user?.id) return;
     try {
       const { data, error } = await supabase
         .from('poupeja_transactions')
         .select('*')
         .eq('user_id', state.user!.id)
         .order('date', { ascending: false });
-
       if (error) throw error;
-      
       const transactions = (data || []).map(transformTransaction);
       dispatch({ type: 'SET_TRANSACTIONS', payload: transactions });
     } catch (error) {
       console.error('Error fetching transactions:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao buscar transações' });
-      dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao buscar transações' });
     }
   }, [state.user]);
 
   const getCategories = useCallback(async (): Promise<void> => {
+    if (!state.user?.id) return;
     try {
       const { data, error } = await supabase
         .from('poupeja_categories')
         .select('*')
         .or(`user_id.eq.${state.user!.id},is_default.eq.true`)
         .order('name', { ascending: true });
-  
-      if (error) {
-        throw error;
-      }
-  
+      if (error) throw error;
       const transformedCategories = (data || []).map(transformCategory);
       dispatch({ type: 'SET_CATEGORIES', payload: transformedCategories });
     } catch (err) {
@@ -397,255 +280,234 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [state.user]);
   
   const getGoals = useCallback(async (): Promise<void> => {
+    if (!state.user?.id) return;
     try {
       const { data, error } = await supabase
         .from('poupeja_goals')
         .select('*')
         .eq('user_id', state.user!.id);
-
       if (error) throw error;
-      
       const goals = (data || []).map(transformGoal);
       dispatch({ type: 'SET_GOALS', payload: goals });
     } catch (error) {
       console.error('Error fetching goals:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao buscar metas' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao buscar metas' });
       dispatch({ type: 'SET_GOALS', payload: [] });
     }
   }, [state.user]);
 
   const getScheduledTransactions = useCallback(async (): Promise<void> => {
+    if (!state.user?.id) return;
     try {
       const { data, error } = await supabase
         .from('poupeja_scheduled_transactions')
         .select('*')
         .eq('user_id', state.user!.id);
-
       if (error) throw error;
-      
       const scheduledTransactions = (data || []).map(transformScheduledTransaction);
       dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: scheduledTransactions });
     } catch (error) {
       console.error('Error fetching scheduled transactions:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao buscar transações agendadas' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao buscar transações agendadas' });
       dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
     }
   }, [state.user]);
 
+  // ===================================================
+  // LÓGICA DE AUTENTICAÇÃO E BUSCA INICIAL
+  // ===================================================
+  useEffect(() => {
+    // Configura o listener de autenticação.
+    const { data: { subscription } } = setupAuthListener((session) => {
+      dispatch({ type: 'SET_SESSION', payload: session });
+      dispatch({ type: 'SET_USER', payload: session ? session.user : null });
+    });
+    // Limpa a inscrição ao desmontar o componente
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (state.user) {
+      console.log('User authenticated, fetching initial data...');
+      dispatch({ type: 'SET_LOADING', payload: true });
+      Promise.all([
+        getTransactions(),
+        getCategories(),
+        getGoals(),
+        getScheduledTransactions()
+      ]).then(() => {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }).catch(err => {
+        console.error('Error fetching initial data:', err);
+        dispatch({ type: 'SET_LOADING', payload: false });
+        dispatch({ type: 'SET_ERROR', payload: 'Erro ao buscar dados iniciais.' });
+      });
+      
+      // Setup real-time listeners after user is available
+      const channels: RealtimeChannel[] = [];
+      const userId = state.user.id;
+
+      // Listener de Transações
+      const transactionsChannel = supabase
+        .channel('poupeja_transactions')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'poupeja_transactions', filter: `user_id=eq.${userId}` }, () => {
+          getTransactions();
+        })
+        .subscribe();
+      channels.push(transactionsChannel);
+
+      // Listener de Categorias
+      const categoriesChannel = supabase
+        .channel('poupeja_categories')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'poupeja_categories', filter: `user_id=eq.${userId}` }, () => {
+          getCategories();
+        })
+        .subscribe();
+      channels.push(categoriesChannel);
+
+      return () => {
+        channels.forEach(channel => channel.unsubscribe());
+        console.log('Listeners unsubscribed.');
+      };
+
+    } else {
+      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
+      dispatch({ type: 'SET_CATEGORIES', payload: [] });
+      dispatch({ type: 'SET_GOALS', payload: [] });
+      dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
+    }
+  }, [state.user, getTransactions, getCategories, getGoals, getScheduledTransactions]);
+
+  // ===================================================
+  // OUTRAS FUNÇÕES DE AÇÃO (CRUD)
+  // ===================================================
+
   const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'>) => {
+    if (!state.user) return;
     try {
-      const { data, error } = await supabase
-        .from('poupeja_transactions')
-        .insert({ ...transaction, user_id: state.user!.id })
-        .select();
-
-      if (error) throw error;
-
-      console.log('AppContext: Transaction added successfully:', data[0]);
-      dispatch({ type: 'ADD_TRANSACTION', payload: transformTransaction(data[0]) });
+      await supabase.from('poupeja_transactions').insert({ ...transaction, user_id: state.user.id });
     } catch (error) {
       console.error('Error adding transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao adicionar transação' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar transação' });
     }
   }, [state.user]);
 
   const updateTransaction = useCallback(async (transaction: Transaction) => {
+    if (!state.user) return;
     try {
-      const { data, error } = await supabase
-        .from('poupeja_transactions')
-        .update({ ...transaction, updated_at: new Date() })
-        .eq('id', transaction.id)
-        .select();
-
-      if (error) throw error;
-
-      console.log('AppContext: Transaction updated successfully:', data[0]);
-      dispatch({ type: 'UPDATE_TRANSACTION', payload: transformTransaction(data[0]) });
+      await supabase.from('poupeja_transactions').update(transaction).eq('id', transaction.id);
     } catch (error) {
       console.error('Error updating transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao atualizar transação' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar transação' });
     }
   }, [state.user]);
 
   const deleteTransaction = useCallback(async (transactionId: string) => {
+    if (!state.user) return;
     try {
-      const { error } = await supabase
-        .from('poupeja_transactions')
-        .delete()
-        .eq('id', transactionId);
-
-      if (error) throw error;
-
-      console.log('AppContext: Transaction deleted successfully:', transactionId);
-      dispatch({ type: 'DELETE_TRANSACTION', payload: transactionId });
+      await supabase.from('poupeja_transactions').delete().eq('id', transactionId);
     } catch (error) {
       console.error('Error deleting transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao deletar transação' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao deletar transação' });
     }
   }, [state.user]);
 
   const addCategory = useCallback(async (category: Omit<Category, 'id' | 'created_at' | 'user_id'>) => {
+    if (!state.user) return;
     try {
-      const { data, error } = await supabase
-        .from('poupeja_categories')
-        .insert({ ...category, user_id: state.user!.id })
-        .select();
-  
-      if (error) throw error;
-  
-      console.log('AppContext: Category added successfully:', data[0]);
-      dispatch({ type: 'ADD_CATEGORY', payload: transformCategory(data[0]) });
+      await supabase.from('poupeja_categories').insert({ ...category, user_id: state.user.id });
     } catch (error) {
       console.error('Error adding category:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao adicionar categoria' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar categoria' });
     }
   }, [state.user]);
-  
+
   const updateCategory = useCallback(async (category: Category) => {
+    if (!state.user) return;
     try {
-      const { data, error } = await supabase
-        .from('poupeja_categories')
-        .update(category)
-        .eq('id', category.id)
-        .select();
-  
-      if (error) throw error;
-  
-      console.log('AppContext: Category updated successfully:', data[0]);
-      dispatch({ type: 'UPDATE_CATEGORY', payload: transformCategory(data[0]) });
+      await supabase.from('poupeja_categories').update(category).eq('id', category.id);
     } catch (error) {
       console.error('Error updating category:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao atualizar categoria' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar categoria' });
     }
   }, [state.user]);
-  
+
   const deleteCategory = useCallback(async (categoryId: string) => {
+    if (!state.user) return;
     try {
-      const { error } = await supabase
-        .from('poupeja_categories')
-        .delete()
-        .eq('id', categoryId);
-  
-      if (error) throw error;
-  
-      console.log('AppContext: Category deleted successfully:', categoryId);
-      dispatch({ type: 'DELETE_CATEGORY', payload: categoryId });
+      await supabase.from('poupeja_categories').delete().eq('id', categoryId);
     } catch (error) {
       console.error('Error deleting category:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao deletar categoria' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao deletar categoria' });
     }
   }, [state.user]);
 
   const addGoal = useCallback(async (goal: Omit<Goal, 'id' | 'created_at' | 'user_id'>) => {
+    if (!state.user) return;
     try {
-      const { data, error } = await supabase
-        .from('poupeja_goals')
-        .insert({ ...goal, user_id: state.user!.id })
-        .select();
-
-      if (error) throw error;
-
-      console.log('AppContext: Goal added successfully:', data[0]);
-      dispatch({ type: 'ADD_GOAL', payload: transformGoal(data[0]) });
+      await supabase.from('poupeja_goals').insert({ ...goal, user_id: state.user.id });
     } catch (error) {
       console.error('Error adding goal:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao adicionar meta' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar meta' });
     }
   }, [state.user]);
-  
+
   const updateGoal = useCallback(async (goal: Goal) => {
+    if (!state.user) return;
     try {
-      const { data, error } = await supabase
-        .from('poupeja_goals')
-        .update({ ...goal, updated_at: new Date() })
-        .eq('id', goal.id)
-        .select();
-
-      if (error) throw error;
-
-      console.log('AppContext: Goal updated successfully:', data[0]);
-      dispatch({ type: 'UPDATE_GOAL', payload: transformGoal(data[0]) });
+      await supabase.from('poupeja_goals').update(goal).eq('id', goal.id);
     } catch (error) {
       console.error('Error updating goal:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao atualizar meta' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar meta' });
     }
   }, [state.user]);
 
   const deleteGoal = useCallback(async (goalId: string) => {
+    if (!state.user) return;
     try {
-      const { error } = await supabase
-        .from('poupeja_goals')
-        .delete()
-        .eq('id', goalId);
-
-      if (error) throw error;
-
-      console.log('AppContext: Goal deleted successfully:', goalId);
-      dispatch({ type: 'DELETE_GOAL', payload: goalId });
+      await supabase.from('poupeja_goals').delete().eq('id', goalId);
     } catch (error) {
       console.error('Error deleting goal:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao deletar meta' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao deletar meta' });
     }
   }, [state.user]);
 
   const addScheduledTransaction = useCallback(async (scheduledTransaction: Omit<ScheduledTransaction, 'id' | 'created_at' | 'user_id'>) => {
+    if (!state.user) return;
     try {
-      const { data, error } = await supabase
-        .from('poupeja_scheduled_transactions')
-        .insert({ ...scheduledTransaction, user_id: state.user!.id })
-        .select();
-
-      if (error) throw error;
-
-      console.log('AppContext: Scheduled transaction added successfully:', data[0]);
-      dispatch({ type: 'ADD_SCHEDULED_TRANSACTION', payload: transformScheduledTransaction(data[0]) });
+      await supabase.from('poupeja_scheduled_transactions').insert({ ...scheduledTransaction, user_id: state.user.id });
     } catch (error) {
       console.error('Error adding scheduled transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao adicionar transação agendada' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar transação agendada' });
     }
   }, [state.user]);
 
   const updateScheduledTransaction = useCallback(async (scheduledTransaction: ScheduledTransaction) => {
+    if (!state.user) return;
     try {
-      const { data, error } = await supabase
-        .from('poupeja_scheduled_transactions')
-        .update({ ...scheduledTransaction, updated_at: new Date() })
-        .eq('id', scheduledTransaction.id)
-        .select();
-
-      if (error) throw error;
-
-      console.log('AppContext: Scheduled transaction updated successfully:', data[0]);
-      dispatch({ type: 'UPDATE_SCHEDULED_TRANSACTION', payload: transformScheduledTransaction(data[0]) });
+      await supabase.from('poupeja_scheduled_transactions').update(scheduledTransaction).eq('id', scheduledTransaction.id);
     } catch (error) {
       console.error('Error updating scheduled transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao atualizar transação agendada' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar transação agendada' });
     }
   }, [state.user]);
 
   const deleteScheduledTransaction = useCallback(async (scheduledTransactionId: string) => {
+    if (!state.user) return;
     try {
-      const { error } = await supabase
-        .from('poupeja_scheduled_transactions')
-        .delete()
-        .eq('id', scheduledTransactionId);
-
-      if (error) throw error;
-
-      console.log('AppContext: Scheduled transaction deleted successfully:', scheduledTransactionId);
-      dispatch({ type: 'DELETE_SCHEDULED_TRANSACTION', payload: scheduledTransactionId });
+      await supabase.from('poupeja_scheduled_transactions').delete().eq('id', scheduledTransactionId);
     } catch (error) {
       console.error('Error deleting scheduled transaction:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao deletar transação agendada' });
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao deletar transação agendada' });
     }
   }, [state.user]);
-  
-  // ===================================================
-  // LÓGICA DE FILTRAGEM
-  // ===================================================
 
   const filterTransactions = useCallback(() => {
     const { transactions, timeRange, customStartDate, customEndDate } = state;
+    // Lógica de filtragem de transações (mantida do código anterior)
     const now = new Date();
     let startDate: Date;
     let endDate: Date;
@@ -671,7 +533,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           startDate = new Date(customStartDate);
           endDate = new Date(customEndDate);
         } else {
-          // Fallback para último mês se o range customizado não estiver definido
           startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
           endDate = now;
         }
@@ -695,7 +556,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_FILTERED_TRANSACTIONS', payload: filtered });
   }, [state.transactions, state.timeRange, state.customStartDate, state.customEndDate]);
 
-  // Efeito para recalcular as transações filtradas sempre que o estado necessário muda
   useEffect(() => {
     filterTransactions();
   }, [filterTransactions]);
@@ -728,30 +588,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // Memóiza o valor do contexto para evitar re-renderizações desnecessárias
   const value = useMemo(() => ({
     ...state,
-    // Ações básicas
     dispatch,
     toggleHideValues,
     logout,
     setCustomDateRange,
     setTimeRange,
-    // Ações de fetch
     getTransactions,
     getCategories,
     getGoals,
     getScheduledTransactions,
-    // Ações de transação
     addTransaction,
     updateTransaction,
     deleteTransaction,
-    // Ações de categoria
     addCategory,
     updateCategory,
     deleteCategory,
-    // Ações de meta
     addGoal,
     updateGoal,
     deleteGoal,
-    // Ações de transação agendada
     addScheduledTransaction,
     updateScheduledTransaction,
     deleteScheduledTransaction,
