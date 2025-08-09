@@ -47,7 +47,6 @@ const TransactionsPage = () => {
     // já retorne os dados filtrados para melhor performance.
     const getFilteredTransactions = () => {
       // Filtrar transações por tipo de categoria com base no modo de visualização
-      // Aqui assumimos que os tipos de categoria para PJ são 'operational_', 'investment_', 'financing_'.
       if (viewMode === 'PJ') {
         return transactions.filter(t => 
           t.category && (
@@ -148,7 +147,9 @@ const TransactionsPage = () => {
           onOpenChange={setFormOpen}
           initialData={editingTransaction}
           mode={editingTransaction ? 'edit' : 'create'}
-          viewMode={viewMode} // Passa o modo de visualização para o formulário
+          // Alteração principal: a prop "viewMode" foi renomeada para "personType"
+          // no novo componente TransactionForm para melhor clareza.
+          personType={viewMode}
         />
       </SubscriptionGuard>
     </MainLayout>
