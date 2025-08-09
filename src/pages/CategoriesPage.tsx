@@ -1,13 +1,13 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Trash2, Edit, MoreVertical } from 'lucide-react';
+import { Plus, Trash2, Edit, MoreVertical, ChevronRight, Folder } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useApp } from '@/contexts/AppContext'; // Usando o AppContext
 import { Category } from '@/types/categories';
-import { getCategoriesByType, addCategory, updateCategory, deleteCategory } from '@/services/categoryService';
+import { addCategory, updateCategory, deleteCategory } from '@/services/categoryService';
 import { useToast } from "@/hooks/use-toast";
 import CategoryForm from '@/components/categories/CategoryForm';
 import CategoryIcon from '@/components/categories/CategoryIcon';
@@ -27,39 +27,142 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+
+// Interface para a categoria aninhada
+interface NestedCategory extends Category {
+  children: NestedCategory[];
+}
+
+// Componente para renderizar a árvore de categorias recursivamente na lista
+const CategoryHierarchyList = ({ categories, handleEdit, handleDelete }) => {
+  if (!categories || categories.length === 0) {
+    return <p className="text-center text-muted-foreground">{t('categories.noCategories')}</p>;
+  }
+  
+  const [openItems, setOpenItems] = useState<{ [key: string]: boolean }>({});
+
+  const toggleOpen = (id: string) => {
+    setOpenItems(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const renderNestedCategories = (categoryList: NestedCategory[], level = 0) => {
+    return categoryList.map(category => (
+      <React.Fragment key={category.id}>
+        <li 
+          className={cn(
+            "bg-card p-3 rounded-lg flex items-center justify-between transition-colors",
+            level > 0 && "pl-8" // Aplica padding para subcategorias
+          )}
+        >
+          <div className="flex items-center gap-3">
+            {category.children.length > 0 && (
+              <ChevronRight
+                className={cn(
+                  "h-4 w-4 shrink-0 transition-transform duration-200 cursor-pointer",
+                  openItems[category.id] && "rotate-90"
+                )}
+                onClick={() => toggleOpen(category.id)}
+              />
+            )}
+            <CategoryIcon icon={category.icon} color={category.color} />
+            <span>{category.name}</span>
+          </div>
+          <div>
+            {category.is_default ? (
+              <Button variant="ghost" size="sm" onClick={() => handleEdit(category)}>
+                <Edit className="h-4 w-4" />
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleEdit(category)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    {t('common.edit')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => handleDelete(category)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {t('common.delete')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </li>
+        {openItems[category.id] && (
+          <ul className="space-y-2 mt-2">
+            {renderNestedCategories(category.children, level + 1)}
+          </ul>
+        )}
+      </React.Fragment>
+    ));
+  };
+
+  return (
+    <ul className="space-y-2">
+      {renderNestedCategories(categories)}
+    </ul>
+  );
+};
+
 
 const CategoriesPage: React.FC = () => {
   const { t } = usePreferences();
   const { toast } = useToast();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { categories, isLoading } = useApp();
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [categoryType, setCategoryType] = useState<'expense' | 'income'>('expense');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [tabType, setTabType] = useState<'inflow' | 'outflow'>('inflow');
 
-  useEffect(() => {
-    // Load categories from Supabase on mount and whenever they change
-    const loadCategories = async () => {
-      setLoading(true);
-      try {
-        const loadedCategories = await getCategoriesByType(categoryType);
-        setCategories(loadedCategories);
-      } catch (error) {
-        console.error('Error loading categories:', error);
-        toast({
-          title: t('common.error'),
-          description: t('common.errorFetching'),
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+  // Função para construir a árvore hierárquica de categorias
+  const buildCategoryTree = (categoryList: Category[]): NestedCategory[] => {
+    const categoriesById = new Map<string, NestedCategory>(
+      categoryList.map(cat => [cat.id, { ...cat, children: [] }])
+    );
+    const rootCategories: NestedCategory[] = [];
+  
+    categoryList.forEach(cat => {
+      const nestedCat = categoriesById.get(cat.id)!;
+      if (cat.parent_id) {
+        const parent = categoriesById.get(cat.parent_id);
+        if (parent) {
+          parent.children.push(nestedCat);
+        } else {
+          rootCategories.push(nestedCat);
+        }
+      } else {
+        rootCategories.push(nestedCat);
       }
-    };
-
-    loadCategories();
-  }, [categoryType, toast, t]);
+    });
+  
+    return rootCategories;
+  };
+  
+  const inflowTypes = ['operational_inflow', 'investment_inflow', 'financing_inflow'];
+  const outflowTypes = ['operational_outflow', 'investment_outflow', 'financing_outflow'];
+  
+  const filteredCategories = useMemo(() => {
+    if (isLoading) return [];
+    
+    let filteredList = [];
+    if (tabType === 'inflow') {
+      filteredList = categories.filter(cat => inflowTypes.includes(cat.type));
+    } else {
+      filteredList = categories.filter(cat => outflowTypes.includes(cat.type));
+    }
+  
+    return buildCategoryTree(filteredList);
+  }, [categories, isLoading, tabType]);
 
   const handleAddCategory = () => {
     setEditingCategory(null);
@@ -81,8 +184,7 @@ const CategoriesPage: React.FC = () => {
       try {
         const success = await deleteCategory(categoryToDelete.id);
         if (success) {
-          const updatedCategories = await getCategoriesByType(categoryType);
-          setCategories(updatedCategories);
+          // A categoria foi deletada, o useApp hook já irá atualizar
           toast({
             title: t('categories.deleted'),
             description: `${categoryToDelete.name} ${t('categories.wasDeleted')}`,
@@ -112,30 +214,20 @@ const CategoriesPage: React.FC = () => {
     try {
       if ('id' in category) {
         // Update existing category
-        const updatedCategory = await updateCategory(category as Category);
-        if (updatedCategory) {
-          toast({
-            title: "Categoria atualizada",
-            description: `A categoria ${category.name} foi atualizada com sucesso.`,
-          });
-        }
-      } else {
-        // Add new category - ensure type is set correctly
-        const newCategory = await addCategory({
-          ...category,
-          type: categoryType // Make sure to use the current categoryType
+        await updateCategory(category as Category);
+        toast({
+          title: "Categoria atualizada",
+          description: `A categoria ${category.name} foi atualizada com sucesso.`,
         });
-        if (newCategory) {
-          toast({
-            title: "Categoria adicionada",
-            description: `A categoria ${category.name} foi adicionada com sucesso.`,
-          });
-        }
+      } else {
+        // Add new category
+        await addCategory(category as Omit<Category, 'id'>);
+        toast({
+          title: "Categoria adicionada",
+          description: `A categoria ${category.name} foi adicionada com sucesso.`,
+        });
       }
       
-      // Refresh categories list
-      const updatedCategories = await getCategoriesByType(categoryType);
-      setCategories(updatedCategories);
       setCategoryFormOpen(false);
     } catch (error) {
       console.error('Error saving category:', error);
@@ -147,7 +239,7 @@ const CategoriesPage: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <MainLayout title={t('categories.title')}>
         <div className="flex justify-center py-8">
@@ -170,112 +262,34 @@ const CategoriesPage: React.FC = () => {
           </div>
           
           <Tabs 
-            defaultValue="expense" 
-            value={categoryType}
-            onValueChange={(value) => setCategoryType(value as 'expense' | 'income')}
+            defaultValue="inflow" 
+            value={tabType}
+            onValueChange={(value) => setTabType(value as 'inflow' | 'outflow')}
             className="w-full"
           >
             <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="expense" className="data-[state=active]:bg-red-500 data-[state=active]:text-white">
-                {t('common.expense')}
+              <TabsTrigger value="inflow" className="data-[state=active]:bg-green-500 data-[state=active]:text-white">
+                Entradas
               </TabsTrigger>
-              <TabsTrigger value="income" className="data-[state=active]:bg-green-500 data-[state=active]:text-white">
-                {t('common.income')}
+              <TabsTrigger value="outflow" className="data-[state=active]:bg-red-500 data-[state=active]:text-white">
+                Saídas
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="expense" className="mt-0">
-              <ul className="space-y-2">
-                {categories.map((category) => (
-                  <li 
-                    key={category.id} 
-                    className="bg-card p-3 rounded-lg flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <CategoryIcon 
-                        icon={category.icon} 
-                        color={category.color} 
-                      />
-                      <span>{category.name}</span>
-                    </div>
-                    <div>
-                      {category.isDefault ? (
-                        <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              {t('common.edit')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDeleteCategory(category)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {t('common.delete')}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+            <TabsContent value="inflow" className="mt-0">
+              <CategoryHierarchyList 
+                categories={filteredCategories} 
+                handleEdit={handleEditCategory} 
+                handleDelete={handleDeleteCategory}
+              />
             </TabsContent>
             
-            <TabsContent value="income" className="mt-0">
-              <ul className="space-y-2">
-                {categories.map((category) => (
-                  <li 
-                    key={category.id} 
-                    className="bg-card p-3 rounded-lg flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <CategoryIcon 
-                        icon={category.icon} 
-                        color={category.color} 
-                      />
-                      <span>{category.name}</span>
-                    </div>
-                    <div>
-                      {category.isDefault ? (
-                        <Button variant="ghost" size="sm" onClick={() => handleEditCategory(category)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              {t('common.edit')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDeleteCategory(category)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {t('common.delete')}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+            <TabsContent value="outflow" className="mt-0">
+              <CategoryHierarchyList 
+                categories={filteredCategories} 
+                handleEdit={handleEditCategory} 
+                handleDelete={handleDeleteCategory}
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -285,7 +299,7 @@ const CategoriesPage: React.FC = () => {
           onOpenChange={setCategoryFormOpen}
           initialData={editingCategory}
           onSave={handleSaveCategory}
-          categoryType={categoryType}
+          categoryType={tabType === 'inflow' ? 'operational_inflow' : 'operational_outflow'}
         />
 
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -294,7 +308,7 @@ const CategoriesPage: React.FC = () => {
               <AlertDialogTitle>{t('categories.deleteConfirmation')}</AlertDialogTitle>
               <AlertDialogDescription>
                 {t('categories.deleteWarning')}
-                {categoryToDelete?.isDefault && (
+                {categoryToDelete?.is_default && (
                   <p className="mt-2 text-destructive font-medium">
                     {t('categories.defaultWarning')}
                   </p>
