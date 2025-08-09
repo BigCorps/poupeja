@@ -1,295 +1,468 @@
-import React, { useState, useMemo } from 'react';
-import MainLayout from '@/components/layout/MainLayout';
+import React, { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Trash2, Edit, MoreVertical, ArrowLeft } from 'lucide-react';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Transaction } from '@/types';
+import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useApp } from '@/contexts/AppContext';
-import { Transaction, TransactionType, TransactionCategory } from '@/types/transactions';
+import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { format } from 'date-fns';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import TransactionForm from '@/components/transactions/TransactionForm';
-import { Separator } from '@/components/ui/separator';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+// Importações relativas corrigidas para o mesmo diretório 'common'
+import TransactionTypeSelector from './TransactionTypeSelector';
+import AmountInput from './AmountInput';
+import DescriptionField from './DescriptionField';
 
-const TransactionsPage: React.FC = () => {
-  const { t } = usePreferences();
-  const { transactions, isLoading, addTransaction, updateTransaction, deleteTransaction } = useApp();
-  
-  const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
-  const [personType, setPersonType] = useState<'PF' | 'PJ'>('PF');
-  const [transactionFormOpen, setTransactionFormOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+// Zod schemas para os dois tipos de formulário
+const transactionSchemaPF = z.object({
+  type: z.enum(['income', 'expense']),
+  amount: z.number({ required_error: "O valor é obrigatório." }).min(0.01, "O valor deve ser maior que zero."),
+  categoryId: z.string({ required_error: "A categoria é obrigatória." }).min(1),
+  transactionDate: z.date({ required_error: "A data é obrigatória." }),
+  description: z.string().optional(),
+  goalId: z.string().optional(),
+});
 
-  const handleAddTransaction = () => {
-    setEditingTransaction(null);
-    setTransactionFormOpen(true);
-  };
+const transactionSchemaPJ = z.object({
+  type: z.enum(['income', 'expense', 'operational_inflow', 'operational_outflow', 'investment_inflow', 'investment_outflow', 'financing_inflow', 'financing_outflow']).optional(),
+  originalAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
+  lateInterestAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
+  paidAmount: z.number().min(0.01, "O valor pago é obrigatório e deve ser maior que zero.").optional(),
+  categoryId: z.string({ required_error: "A categoria é obrigatória." }).min(1),
+  supplier: z.string().optional(),
+  description: z.string().optional(),
+  paymentMethod: z.string().optional(),
+  referenceDate: z.date().optional(),
+  dueDate: z.date().optional(),
+  paymentDate: z.date().optional(),
+  paymentStatus: z.enum(['pending', 'paid', 'overdue', 'projected']).optional(),
+});
 
-  const handleEditTransaction = (transaction: Transaction) => {
-    setEditingTransaction(transaction);
-    setTransactionFormOpen(true);
-  };
+interface TransactionFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialData?: Transaction | null;
+  mode?: 'create' | 'edit';
+  personType: 'PF' | 'PJ';
+  defaultType?: 'income' | 'expense';
+}
 
-  const handleDeleteTransaction = (transaction: Transaction) => {
-    setTransactionToDelete(transaction);
-    setDeleteDialogOpen(true);
-  };
+// ** NOVO COMPONENTE: Seletor Hierárquico de Categorias **
+const HierarchicalCategorySelector = ({ form, allCategories, t }) => {
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
 
-  const confirmDeleteTransaction = async () => {
-    if (transactionToDelete) {
-      try {
-        await deleteTransaction(transactionToDelete.id);
-      } catch (error) {
-        console.error("Erro ao deletar transação:", error);
-      } finally {
-        setDeleteDialogOpen(false);
-        setTransactionToDelete(null);
-      }
-    }
-  };
+  // Filtra as categorias pai (sem parentId)
+  const parentCategories = allCategories.filter(c => !c.parentId);
+  // Filtra as subcategorias com base no parentId selecionado
+  const subcategories = allCategories.filter(c => c.parentId === selectedParentId);
 
-  const handleSaveTransaction = async (transaction: Omit<Transaction, 'id'> | Transaction) => {
-    try {
-      if ('id' in transaction) {
-        await updateTransaction(transaction as Transaction);
-      } else {
-        await addTransaction(transaction as Omit<Transaction, 'id'>);
-      }
-    } catch (error) {
-      console.error("Erro ao salvar transação:", error);
-    } finally {
-      setTransactionFormOpen(false);
-    }
-  };
-
-  // Filtra as transações com base no tipo de pessoa
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => t.personType === personType);
-  }, [transactions, personType]);
-
-  const getTranslatedColumnName = (key: string) => {
-    // Esta função traduz as chaves para nomes de colunas amigáveis.
-    // Você deve ter um objeto de tradução (t) que mapeia essas chaves.
-    // Exemplo: t('common.supplier') retorna 'Fornecedor'
-    // Como não temos acesso ao arquivo de tradução, vou usar um switch/case para simular.
-    switch(key) {
-      case 'common.supplier':
-        return 'Fornecedor';
-      case 'common.dueDate':
-        return 'Data de Vencimento';
-      case 'common.originalAmount':
-        return 'Valor Original';
-      case 'common.paymentStatus':
-        return 'Status';
-      case 'common.type':
-        return 'Tipo';
-      case 'common.date':
-        return 'Data';
-      case 'common.category':
-        return 'Categoria';
-      case 'common.description':
-        return 'Descrição';
-      case 'common.value':
-        return 'Valor';
-      default:
-        return key;
-    }
-  };
-
-  // Funções de validação para os campos (a lógica completa deve estar no TransactionForm)
-  // Mas para o exemplo, vamos simular aqui.
-  const getValidationRules = (personType: 'PF' | 'PJ') => {
-    if (personType === 'PJ') {
-      return {
-        // Exemplo: 'valor' e 'data' são obrigatórios, outros não
-        valor: true,
-        data: true,
-        // Todos os outros campos são opcionais, a validação não irá quebrá-los.
-      }
-    }
-    return {
-      // Regras para PF
-    }
-  }
-
-
-  if (isLoading) {
-    return (
-      <MainLayout title={t('transactions.title')}>
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </MainLayout>
-    );
-  }
+  // Reseta o campo de subcategoria se a categoria pai mudar
+  useEffect(() => {
+    form.setValue('categoryId', '');
+  }, [selectedParentId, form]);
 
   return (
-    <MainLayout title={t('transactions.title')}>
-      <div className="space-y-4">
-        {/* Cabeçalho da página: Título e botões de navegação PF/PJ */}
-        <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-          <h1 className="text-2xl font-bold">{t('transactions.title')}</h1>
-          <div className="flex space-x-2">
-            <Button
-              variant={personType === 'PF' ? 'default' : 'outline'}
-              onClick={() => setPersonType('PF')}
+    <>
+      <FormField
+        control={form.control}
+        name="parentCategoryId" // Usamos um campo temporário para a categoria pai
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Categoria Principal</FormLabel>
+            <Select 
+              onValueChange={(value) => {
+                setSelectedParentId(value);
+                // Se a categoria pai não tiver subcategorias, já define o categoryId
+                const hasSubcategories = allCategories.some(c => c.parentId === value);
+                if (!hasSubcategories) {
+                    form.setValue('categoryId', value);
+                } else {
+                    form.setValue('categoryId', ''); // Reseta se tiver sub
+                }
+              }} 
+              defaultValue={field.value}
             >
-              Pessoa Física
-            </Button>
-            {/* Corrigido o nome "Pessoa Juridica" para "Pessoa Jurídica" */}
-            <Button
-              variant={personType === 'PJ' ? 'default' : 'outline'}
-              onClick={() => setPersonType('PJ')}
-            >
-              Pessoa Jurídica
-            </Button>
-          </div>
-        </div>
-        
-        <Separator />
-        
-        {/* Controles de filtro (Despesas/Receitas) e botão de ação */}
-        <div className="flex justify-between items-center mt-4">
-          <Tabs
-            defaultValue="expense"
-            value={transactionType}
-            onValueChange={(value) => setTransactionType(value as 'expense' | 'income')}
-          >
-            <TabsList className="grid grid-cols-2 w-72">
-              <TabsTrigger value="expense" className="data-[state=active]:bg-red-500 data-[state=active]:text-white">
-                {t('common.expense')}
-              </TabsTrigger>
-              <TabsTrigger value="income" className="data-[state=active]:bg-green-500 data-[state=active]:text-white">
-                {t('common.income')}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Button onClick={handleAddTransaction}>
-            <Plus className="mr-2 h-4 w-4" />
-            Adicionar Transação
-          </Button>
-        </div>
-
-        {/* Tabela de Transações */}
-        <div className="mt-4 overflow-x-auto">
-          <h2 className="text-xl font-semibold mb-4">
-            {t('transactions.recent', { type: personType === 'PF' ? 'PF' : 'PJ' })}
-          </h2>
-          <table className="min-w-full divide-y divide-gray-700 rounded-lg overflow-hidden">
-            <thead className="bg-gray-800">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{getTranslatedColumnName('common.type')}</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{getTranslatedColumnName('common.date')}</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{getTranslatedColumnName('common.category')}</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{getTranslatedColumnName('common.description')}</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{getTranslatedColumnName('common.supplier')}</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{getTranslatedColumnName('common.dueDate')}</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{getTranslatedColumnName('common.originalAmount')}</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{getTranslatedColumnName('common.paymentStatus')}</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">{getTranslatedColumnName('common.value')}</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="bg-gray-900 divide-y divide-gray-700">
-              {filteredTransactions
-                .filter(t => t.type === transactionType)
-                .map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-gray-800">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    <div className={`flex items-center gap-2 ${transaction.type === 'expense' ? 'text-red-500' : 'text-green-500'}`}>
-                      {/* Ícone de despesa/receita */}
-                      <span>{transaction.type === 'expense' ? 'Despesas' : 'Receitas'}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{new Date(transaction.date).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{transaction.category?.name || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{transaction.description || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{transaction.supplier || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{transaction.dueDate ? new Date(transaction.dueDate).toLocaleDateString() : 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{transaction.originalAmount ? `R$ ${transaction.originalAmount.toFixed(2)}` : 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{transaction.paymentStatus || 'N/A'}</td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${transaction.type === 'expense' ? 'text-red-500' : 'text-green-500'}`}>
-                    {`R$ ${transaction.value.toFixed(2)}`}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditTransaction(transaction)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          {t('common.edit')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => handleDeleteTransaction(transaction)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {t('common.delete')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredTransactions.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              Nenhum dado disponível.
-            </div>
-          )}
-        </div>
-      </div>
-
-      <TransactionForm
-        open={transactionFormOpen}
-        onOpenChange={setTransactionFormOpen}
-        initialData={editingTransaction}
-        onSave={handleSaveTransaction}
-        personType={personType} // Passa o tipo de pessoa para o formulário
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria principal" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {parentCategories.map(cat => (
+                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
       />
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('transactions.deleteConfirmation')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('transactions.deleteWarning')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteTransaction}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      <FormField
+        control={form.control}
+        name="categoryId" // Este é o campo final que será salvo
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Subcategoria</FormLabel>
+            <Select 
+              onValueChange={field.onChange} 
+              value={field.value}
+              disabled={!selectedParentId || subcategories.length === 0}
             >
-              {t('common.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </MainLayout>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a subcategoria" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {subcategories.map(subcat => (
+                  <SelectItem key={subcat.id} value={subcat.id}>{subcat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </>
+  );
+}
+
+// MOCK DE DADOS PARA TESTE
+const mockPjCategories = [
+  { id: 'cat-op', name: 'Operational', parentId: null },
+  { id: 'cat-inv', name: 'Investment', parentId: null },
+  { id: 'sub-ades', name: 'Adesivos', parentId: 'cat-op' },
+  { id: 'sub-cx', name: 'Caixas E-commerce', parentId: 'cat-op' },
+  { id: 'sub-acoes', name: 'Ações', parentId: 'cat-inv' },
+  { id: 'sub-cripto', name: 'Criptomoedas', parentId: 'cat-inv' },
+];
+
+const TransactionForm: React.FC<TransactionFormProps> = ({
+  open,
+  onOpenChange,
+  initialData,
+  mode = 'create',
+  personType,
+  defaultType = 'expense',
+}) => {
+  const { t } = usePreferences();
+  const { toast } = useToast();
+  
+  const schema = personType === 'PF' ? transactionSchemaPF : transactionSchemaPJ;
+
+  const form = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: initialData || {
+      // Default values for PF
+      type: defaultType,
+      amount: 0,
+      categoryId: '',
+      transactionDate: new Date(),
+      description: '',
+      goalId: '',
+      // Default values for PJ
+      originalAmount: 0,
+      lateInterestAmount: 0,
+      paidAmount: 0,
+      categoryId: '',
+      supplier: '',
+      description: '',
+      paymentMethod: '',
+      referenceDate: new Date(),
+      dueDate: new Date(),
+      paymentDate: new Date(),
+      paymentStatus: 'pending',
+    },
+  });
+
+  const onSubmit = async (data: any) => {
+    console.log("Form submitted with data:", data);
+    toast({
+      title: mode === 'create' ? t('transactions.added') : t('transactions.updated'),
+      description: mode === 'create' ? t('transactions.addSuccess') : t('transactions.updateSuccess'),
+    });
+    onOpenChange(false);
+  };
+
+  useEffect(() => {
+    if (open) {
+      form.reset(initialData || form.getValues());
+      console.log(`TransactionForm opened in ${personType} mode.`);
+    }
+  }, [open, initialData, form, personType]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+        <DialogHeader className="bg-background p-6 border-b">
+          <DialogTitle className="text-xl">
+            {mode === 'create' ? `Adicionar Transação (${personType})` : `Editar Transação (${personType})`}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="p-6 max-h-[calc(85vh-120px)] overflow-y-auto">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {personType === 'PF' && (
+                <>
+                  <TransactionTypeSelector form={form} onTypeChange={(type) => form.setValue('type', type as any)} />
+                  <AmountInput form={form} />
+                  {/* CategoryDateFields seria seu seletor de categorias para PF */}
+                  <DescriptionField form={form} />
+                  {form.getValues('type') === 'income' && <GoalSelector form={form} />}
+                </>
+              )}
+
+              {personType === 'PJ' && (
+                <>
+                  {/* **Campos do formulário PJ agora com seletor hierárquico** */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="originalAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Valor Original (Opcional)</FormLabel>
+                          <FormControl>
+                            <Input id="originalAmount" type="number" step="0.01" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="paidAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Valor Pago (Opcional)</FormLabel>
+                          <FormControl>
+                            <Input id="paidAmount" type="number" step="0.01" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="lateInterestAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Juros em Atraso (Opcional)</FormLabel>
+                          <FormControl>
+                            <Input id="lateInterestAmount" type="number" step="0.01" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="supplier"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fornecedor (Opcional)</FormLabel>
+                          <FormControl>
+                            <Input id="supplier" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <HierarchicalCategorySelector form={form} allCategories={mockPjCategories} t={t} />
+
+                  <DescriptionField form={form} />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="referenceDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Data de Referência (Opcional)</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? format(field.value, "PPP") : <span>Selecione uma data</span>}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                  date > new Date() || date < new Date("1900-01-01")
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="dueDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Data de Vencimento (Opcional)</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? format(field.value, "PPP") : <span>Selecione uma data</span>}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                  date < new Date("1900-01-01")
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="paymentDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Data Pagamento / Projeção (Opcional)</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? format(field.value, "PPP") : <span>Selecione uma data</span>}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                  date < new Date("1900-01-01")
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="paymentStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status Pagamento (Opcional)</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um status..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="pending">Pendente</SelectItem>
+                              <SelectItem value="paid">Pago</SelectItem>
+                              <SelectItem value="overdue">Atrasado</SelectItem>
+                              <SelectItem value="projected">Projetado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="paymentMethod"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Forma de Pagamento (Opcional)</FormLabel>
+                          <FormControl>
+                            <Input id="paymentMethod" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
+
+              <DialogFooter className="pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => onOpenChange(false)}
+                >
+                  {t('common.cancel')}
+                </Button>
+                <Button 
+                  type="submit" 
+                  className={cn(personType === 'PF' && form.getValues('type') === 'income' ? 'bg-green-600 hover:bg-green-700' : '')}
+                >
+                  {mode === 'create' ? t('common.add') : t('common.save')}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
-export default TransactionsPage;
+export default TransactionForm;
