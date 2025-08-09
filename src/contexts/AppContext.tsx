@@ -1,15 +1,13 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction, Goal, ScheduledTransaction, User, TimeRange } from '@/types';
-import { setupAuthListener, getCurrentSession } from '@/services/authService';
-import { recalculateGoalAmounts as recalculateGoalAmountsService } from '@/services/goalService';
+import { setupAuthListener } from '@/services/authService';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 // ===================================================
 // TIPOS E INTERFACES
 // ===================================================
 
-// Use database types directly from Supabase
 interface Category {
   id: string;
   created_at: string;
@@ -60,6 +58,11 @@ interface AppContextType extends AppState {
   addScheduledTransaction: (st: Omit<ScheduledTransaction, 'id' | 'created_at' | 'user_id'>) => Promise<ScheduledTransaction | undefined>;
   updateScheduledTransaction: (st: Partial<ScheduledTransaction>) => Promise<void>;
   deleteScheduledTransaction: (id: string) => Promise<void>;
+  // Fetching functions
+  getCategories: () => Promise<void>;
+  getGoals: () => Promise<Goal[]>;
+  getTransactions: () => Promise<void>;
+  getScheduledTransactions: () => Promise<void>;
 }
 
 type AppAction =
@@ -104,7 +107,16 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, categories: action.payload };
     case 'SET_GOALS':
       return { ...state, goals: action.payload };
-    // ... add other cases as needed
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+    case 'TOGGLE_HIDE_VALUES':
+      return { ...state, hideValues: !state.hideValues };
+    case 'SET_TIME_RANGE':
+      return { ...state, timeRange: action.payload };
+    case 'SET_CUSTOM_DATE_RANGE':
+      return { ...state, customStartDate: action.payload.startDate, customEndDate: action.payload.endDate };
     default:
       return state;
   }
@@ -145,7 +157,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   
   // Função para buscar as categorias
   const getCategories = useCallback(async (): Promise<void> => {
-    if (!state.user?.id) return;
+    console.log('AppContext: getCategories - Início da busca.');
+    if (!state.user?.id) {
+      console.log('AppContext: getCategories - Usuário não autenticado, retornando.');
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('poupeja_categories')
@@ -153,13 +169,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', state.user.id);
       
       if (error) {
+        console.error("AppContext: Erro ao buscar categorias:", error);
         throw error;
       }
       
       const transformedCategories = (data || []).map(transformCategory);
+      console.log(`AppContext: getCategories - ${transformedCategories.length} categorias carregadas com sucesso.`);
       dispatch({ type: 'SET_CATEGORIES', payload: transformedCategories });
     } catch (err) {
-      console.error("Erro inesperado ao buscar categorias:", err);
+      console.error("AppContext: Erro inesperado ao buscar categorias:", err);
       dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar categorias.' });
       dispatch({ type: 'SET_CATEGORIES', payload: [] });
     }
@@ -167,23 +185,28 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   // Função para buscar as metas
   const getGoals = useCallback(async (): Promise<Goal[]> => {
-    if (!state.user?.id) return [];
+    console.log('AppContext: getGoals - Início da busca.');
+    if (!state.user?.id) {
+      console.log('AppContext: getGoals - Usuário não autenticado, retornando.');
+      return [];
+    }
     try {
-      console.log('AppContext: Fetching goals...');
-      // Agora usamos o user do estado do contexto, não uma função de autenticação
       const { data, error } = await supabase
         .from('poupeja_goals')
         .select('*')
         .eq('user_id', state.user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("AppContext: Erro ao buscar metas:", error);
+        throw error;
+      }
       
       const goals = (data || []).map(transformGoal);
-      console.log('AppContext: Goals fetched successfully:', goals.length);
+      console.log(`AppContext: getGoals - ${goals.length} metas carregadas com sucesso.`);
       dispatch({ type: 'SET_GOALS', payload: goals });
       return goals;
     } catch (error) {
-      console.error('Error fetching goals:', error);
+      console.error('AppContext: Erro inesperado ao buscar metas:', error);
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao buscar metas' });
       dispatch({ type: 'SET_GOALS', payload: [] });
       throw error;
@@ -192,17 +215,25 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   // Função para buscar as transações
   const getTransactions = useCallback(async (): Promise<void> => {
-    if (!state.user?.id) return;
+    console.log('AppContext: getTransactions - Início da busca.');
+    if (!state.user?.id) {
+      console.log('AppContext: getTransactions - Usuário não autenticado, retornando.');
+      return;
+    }
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase
         .from('poupeja_transactions')
         .select('*')
         .eq('user_id', state.user.id);
-      if (error) throw error;
+      if (error) {
+        console.error("AppContext: Erro ao buscar transações:", error);
+        throw error;
+      }
+      console.log(`AppContext: getTransactions - ${data.length} transações carregadas com sucesso.`);
       dispatch({ type: 'SET_TRANSACTIONS', payload: data });
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error('AppContext: Erro inesperado ao buscar transações:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Erro ao buscar transações' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -211,26 +242,33 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   
   // Função para buscar agendamentos
   const getScheduledTransactions = useCallback(async (): Promise<void> => {
-    if (!state.user?.id) return;
+    console.log('AppContext: getScheduledTransactions - Início da busca.');
+    if (!state.user?.id) {
+      console.log('AppContext: getScheduledTransactions - Usuário não autenticado, retornando.');
+      return;
+    }
     // ... lógica para buscar transações agendadas
+    // Por enquanto, apenas um console.log para saber se a função foi chamada
+    console.log('AppContext: getScheduledTransactions - Função chamada, mas sem lógica de busca implementada.');
   }, [state.user?.id]);
 
   // Efeito para configurar o listener de autenticação
   useEffect(() => {
-    // Configura o listener de autenticação. Sempre que a sessão mudar,
-    // o estado do user e session no contexto é atualizado.
     const { data: { subscription } } = setupAuthListener((session) => {
+      console.log("AppContext: Listener de autenticação ativado.");
       if (session) {
+        console.log("AppContext: Sessão encontrada, definindo usuário e sessão.");
         dispatch({ type: 'SET_SESSION', payload: session });
         dispatch({ type: 'SET_USER', payload: session.user });
       } else {
+        console.log("AppContext: Nenhuma sessão encontrada, limpando usuário e sessão.");
         dispatch({ type: 'SET_SESSION', payload: null });
         dispatch({ type: 'SET_USER', payload: null });
       }
     });
 
-    // Limpa a inscrição ao desmontar o componente
     return () => {
+      console.log("AppContext: Listener de autenticação desativado.");
       subscription.unsubscribe();
     };
   }, []);
@@ -238,12 +276,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   // Efeito para buscar os dados iniciais do usuário quando a autenticação é confirmada
   useEffect(() => {
     if (state.user?.id) {
-      console.log("Usuário autenticado, buscando dados iniciais...");
+      console.log("AppContext: Usuário autenticado, buscando dados iniciais...");
       getCategories();
       getGoals();
       getTransactions();
       getScheduledTransactions();
-      // Outras chamadas de busca de dados podem ser adicionadas aqui
     }
   }, [state.user?.id, getCategories, getGoals, getTransactions, getScheduledTransactions]);
 
@@ -266,13 +303,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     addScheduledTransaction: async () => undefined,
     updateScheduledTransaction: async () => {},
     deleteScheduledTransaction: async () => {},
+    // Exposing the fetch functions to the context value
+    getCategories,
+    getGoals,
+    getTransactions,
+    getScheduledTransactions
   }), [
     state,
     toggleHideValues,
     logout,
     setTimeRange,
     setCustomDateRange,
-    // Re-add fetch functions to the dependency array if they are used
+    // Include the fetch functions in the dependency array
+    getCategories,
+    getGoals,
+    getTransactions,
+    getScheduledTransactions,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -282,7 +328,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 // HOOKS CUSTOMIZADOS
 // ===================================================
 
-// Hook principal para usar o contexto
 const useApp = () => {
   const context = useContext(AppContext);
   if (!context) {
@@ -291,7 +336,6 @@ const useApp = () => {
   return context;
 };
 
-// Hook compatível com nome antigo - exportado para manter compatibilidade
 const useAppContext = () => {
   const context = useContext(AppContext);
   if (!context) {
@@ -304,5 +348,5 @@ const useAppContext = () => {
 // EXPORTAÇÕES
 // ===================================================
 
-// Exporta ambos os hooks para garantir compatibilidade
 export { useApp, useAppContext };
+
