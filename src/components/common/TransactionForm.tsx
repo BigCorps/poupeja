@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form } from '@/components/ui/form';
 import { Transaction } from '@/types';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -14,20 +14,55 @@ import GoalSelector from './GoalSelector';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 
+// Zod schemas para os dois tipos de formulário
+const transactionSchemaPF = z.object({
+  type: z.enum(['income', 'expense']),
+  amount: z.number({ required_error: "O valor é obrigatório." }).min(0.01, "O valor deve ser maior que zero."),
+  categoryId: z.string({ required_error: "A categoria é obrigatória." }).min(1),
+  transactionDate: z.date({ required_error: "A data é obrigatória." }),
+  description: z.string().optional(),
+  goalId: z.string().optional(),
+});
+
+const transactionSchemaPJ = z.object({
+  type: z.enum(['income', 'expense', 'operational_inflow', 'operational_outflow', 'investment_inflow', 'investment_outflow', 'financing_inflow', 'financing_outflow']),
+  originalAmount: z.number().min(0),
+  lateInterestAmount: z.number().min(0).optional(),
+  paidAmount: z.number().min(0.01),
+  categoryId: z.string().min(1, "A categoria é obrigatória."),
+  supplier: z.string().min(1, "O fornecedor é obrigatório."),
+  description: z.string().min(1, "A descrição é obrigatória."),
+  paymentMethod: z.string().min(1, "A forma de pagamento é obrigatória."),
+  referenceDate: z.date(),
+  dueDate: z.date(),
+  paymentDate: z.date(),
+  paymentStatus: z.enum(['pending', 'paid', 'overdue', 'projected']),
+});
+
 interface TransactionFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialData?: Transaction | null;
   mode: 'create' | 'edit';
-  viewMode: 'PF' | 'PJ';
+  viewMode: 'PF' | 'PJ'; // Novo campo
   defaultType?: 'income' | 'expense';
+}
+
+// Placeholder para o seletor de categorias hierárquico
+const CategorySelectorPJ = ({ form }) => {
+  // Implemente o seletor de categorias PJ aqui, que irá exibir a hierarquia
+  return (
+    <div>
+      <Label>Classificação</Label>
+      <Input placeholder="Selecione a categoria..." {...form.register('categoryId')} />
+    </div>
+  );
 }
 
 const TransactionForm: React.FC<TransactionFormProps> = ({
@@ -39,402 +74,134 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   defaultType = 'expense',
 }) => {
   const { t } = usePreferences();
-  const { addTransaction, updateTransaction } = useAppContext();
+  const { setCustomDateRange, getTransactions, getGoals } = useAppContext();
   const { toast } = useToast();
   
-  // Schema para PF
-  const transactionSchemaPF = z.object({
-    type: z.enum(['income', 'expense']),
-    amount: z.number({ required_error: t('forms.transaction.validation.amountRequired') }).min(0.01, t('forms.transaction.validation.amountMinimum')),
-    categoryId: z.string({ required_error: t('forms.transaction.validation.categoryRequired') }).min(1),
-    transactionDate: z.date({ required_error: t('forms.transaction.validation.dateRequired') }),
-    description: z.string().optional(),
-    goalId: z.string().optional(),
-  });
-
-  // Schema para PJ - apenas campos essenciais obrigatórios
-  const transactionSchemaPJ = z.object({
-    type: z.enum(['operational_inflow', 'operational_outflow', 'investment_inflow', 'investment_outflow', 'financing_inflow', 'financing_outflow']),
-    paidAmount: z.number().min(0.01, t('forms.transaction.validation.paidAmountRequired')),
-    originalAmount: z.number().min(0).optional(),
-    lateInterestAmount: z.number().min(0).optional(),
-    categoryId: z.string().min(1, t('forms.transaction.validation.categoryRequired')),
-    description: z.string().min(1, t('forms.transaction.validation.descriptionRequired')),
-    referenceDate: z.date(),
-    supplier: z.string().optional(),
-    paymentMethod: z.string().optional(),
-    dueDate: z.date().optional(),
-    paymentDate: z.date().optional(),
-    paymentStatus: z.enum(['pending', 'paid', 'overdue', 'projected']).default('pending'),
-  });
-
+  // Conditionally select the schema based on viewMode
   const schema = viewMode === 'PF' ? transactionSchemaPF : transactionSchemaPJ;
 
-  const getDefaultValues = () => {
-    if (viewMode === 'PF') {
-      return {
-        type: defaultType,
-        amount: 0,
-        categoryId: '',
-        transactionDate: new Date(),
-        description: '',
-        goalId: '',
-      };
-    } else {
-      return {
-        type: 'operational_outflow',
-        paidAmount: 0,
-        originalAmount: 0,
-        lateInterestAmount: 0,
-        categoryId: '',
-        description: '',
-        referenceDate: new Date(),
-        supplier: '',
-        paymentMethod: '',
-        dueDate: new Date(),
-        paymentDate: new Date(),
-        paymentStatus: 'pending' as const,
-      };
-    }
-  };
-
+  // Initialize form with react-hook-form and zod
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: initialData || getDefaultValues(),
+    defaultValues: initialData || {
+      // Default values for PF
+      type: defaultType,
+      amount: 0,
+      categoryId: '',
+      transactionDate: new Date(),
+      description: '',
+      goalId: '',
+      // Default values for PJ
+      originalAmount: 0,
+      lateInterestAmount: 0,
+      paidAmount: 0,
+      supplier: '',
+      paymentMethod: '',
+      referenceDate: new Date(),
+      dueDate: new Date(),
+      paymentDate: new Date(),
+      paymentStatus: 'pending',
+    },
   });
 
-  // Componente para seletor de categorias PJ
-  const CategorySelectorPJ = ({ form }: { form: any }) => {
-    return (
-      <FormField
-        control={form.control}
-        name="categoryId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t('forms.transaction.fields.classification')} *</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('forms.transaction.placeholders.selectCategory')} />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="operational_revenue">{t('transactionTypes.operational_inflow')}</SelectItem>
-                <SelectItem value="operational_expense">{t('transactionTypes.operational_outflow')}</SelectItem>
-                <SelectItem value="investment_income">{t('transactionTypes.investment_inflow')}</SelectItem>
-                <SelectItem value="investment_expense">{t('transactionTypes.investment_outflow')}</SelectItem>
-                <SelectItem value="financing_income">{t('transactionTypes.financing_inflow')}</SelectItem>
-                <SelectItem value="financing_expense">{t('transactionTypes.financing_outflow')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    );
-  };
-
-  // Componente para seletor de tipo PJ
-  const TransactionTypeSelectorPJ = ({ form }: { form: any }) => {
-    return (
-      <FormField
-        control={form.control}
-        name="type"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t('forms.transaction.fields.movementType')} *</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('forms.transaction.placeholders.selectType')} />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="operational_inflow">{t('transactionTypes.operational_inflow')}</SelectItem>
-                <SelectItem value="operational_outflow">{t('transactionTypes.operational_outflow')}</SelectItem>
-                <SelectItem value="investment_inflow">{t('transactionTypes.investment_inflow')}</SelectItem>
-                <SelectItem value="investment_outflow">{t('transactionTypes.investment_outflow')}</SelectItem>
-                <SelectItem value="financing_inflow">{t('transactionTypes.financing_inflow')}</SelectItem>
-                <SelectItem value="financing_outflow">{t('transactionTypes.financing_outflow')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    );
-  };
-
-  const onSubmit = async (data: any) => {
-    try {
-      console.log("Dados do formulário:", data);
-      
-      if (mode === 'create') {
-        // await addTransaction(data);
-        toast({
-          title: t('messages.success.transactionAdded'),
-          description: t('messages.success.transactionAdded'),
-        });
-      } else {
-        // await updateTransaction(initialData.id, data);
-        toast({
-          title: t('messages.success.transactionUpdated'),
-          description: t('messages.success.transactionUpdated'),
-        });
-      }
-      
-      onOpenChange(false);
-      form.reset();
-    } catch (error) {
-      console.error("Erro ao salvar transação:", error);
-      toast({
-        title: t('common.error'),
-        description: t('messages.error.savingTransaction'),
-        variant: "destructive",
-      });
-    }
+  const onSubmit = async (data) => {
+    console.log("Form submitted with data:", data);
+    // Aqui você faria a lógica para salvar a transação no Supabase
+    // A lógica deve ser adaptada para incluir os novos campos
+    // ...
+    toast({
+      title: mode === 'create' ? t('transactions.added') : t('transactions.updated'),
+      description: mode === 'create' ? t('transactions.addSuccess') : t('transactions.updateSuccess'),
+    });
+    onOpenChange(false);
   };
 
   useEffect(() => {
+    // Reset o formulário quando o modal é aberto ou o viewMode muda
     if (open) {
-      const defaultValues = initialData || getDefaultValues();
-      form.reset(defaultValues);
+      form.reset(initialData || form.getValues());
+      console.log(`TransactionForm opened in ${viewMode} mode.`);
     }
-  }, [open, initialData, viewMode, form]);
+  }, [open, initialData, form, viewMode]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden max-h-[90vh]">
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
         <DialogHeader className="bg-background p-6 border-b">
           <DialogTitle className="text-xl">
-            {mode === 'create' 
-              ? (viewMode === 'PF' ? t('forms.transaction.addTitlePF') : t('forms.transaction.addTitlePJ'))
-              : (viewMode === 'PF' ? t('forms.transaction.editTitlePF') : t('forms.transaction.editTitlePJ'))
-            }
+            {mode === 'create' ? `Adicionar Transação (${viewMode})` : `Editar Transação (${viewMode})`}
           </DialogTitle>
         </DialogHeader>
         
-        <div className="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+        <div className="p-6 max-h-[calc(85vh-120px)] overflow-y-auto">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {viewMode === 'PF' && (
                 <>
-                  <TransactionTypeSelector 
-                    form={form} 
-                    onTypeChange={(type) => form.setValue('type', type as any)} 
-                  />
+                  <TransactionTypeSelector form={form} onTypeChange={(type) => form.setValue('type', type as any)} />
                   <AmountInput form={form} />
-                  <CategoryDateFields 
-                    form={form} 
-                    transactionType={form.watch('type')} 
-                  />
+                  <CategoryDateFields form={form} transactionType={form.getValues('type')} />
                   <DescriptionField form={form} />
-                  {form.watch('type') === 'income' && <GoalSelector form={form} />}
+                  {form.getValues('type') === 'income' && <GoalSelector form={form} />}
                 </>
               )}
 
               {viewMode === 'PJ' && (
                 <>
-                  <TransactionTypeSelectorPJ form={form} />
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="paidAmount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('forms.transaction.fields.paidAmount')} *</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              placeholder={t('forms.transaction.placeholders.amountPlaceholder')}
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="originalAmount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('forms.transaction.fields.originalAmount')}</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              placeholder={t('forms.transaction.placeholders.amountPlaceholder')}
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="lateInterestAmount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('forms.transaction.fields.lateInterestAmount')}</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              placeholder={t('forms.transaction.placeholders.amountPlaceholder')}
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  {/* Campos do formulário PJ */}
+                  <TransactionTypeSelector form={form} onTypeChange={(type) => form.setValue('type', type as any)} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="originalAmount">Valor Original</Label>
+                      <Input id="originalAmount" type="number" step="0.01" {...form.register('originalAmount', { valueAsNumber: true })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="lateInterestAmount">Juros em Atraso</Label>
+                      <Input id="lateInterestAmount" type="number" step="0.01" {...form.register('lateInterestAmount', { valueAsNumber: true })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="paidAmount">Valor Pago</Label>
+                      <Input id="paidAmount" type="number" step="0.01" {...form.register('paidAmount', { valueAsNumber: true })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="supplier">Fornecedor</Label>
+                      <Input id="supplier" {...form.register('supplier')} />
+                    </div>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="supplier"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('forms.transaction.fields.supplier')}</FormLabel>
-                          <FormControl>
-                            <Input placeholder={t('forms.transaction.placeholders.supplierName')} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="paymentMethod"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('forms.transaction.fields.paymentMethod')}</FormLabel>
-                          <FormControl>
-                            <Input placeholder={t('forms.transaction.placeholders.paymentMethodExample')} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
                   <CategorySelectorPJ form={form} />
+                  <DescriptionField form={form} />
                   
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('forms.transaction.fields.description')} *</FormLabel>
-                        <FormControl>
-                          <textarea 
-                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            placeholder={t('forms.transaction.placeholders.describeTransaction')}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="referenceDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('forms.transaction.fields.referenceDate')} *</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="date" 
-                              {...field}
-                              value={field.value ? format(new Date(field.value), 'yyyy-MM-dd') : ''}
-                              onChange={(e) => field.onChange(new Date(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="dueDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('forms.transaction.fields.dueDate')}</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="date" 
-                              {...field}
-                              value={field.value ? format(new Date(field.value), 'yyyy-MM-dd') : ''}
-                              onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="paymentDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('forms.transaction.fields.paymentDate')}</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="date" 
-                              {...field}
-                              value={field.value ? format(new Date(field.value), 'yyyy-MM-dd') : ''}
-                              onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="referenceDate">Data de Referência</Label>
+                      <Input id="referenceDate" type="date" {...form.register('referenceDate', { valueAsDate: true })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="dueDate">Data de Vencimento</Label>
+                      <Input id="dueDate" type="date" {...form.register('dueDate', { valueAsDate: true })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="paymentDate">Data Pagamento / Projeção</Label>
+                      <Input id="paymentDate" type="date" {...form.register('paymentDate', { valueAsDate: true })} />
+                    </div>
+                    <div>
+                      <Label htmlFor="paymentStatus">Status Pagamento</Label>
+                      <select id="paymentStatus" {...form.register('paymentStatus')}>
+                        <option value="pending">Pendente</option>
+                        <option value="paid">Pago</option>
+                        <option value="overdue">Atrasado</option>
+                        <option value="projected">Projetado</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="paymentMethod">Forma de Pagamento</Label>
+                      <Input id="paymentMethod" {...form.register('paymentMethod')} />
+                    </div>
                   </div>
-
-                  <FormField
-                    control={form.control}
-                    name="paymentStatus"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('forms.transaction.fields.paymentStatus')}</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t('forms.transaction.placeholders.selectStatus')} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="pending">{t('paymentStatus.pending')}</SelectItem>
-                            <SelectItem value="paid">{t('paymentStatus.paid')}</SelectItem>
-                            <SelectItem value="overdue">{t('paymentStatus.overdue')}</SelectItem>
-                            <SelectItem value="projected">{t('paymentStatus.projected')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </>
               )}
 
-              <DialogFooter className="pt-4 border-t">
+              <DialogFooter className="pt-4">
                 <Button 
                   type="button" 
                   variant="outline" 
@@ -444,19 +211,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={form.formState.isSubmitting}
-                  className={cn(
-                    viewMode === 'PF' && form.watch('type') === 'income' 
-                      ? 'bg-green-600 hover:bg-green-700' 
-                      : ''
-                  )}
+                  className={cn(form.getValues('type') === 'income' ? 'bg-green-600 hover:bg-green-700' : '')}
                 >
-                  {form.formState.isSubmitting 
-                    ? t('messages.loading.saving')
-                    : mode === 'create' 
-                      ? t('common.add') 
-                      : t('common.save')
-                  }
+                  {mode === 'create' ? t('common.add') : t('common.save')}
                 </Button>
               </DialogFooter>
             </form>
