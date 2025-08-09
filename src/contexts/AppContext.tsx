@@ -1,14 +1,12 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction, Goal, ScheduledTransaction, User, TimeRange } from '@/types';
-import { setupAuthListener, getCurrentSession } from '@/services/authService';
 import { recalculateGoalAmounts as recalculateGoalAmountsService } from '@/services/goalService';
 
 // ===================================================
 // TIPOS E INTERFACES
 // ===================================================
 
-// Use database types directly from Supabase
 interface Category {
   id: string;
   created_at: string;
@@ -174,7 +172,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
 // FUNÇÕES DE HELPERS
 // ===================================================
 
-// Função para garantir que os dados de meta tenham o tipo correto
 const transformGoal = (goalData: any): Goal => {
   return {
     ...goalData,
@@ -209,7 +206,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
   
   const getTransactions = useCallback(async () => {
     try {
-      if (!state.user) return; // ✅ Adicionado para evitar chamadas de API desnecessárias
+      if (!state.user) return;
       dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase.from('poupeja_transactions')
         .select(`
@@ -240,11 +237,12 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const getCategories = useCallback(async () => {
     try {
-      if (!state.user) return; // ✅ Adicionado para evitar chamadas de API desnecessárias
+      if (!state.user) return;
       dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase.from('poupeja_categories')
         .select('*')
-        .or(`user_id.eq.${state.user.id},is_default.eq.true`);
+        .or(`user_id.eq.${state.user.id},is_default.eq.true`)
+        .eq('account_type', state.accountType); // ✅ Adicionado: filtra por account_type
 
       if (error) {
         console.error("Erro ao buscar categorias:", error);
@@ -260,11 +258,11 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [state.user]);
+  }, [state.user, state.accountType]); // ✅ Adicionado: adiciona state.accountType à dependência
 
   const getGoals = useCallback(async (): Promise<Goal[]> => {
     try {
-      if (!state.user) return []; // ✅ Adicionado para evitar chamadas de API desnecessárias
+      if (!state.user) return [];
       dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase
         .from('poupeja_goals')
@@ -273,7 +271,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) throw error;
       
-      const goals = (data || []).map(transformGoal); // Garante que a transformação é feita em um array
+      const goals = (data || []).map(transformGoal);
       dispatch({ type: 'SET_GOALS', payload: goals });
       return goals;
     } catch (error) {
@@ -288,7 +286,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const getScheduledTransactions = useCallback(async (): Promise<void> => {
     try {
-      if (!state.user) return; // ✅ Adicionado para evitar chamadas de API desnecessárias
+      if (!state.user) return;
       dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase.from('poupeja_scheduled_transactions')
         .select('*')
@@ -306,7 +304,6 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state.user]);
 
-  // Ações de manipulação do estado (transações, categorias, etc.)
   const addTransaction = useCallback(async (transaction: Transaction) => {
     if (!state.user) return;
     try {
@@ -554,21 +551,20 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // Efeito para buscar os dados quando o usuário muda
+  // Efeito para buscar os dados quando o usuário muda OU o tipo de conta (PF/PJ) muda
   useEffect(() => {
     if (state.user) {
       getTransactions();
-      getCategories();
+      getCategories(); // Esta função agora também reage a state.accountType
       getGoals();
       getScheduledTransactions();
     } else {
-      // Limpar o estado quando o usuário faz logout
       dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
       dispatch({ type: 'SET_CATEGORIES', payload: [] });
       dispatch({ type: 'SET_GOALS', payload: [] });
       dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
     }
-  }, [state.user, getTransactions, getCategories, getGoals, getScheduledTransactions]);
+  }, [state.user, state.accountType, getTransactions, getCategories, getGoals, getScheduledTransactions]);
 
   const value = useMemo(() => ({
     ...state,
@@ -621,10 +617,6 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
-
-// ===================================================
-// HOOKS CUSTOMIZADOS
-// ===================================================
 
 const useApp = () => {
   const context = useContext(AppContext);
