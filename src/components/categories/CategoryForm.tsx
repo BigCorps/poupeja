@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import ColorPicker from '@/components/ColorPicker'; // Importação corrigida para exportação padrão
+import ColorPicker from '@/components/ColorPicker'; // Importação padrão para o componente ColorPicker
 import { IconPicker } from '@/components/IconPicker';
 import CategoryPicker from '@/components/CategoryPicker';
 import { Category } from '@/types/categories';
@@ -103,7 +103,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ open, onOpenChange, initial
               </div>
             </div>
 
-            {/* Outros campos (cor e ícone) - deixados como estavam */}
+            {/* Outros campos (cor e ícone) */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="color" className="text-right">
                 Cor
