@@ -72,7 +72,7 @@ const TransactionsPage = () => {
     return category ? category.name : 'N/A';
   }
 
-  const renderTable = (data: Transaction[]) => {
+  const renderTablePJ = (data: Transaction[]) => {
     if (data.length === 0) {
       return (
         <div className="flex items-center justify-center p-6 text-muted-foreground">
@@ -81,7 +81,6 @@ const TransactionsPage = () => {
       );
     }
     
-    // Mapeamento para exibir os cabeçalhos de coluna de forma mais profissional
     const displayHeaders = ['Fornecedor', 'Descrição', 'Categoria', 'Valor Original', 'Data de Vencimento', 'Status'];
 
     return (
@@ -125,7 +124,6 @@ const TransactionsPage = () => {
       );
     }
     
-    // Mapeamento para exibir os cabeçalhos de coluna de forma mais profissional
     const displayHeaders = ['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor'];
 
     return (
@@ -140,7 +138,9 @@ const TransactionsPage = () => {
         <TableBody>
           {data.map((transaction, index) => (
             <TableRow key={index} onClick={() => handleEditTransaction(transaction)}>
-              <TableCell>{format(parseISO(transaction.transactionDate), "dd/MM/yyyy")}</TableCell>
+              <TableCell>
+                {transaction.transactionDate ? format(parseISO(transaction.transactionDate), "dd/MM/yyyy") : 'N/A'}
+              </TableCell>
               <TableCell>
                 <span className={cn(
                   "font-semibold",
@@ -211,7 +211,7 @@ const TransactionsPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {viewMode === 'PF' ? renderTablePF(filteredTransactions) : renderTable(filteredTransactions)}
+                  {viewMode === 'PF' ? renderTablePF(filteredTransactions) : renderTablePJ(filteredTransactions)}
                 </CardContent>
               </Card>
             )}
