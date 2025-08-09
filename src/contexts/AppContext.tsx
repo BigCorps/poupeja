@@ -131,16 +131,16 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_SESSION':
       return { ...state, session: action.payload };
     case 'SET_TRANSACTIONS':
-      // CORREÇÃO: Garante que o payload é um array para evitar o erro e.filter is not a function
+      // Garante que o payload é um array para evitar o erro e.filter is not a function
       return { ...state, transactions: Array.isArray(action.payload) ? action.payload : [] };
     case 'SET_CATEGORIES':
-      // CORREÇÃO: Garante que o payload é um array
+      // Garante que o payload é um array
       return { ...state, categories: Array.isArray(action.payload) ? action.payload : [] };
     case 'SET_GOALS':
-      // CORREÇÃO: Garante que o payload é um array
+      // Garante que o payload é um array
       return { ...state, goals: Array.isArray(action.payload) ? action.payload : [] };
     case 'SET_SCHEDULED_TRANSACTIONS':
-      // CORREÇÃO: Garante que o payload é um array
+      // Garante que o payload é um array
       return { ...state, scheduledTransactions: Array.isArray(action.payload) ? action.payload : [] };
     case 'TOGGLE_HIDE_VALUES':
       return { ...state, hideValues: !state.hideValues };
@@ -567,7 +567,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   // Data fetching methods (memoized to prevent unnecessary re-renders)
-  const getTransactions = useCallback(async () => {
+const getTransactions = useCallback(async () => {
   try {
     const { data, error } = await supabase.from('poupeja_transactions')
       .select(`
@@ -585,7 +585,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'SET_ERROR', payload: error.message });
       dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
     } else {
-      // CORREÇÃO: Garante que os dados são um array antes de atualizar o estado
+      // Correção: Garante que os dados são um array antes de atualizar o estado
       dispatch({ type: 'SET_TRANSACTIONS', payload: data || [] });
     }
   } catch (err) {
@@ -595,7 +595,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }
 }, [state.user?.id, state.accountType]);
 
-  const getCategories = useCallback(async () => {
+const getCategories = useCallback(async () => {
   try {
     const { data, error } = await supabase.from('poupeja_categories')
       .select('*')
@@ -606,7 +606,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dispatch({ type: 'SET_ERROR', payload: error.message });
       dispatch({ type: 'SET_CATEGORIES', payload: [] });
     } else {
-      // CORREÇÃO: Garante que os dados são um array antes de atualizar o estado
+      // Correção: Garante que os dados são um array antes de atualizar o estado
       dispatch({ type: 'SET_CATEGORIES', payload: data || [] });
     }
   } catch (err) {
@@ -993,10 +993,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Effect para carregar dados quando accountType muda
   useEffect(() => {
-    if (state.user && isInitialized) {
-      getTransactions();
-    }
-  }, [state.accountType, state.user, isInitialized, getTransactions]);
+    const listenToAuth = setupAuthListener((session) => {
+      dispatch({ type: 'SET_SESSION', payload: session });
+      if (session) {
+        dispatch({ type: 'SET_USER', payload: session.user });
+      } else {
+        dispatch({ type: 'SET_USER', payload: null });
+      }
+    });
+    return () => {
+      // CORREÇÃO: Garante que a função de unsubscribe é chamada apenas se existir
+      if (listenToAuth) {
+        listenToAuth.unsubscribe();
+      }
+    };
+  }, []);
 
   const value: AppContextType = useMemo(() => ({
     ...state,
