@@ -4,7 +4,6 @@ import { Transaction, Goal, ScheduledTransaction, User, TimeRange } from '@/type
 import { setupAuthListener, getCurrentSession } from '@/services/authService';
 import { recalculateGoalAmounts as recalculateGoalAmountsService } from '@/services/goalService';
 import { addDays, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, isAfter, isBefore, subDays } from 'date-fns';
-
 // ===================================================
 // TIPOS E INTERFACES
 // ===================================================
