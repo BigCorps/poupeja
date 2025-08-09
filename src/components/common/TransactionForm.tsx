@@ -1,19 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Transaction } from '@/types';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useTransactionForm } from '@/hooks/useTransactionForm';
-import TransactionTypeSelector from './TransactionTypeSelector';
-import AmountInput from './AmountInput';
-import CategoryDateFields from './CategoryDateFields';
-import DescriptionField from './DescriptionField';
-import GoalSelector from './GoalSelector';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -29,6 +22,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
+import TransactionTypeSelector from './TransactionTypeSelector';
+import AmountInput from './AmountInput';
+import DescriptionField from './DescriptionField';
 
 // Zod schemas para os dois tipos de formulário
 const transactionSchemaPF = z.object({
@@ -40,9 +36,8 @@ const transactionSchemaPF = z.object({
   goalId: z.string().optional(),
 });
 
-// ** SCHEMA PJ CORRIGIDO **
 const transactionSchemaPJ = z.object({
-  type: z.enum(['income', 'expense', 'operational_inflow', 'operational_outflow', 'investment_inflow', 'investment_outflow', 'financing_inflow', 'financing_outflow']).optional(), // Tipos PJ podem ser derivados da categoria
+  type: z.enum(['income', 'expense', 'operational_inflow', 'operational_outflow', 'investment_inflow', 'investment_outflow', 'financing_inflow', 'financing_outflow']).optional(),
   originalAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
   lateInterestAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
   paidAmount: z.number().min(0.01, "O valor pago é obrigatório e deve ser maior que zero.").optional(),
@@ -65,36 +60,96 @@ interface TransactionFormProps {
   defaultType?: 'income' | 'expense';
 }
 
-// Placeholder para o seletor de categorias hierárquico
-// Implementei uma versão de mock para visualização, pois não temos o componente completo.
-const CategorySelectorPJ = ({ form, t }) => {
+// ** NOVO COMPONENTE: Seletor Hierárquico de Categorias **
+const HierarchicalCategorySelector = ({ form, allCategories, t }) => {
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+
+  // Filtra as categorias pai (sem parentId)
+  const parentCategories = allCategories.filter(c => !c.parentId);
+  // Filtra as subcategorias com base no parentId selecionado
+  const subcategories = allCategories.filter(c => c.parentId === selectedParentId);
+
+  // Reseta o campo de subcategoria se a categoria pai mudar
+  useEffect(() => {
+    form.setValue('categoryId', '');
+  }, [selectedParentId, form]);
+
   return (
-    <FormField
-      control={form.control}
-      name="categoryId"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Classificação (Categoria)</FormLabel>
-          <Select onValueChange={field.onChange} defaultValue={field.value}>
-            <FormControl>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria..." />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {/* Exemplo de categorias PJ. Você deve popular isso com seus dados. */}
-              <SelectItem value="operational-inflow">Operational - Inflow</SelectItem>
-              <SelectItem value="operational-outflow">Operational - Outflow</SelectItem>
-              <SelectItem value="financing-inflow">Financing - Inflow</SelectItem>
-              <SelectItem value="financing-outflow">Financing - Outflow</SelectItem>
-            </SelectContent>
-          </Select>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
+    <>
+      <FormField
+        control={form.control}
+        name="parentCategoryId" // Usamos um campo temporário para a categoria pai
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Categoria Principal</FormLabel>
+            <Select 
+              onValueChange={(value) => {
+                setSelectedParentId(value);
+                // Se a categoria pai não tiver subcategorias, já define o categoryId
+                const hasSubcategories = allCategories.some(c => c.parentId === value);
+                if (!hasSubcategories) {
+                    form.setValue('categoryId', value);
+                } else {
+                    form.setValue('categoryId', ''); // Reseta se tiver sub
+                }
+              }} 
+              defaultValue={field.value}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria principal" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {parentCategories.map(cat => (
+                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="categoryId" // Este é o campo final que será salvo
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Subcategoria</FormLabel>
+            <Select 
+              onValueChange={field.onChange} 
+              value={field.value}
+              disabled={!selectedParentId || subcategories.length === 0}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a subcategoria" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {subcategories.map(subcat => (
+                  <SelectItem key={subcat.id} value={subcat.id}>{subcat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </>
   );
 }
+
+// MOCK DE DADOS PARA TESTE
+const mockPjCategories = [
+  { id: 'cat-op', name: 'Operational', parentId: null },
+  { id: 'cat-inv', name: 'Investment', parentId: null },
+  { id: 'sub-ades', name: 'Adesivos', parentId: 'cat-op' },
+  { id: 'sub-cx', name: 'Caixas E-commerce', parentId: 'cat-op' },
+  { id: 'sub-acoes', name: 'Ações', parentId: 'cat-inv' },
+  { id: 'sub-cripto', name: 'Criptomoedas', parentId: 'cat-inv' },
+];
 
 const TransactionForm: React.FC<TransactionFormProps> = ({
   open,
@@ -105,13 +160,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   defaultType = 'expense',
 }) => {
   const { t } = usePreferences();
-  const { setCustomDateRange, getTransactions, getGoals } = useAppContext();
   const { toast } = useToast();
   
-  // Conditionally select the schema based on personType
   const schema = personType === 'PF' ? transactionSchemaPF : transactionSchemaPJ;
 
-  // Initialize form with react-hook-form and zod
   const form = useForm({
     resolver: zodResolver(schema),
     defaultValues: initialData || {
@@ -139,8 +191,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const onSubmit = async (data: any) => {
     console.log("Form submitted with data:", data);
-    // Aqui você faria a lógica para salvar a transação no Supabase
-    // A lógica deve ser adaptada para incluir os novos campos
     toast({
       title: mode === 'create' ? t('transactions.added') : t('transactions.updated'),
       description: mode === 'create' ? t('transactions.addSuccess') : t('transactions.updateSuccess'),
@@ -149,7 +199,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   };
 
   useEffect(() => {
-    // Reset o formulário quando o modal é aberto ou o personType muda
     if (open) {
       form.reset(initialData || form.getValues());
       console.log(`TransactionForm opened in ${personType} mode.`);
@@ -172,7 +221,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 <>
                   <TransactionTypeSelector form={form} onTypeChange={(type) => form.setValue('type', type as any)} />
                   <AmountInput form={form} />
-                  <CategoryDateFields form={form} transactionType={form.getValues('type')} />
+                  {/* CategoryDateFields seria seu seletor de categorias para PF */}
                   <DescriptionField form={form} />
                   {form.getValues('type') === 'income' && <GoalSelector form={form} />}
                 </>
@@ -180,7 +229,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
               {personType === 'PJ' && (
                 <>
-                  {/* **Campos do formulário PJ CORRIGIDOS e ajustados para zod/react-hook-form** */}
+                  {/* **Campos do formulário PJ agora com seletor hierárquico** */}
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -236,21 +285,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                     />
                   </div>
                   
-                  <CategorySelectorPJ form={form} t={t} />
+                  <HierarchicalCategorySelector form={form} allCategories={mockPjCategories} t={t} />
 
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrição (Opcional)</FormLabel>
-                        <FormControl>
-                          <Input id="description" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <DescriptionField form={form} />
 
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
