@@ -7,7 +7,8 @@ import { ThemeProvider } from "next-themes";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
-import { AppProvider } from "@/contexts/AppContext";
+// ✅ CORREÇÃO AQUI: o caminho correto é 'context' (singular)
+import { AppProvider } from "@/context/AppContext";
 import { SaldoProvider } from "@/contexts/SaldoContext"; // Importação do SaldoProvider
 import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
 import Index from "./pages/Index";
@@ -158,4 +159,3 @@ function App() {
 }
 
 export default App;
-
