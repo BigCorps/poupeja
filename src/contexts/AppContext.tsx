@@ -127,16 +127,20 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_ERROR':
       return { ...state, error: action.payload };
     case 'SET_USER':
-      return { ...state, user: action.payload };
+      return { ...state, user: action.payload, isLoading: false };
     case 'SET_SESSION':
       return { ...state, session: action.payload };
     case 'SET_TRANSACTIONS':
+      // CORREÇÃO: Garante que o payload é um array para evitar o erro e.filter is not a function
       return { ...state, transactions: Array.isArray(action.payload) ? action.payload : [] };
     case 'SET_CATEGORIES':
+      // CORREÇÃO: Garante que o payload é um array
       return { ...state, categories: Array.isArray(action.payload) ? action.payload : [] };
     case 'SET_GOALS':
+      // CORREÇÃO: Garante que o payload é um array
       return { ...state, goals: Array.isArray(action.payload) ? action.payload : [] };
     case 'SET_SCHEDULED_TRANSACTIONS':
+      // CORREÇÃO: Garante que o payload é um array
       return { ...state, scheduledTransactions: Array.isArray(action.payload) ? action.payload : [] };
     case 'TOGGLE_HIDE_VALUES':
       return { ...state, hideValues: !state.hideValues };
@@ -151,59 +155,27 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'ADD_TRANSACTION':
       return { ...state, transactions: [action.payload, ...state.transactions] };
     case 'UPDATE_TRANSACTION':
-      return {
-        ...state,
-        transactions: state.transactions.map(t => 
-          t.id === action.payload.id ? action.payload : t
-        )
-      };
+      return { ...state, transactions: state.transactions.map(t => t.id === action.payload.id ? action.payload : t ) };
     case 'DELETE_TRANSACTION':
-      return {
-        ...state,
-        transactions: state.transactions.filter(t => t.id !== action.payload)
-      };
+      return { ...state, transactions: state.transactions.filter(t => t.id !== action.payload) };
     case 'ADD_CATEGORY':
       return { ...state, categories: [...state.categories, action.payload] };
     case 'UPDATE_CATEGORY':
-      return {
-        ...state,
-        categories: state.categories.map(c => 
-          c.id === action.payload.id ? action.payload : c
-        )
-      };
+      return { ...state, categories: state.categories.map(c => c.id === action.payload.id ? action.payload : c) };
     case 'DELETE_CATEGORY':
-      return {
-        ...state,
-        categories: state.categories.filter(c => c.id !== action.payload)
-      };
+      return { ...state, categories: state.categories.filter(c => c.id !== action.payload) };
     case 'ADD_GOAL':
       return { ...state, goals: [...state.goals, action.payload] };
     case 'UPDATE_GOAL':
-      return {
-        ...state,
-        goals: state.goals.map(g => 
-          g.id === action.payload.id ? action.payload : g
-        )
-      };
+      return { ...state, goals: state.goals.map(g => g.id === action.payload.id ? action.payload : g) };
     case 'DELETE_GOAL':
-      return {
-        ...state,
-        goals: state.goals.filter(g => g.id !== action.payload)
-      };
+      return { ...state, goals: state.goals.filter(g => g.id !== action.payload) };
     case 'ADD_SCHEDULED_TRANSACTION':
       return { ...state, scheduledTransactions: [...state.scheduledTransactions, action.payload] };
     case 'UPDATE_SCHEDULED_TRANSACTION':
-      return {
-        ...state,
-        scheduledTransactions: state.scheduledTransactions.map(st => 
-          st.id === action.payload.id ? action.payload : st
-        )
-      };
+      return { ...state, scheduledTransactions: state.scheduledTransactions.map(st => st.id === action.payload.id ? action.payload : st) };
     case 'DELETE_SCHEDULED_TRANSACTION':
-      return {
-        ...state,
-        scheduledTransactions: state.scheduledTransactions.filter(st => st.id !== action.payload)
-      };
+      return { ...state, scheduledTransactions: state.scheduledTransactions.filter(st => st.id !== action.payload) };
     default:
       return state;
   }
@@ -595,55 +567,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   // Data fetching methods (memoized to prevent unnecessary re-renders)
-  const getTransactions = useCallback(async (): Promise<Transaction[]> => {
-    try {
-      console.log('AppContext: Fetching transactions...');
-      const user = await getCurrentUser();
-      const { data, error } = await supabase
-        .from('poupeja_transactions')
-        .select(`
-          *,
-          category:poupeja_categories(id, name, icon, color, type, parent_id)
-        `)
-        .eq('user_id', user.id)
-        .eq('account_type', state.accountType)
-        .order('date', { ascending: false });
-  
-      if (error) throw error;
-      
-      const transactions = (data || []).map(transformTransaction);
-      console.log('AppContext: Transactions fetched successfully:', transactions.length);
-      dispatch({ type: 'SET_TRANSACTIONS', payload: transactions });
-      return transactions;
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao buscar transações' });
+  const getTransactions = useCallback(async () => {
+  try {
+    const { data, error } = await supabase.from('poupeja_transactions')
+      .select(`
+        id, created_at, date, amount, description, type, is_recurring, is_paid,
+        category:poupeja_categories(id, name, icon, color, type, parent_id),
+        goal_id, account_id, currency, user_id, supplier, due_date, payment_date,
+        original_amount, late_interest_amount, payment_status, account_type
+      `)
+      .eq('user_id', state.user?.id)
+      .eq('account_type', state.accountType)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error("Erro ao buscar transações:", error);
+      dispatch({ type: 'SET_ERROR', payload: error.message });
       dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
-      throw error;
+    } else {
+      // CORREÇÃO: Garante que os dados são um array antes de atualizar o estado
+      dispatch({ type: 'SET_TRANSACTIONS', payload: data || [] });
     }
-  }, [state.user?.id, state.accountType]);
+  } catch (err) {
+    console.error("Erro inesperado ao buscar transações:", err);
+    dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar transações.' });
+    dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
+  }
+}, [state.user?.id, state.accountType]);
 
-  const getCategories = useCallback(async (): Promise<void> => {
-    try {
-      console.log('AppContext: Fetching categories...');
-      const { data, error } = await supabase.from('poupeja_categories')
-        .select('*')
-        .or(`user_id.eq.${state.user?.id},is_default.eq.true`);
+  const getCategories = useCallback(async () => {
+  try {
+    const { data, error } = await supabase.from('poupeja_categories')
+      .select('*')
+      .or(`user_id.eq.${state.user?.id},is_default.eq.true`);
 
-      if (error) {
-        console.error("Erro ao buscar categorias:", error);
-        dispatch({ type: 'SET_ERROR', payload: error.message });
-        dispatch({ type: 'SET_CATEGORIES', payload: [] });
-      } else {
-        const transformedCategories = (data || []).map(transformCategory);
-        dispatch({ type: 'SET_CATEGORIES', payload: transformedCategories });
-      }
-    } catch (err) {
-      console.error("Erro inesperado ao buscar categorias:", err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar categorias.' });
+    if (error) {
+      console.error("Erro ao buscar categorias:", error);
+      dispatch({ type: 'SET_ERROR', payload: error.message });
       dispatch({ type: 'SET_CATEGORIES', payload: [] });
+    } else {
+      // CORREÇÃO: Garante que os dados são um array antes de atualizar o estado
+      dispatch({ type: 'SET_CATEGORIES', payload: data || [] });
     }
-  }, [state.user?.id]);
+  } catch (err) {
+    console.error("Erro inesperado ao buscar categorias:", err);
+    dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar categorias.' });
+    dispatch({ type: 'SET_CATEGORIES', payload: [] });
+  }
+}, [state.user?.id]);
 
   const getGoals = useCallback(async (): Promise<Goal[]> => {
     try {
