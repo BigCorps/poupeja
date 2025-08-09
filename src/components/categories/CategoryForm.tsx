@@ -17,8 +17,8 @@ import {
 } from '@/components/ui/select';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Category, TransactionType } from '@/types/categories';
-import ColorPicker from './ColorPicker'; // Assumindo que você tem este componente
-import IconSelector from './IconSelector'; // Assumindo que você tem este componente
+import ColorPicker from './ColorPicker'; // Assuming you have this component
+import IconSelector from './IconSelector'; // Assuming you have this component
 import { useApp } from '@/contexts/AppContext';
 
 interface CategoryFormProps {
@@ -27,6 +27,8 @@ interface CategoryFormProps {
   initialData?: Category | null;
   onSave: (category: Omit<Category, 'id'> | Category) => void;
   categoryType: TransactionType;
+  parentId?: string | null;
+  parentName?: string | null;
 }
 
 const CategoryForm: React.FC<CategoryFormProps> = ({
@@ -35,14 +37,14 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   initialData,
   onSave,
   categoryType,
+  parentId,
+  parentName,
 }) => {
   const { t } = usePreferences();
-  const { categories } = useApp();
   const [name, setName] = useState(initialData?.name || '');
   const [type, setType] = useState<TransactionType>(initialData?.type || categoryType);
   const [color, setColor] = useState(initialData?.color || '#000000');
   const [icon, setIcon] = useState(initialData?.icon || 'LayoutList');
-  const [parentId, setParentId] = useState(initialData?.parent_id || null);
 
   useEffect(() => {
     if (initialData) {
@@ -50,19 +52,16 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
       setType(initialData.type);
       setColor(initialData.color);
       setIcon(initialData.icon);
-      setParentId(initialData.parent_id || null);
     } else {
       setName('');
       setType(categoryType);
       setColor('#000000');
       setIcon('LayoutList');
-      setParentId(null);
     }
   }, [initialData, categoryType]);
 
   const handleSave = () => {
     if (!name || !type) {
-      // Adicione validação, se necessário
       return;
     }
 
@@ -72,7 +71,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
       color: color,
       icon: icon,
       is_default: false,
-      parent_id: parentId,
+      parent_id: parentId || null,
     };
 
     if (initialData) {
@@ -84,9 +83,6 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     onOpenChange(false);
   };
 
-  // Filtra as categorias principais (aquelas sem parent_id) para a seleção
-  const mainCategories = categories.filter(cat => !cat.parent_id);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -94,6 +90,11 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
           <DialogTitle>{initialData ? t('categories.edit') : t('categories.add')}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          {parentName && (
+            <div className="bg-muted p-2 rounded-lg text-sm text-center">
+              Adicionando subcategoria para: <span className="font-semibold">{parentName}</span>
+            </div>
+          )}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="name" className="text-right">
               {t('common.name')}
@@ -116,34 +117,6 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
               <SelectContent>
                 <SelectItem value="expense">{t('common.expense')}</SelectItem>
                 <SelectItem value="income">{t('common.income')}</SelectItem>
-                <SelectItem value="operational_inflow">Fluxo Operacional (Entrada)</SelectItem>
-                <SelectItem value="operational_outflow">Fluxo Operacional (Saída)</SelectItem>
-                <SelectItem value="investment_inflow">Fluxo de Investimento (Entrada)</SelectItem>
-                <SelectItem value="investment_outflow">Fluxo de Investimento (Saída)</SelectItem>
-                <SelectItem value="financing_inflow">Fluxo de Financiamento (Entrada)</SelectItem>
-                <SelectItem value="financing_outflow">Fluxo de Financiamento (Saída)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {/* Campo para selecionar a categoria pai */}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="parent" className="text-right">
-              Categoria Pai
-            </Label>
-            <Select
-              value={parentId || ''}
-              onValueChange={(value) => setParentId(value === '' ? null : value)}
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Nenhuma" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Nenhuma (Categoria Principal)</SelectItem>
-                {mainCategories.map(cat => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
               </SelectContent>
             </Select>
           </div>
