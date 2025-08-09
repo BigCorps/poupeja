@@ -1,21 +1,32 @@
-
-import React from 'react';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useForm } from 'react-hook-form';
-import { Category } from '@/types/categories';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import ColorPicker from './ColorPicker';
-import IconSelector from './IconSelector';
+import { Category, TransactionType } from '@/types/categories';
+import ColorPicker from './ColorPicker'; // Assumindo que você tem este componente
+import IconSelector from './IconSelector'; // Assumindo que você tem este componente
+import { useApp } from '@/contexts/AppContext';
 
 interface CategoryFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialData: Category | null;
+  initialData?: Category | null;
   onSave: (category: Omit<Category, 'id'> | Category) => void;
-  categoryType?: 'income' | 'expense'; // Add categoryType prop
+  categoryType: TransactionType;
 }
 
 const CategoryForm: React.FC<CategoryFormProps> = ({
@@ -23,116 +34,141 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   onOpenChange,
   initialData,
   onSave,
-  categoryType = 'expense' // Default to expense
+  categoryType,
 }) => {
   const { t } = usePreferences();
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<Omit<Category, 'type'> & { id?: string }>({
-    defaultValues: initialData || {
-      name: '',
-      color: '#607D8B',
-      icon: 'circle',
-    }
-  });
+  const { categories } = useApp();
+  const [name, setName] = useState(initialData?.name || '');
+  const [type, setType] = useState<TransactionType>(initialData?.type || categoryType);
+  const [color, setColor] = useState(initialData?.color || '#000000');
+  const [icon, setIcon] = useState(initialData?.icon || 'LayoutList');
+  const [parentId, setParentId] = useState(initialData?.parent_id || null);
 
-  const selectedColor = watch('color');
-  const selectedIcon = watch('icon');
-
-  // Initialize form when initialData changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialData) {
-      setValue('name', initialData.name);
-      setValue('color', initialData.color);
-      setValue('icon', initialData.icon);
-      if (initialData.id) {
-        setValue('id', initialData.id);
-      }
+      setName(initialData.name);
+      setType(initialData.type);
+      setColor(initialData.color);
+      setIcon(initialData.icon);
+      setParentId(initialData.parent_id || null);
     } else {
-      // Reset form when initialData is null (for new categories)
-      setValue('name', '');
-      setValue('color', '#607D8B');
-      setValue('icon', 'circle');
+      setName('');
+      setType(categoryType);
+      setColor('#000000');
+      setIcon('LayoutList');
+      setParentId(null);
     }
-  }, [initialData, setValue]);
+  }, [initialData, categoryType]);
 
-  const handleColorChange = (color: string) => {
-    setValue('color', color);
-  };
+  const handleSave = () => {
+    if (!name || !type) {
+      // Adicione validação, se necessário
+      return;
+    }
 
-  const handleIconChange = (icon: string) => {
-    setValue('icon', icon);
-  };
+    const newCategoryData = {
+      name: name,
+      type: type,
+      color: color,
+      icon: icon,
+      is_default: false,
+      parent_id: parentId,
+    };
 
-  const onSubmit = (data: Omit<Category, 'type'> & { id?: string }) => {
-    console.log('Form submitted with data:', data);
-    console.log('Category type being used:', categoryType);
-    
     if (initialData) {
-      onSave({
-        ...data,
-        id: initialData.id,
-        type: initialData.type,
-        isDefault: initialData.isDefault
-      });
+      onSave({ ...newCategoryData, id: initialData.id });
     } else {
-      onSave({
-        name: data.name,
-        color: data.color,
-        icon: data.icon,
-        type: categoryType // Use the categoryType prop instead of hardcoded 'expense'
-      });
+      onSave(newCategoryData);
     }
+
+    onOpenChange(false);
   };
+
+  // Filtra as categorias principais (aquelas sem parent_id) para a seleção
+  const mainCategories = categories.filter(cat => !cat.parent_id);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {initialData ? t('categories.edit') : t('categories.add')}
-          </DialogTitle>
+          <DialogTitle>{initialData ? t('categories.edit') : t('categories.add')}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">{t('categories.name')}</Label>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              {t('common.name')}
+            </Label>
             <Input
               id="name"
-              {...register('name', { required: true })}
-              className={errors.name ? "border-destructive" : ""}
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive">{t('validation.required')}</p>
-            )}
-          </div>
-          
-          <div className="space-y-2">
-            <Label>{t('categories.color')}</Label>
-            <ColorPicker 
-              selectedColor={selectedColor} 
-              onSelectColor={handleColorChange}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="col-span-3"
             />
           </div>
-          
-          <div className="space-y-2">
-            <Label>{t('categories.icon')}</Label>
-            <IconSelector
-              selectedIcon={selectedIcon}
-              onSelectIcon={handleIconChange}
-            />
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="type" className="text-right">
+              {t('common.type')}
+            </Label>
+            <Select value={type} onValueChange={(value) => setType(value as TransactionType)}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder={t('common.selectType')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="expense">{t('common.expense')}</SelectItem>
+                <SelectItem value="income">{t('common.income')}</SelectItem>
+                <SelectItem value="operational_inflow">Fluxo Operacional (Entrada)</SelectItem>
+                <SelectItem value="operational_outflow">Fluxo Operacional (Saída)</SelectItem>
+                <SelectItem value="investment_inflow">Fluxo de Investimento (Entrada)</SelectItem>
+                <SelectItem value="investment_outflow">Fluxo de Investimento (Saída)</SelectItem>
+                <SelectItem value="financing_inflow">Fluxo de Financiamento (Entrada)</SelectItem>
+                <SelectItem value="financing_outflow">Fluxo de Financiamento (Saída)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-
-          <DialogFooter className="pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
+          {/* Campo para selecionar a categoria pai */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="parent" className="text-right">
+              Categoria Pai
+            </Label>
+            <Select
+              value={parentId || ''}
+              onValueChange={(value) => setParentId(value === '' ? null : value)}
             >
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit">
-              {initialData ? t('common.save') : t('common.add')}
-            </Button>
-          </DialogFooter>
-        </form>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Nenhuma" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Nenhuma (Categoria Principal)</SelectItem>
+                {mainCategories.map(cat => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="color" className="text-right">
+              Cor
+            </Label>
+            <div className="col-span-3">
+              <ColorPicker value={color} onChange={setColor} />
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="icon" className="text-right">
+              Ícone
+            </Label>
+            <div className="col-span-3">
+              <IconSelector value={icon} onChange={setIcon} />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <Button type="button" onClick={handleSave}>
+            {initialData ? t('common.saveChanges') : t('common.add')}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
