@@ -18,7 +18,7 @@ interface Category {
   color: string;
   icon: string | null;
   is_default: boolean | null;
-  parent_id?: string | null; // Adicionado para suportar hierarquia
+  parent_id?: string | null;
 }
 
 interface AppState {
@@ -35,7 +35,7 @@ interface AppState {
   customStartDate: string | null;
   customEndDate: string | null;
   filteredTransactions: Transaction[];
-  accountType: 'PF' | 'PJ'; // Adicionado para suportar tipo de conta
+  accountType: 'PF' | 'PJ';
 }
 
 interface AppContextType extends AppState {
@@ -46,7 +46,7 @@ interface AppContextType extends AppState {
   logout: () => Promise<void>;
   setCustomDateRange: (start: Date | null, end: Date | null) => void;
   setTimeRange: (range: TimeRange) => void;
-  setAccountType: (type: 'PF' | 'PJ') => void; // Adicionado
+  setAccountType: (type: 'PF' | 'PJ') => void;
   // Data fetching methods
   getTransactions: () => Promise<Transaction[]>;
   getCategories: () => Promise<void>;
@@ -85,7 +85,7 @@ type AppAction =
   | { type: 'SET_TIME_RANGE'; payload: TimeRange }
   | { type: 'SET_CUSTOM_DATE_RANGE'; payload: { startDate: string | null; endDate: string | null } }
   | { type: 'SET_FILTERED_TRANSACTIONS'; payload: Transaction[] }
-  | { type: 'SET_ACCOUNT_TYPE'; payload: 'PF' | 'PJ' } // Adicionado
+  | { type: 'SET_ACCOUNT_TYPE'; payload: 'PF' | 'PJ' }
   | { type: 'ADD_TRANSACTION'; payload: Transaction }
   | { type: 'UPDATE_TRANSACTION'; payload: Transaction }
   | { type: 'DELETE_TRANSACTION'; payload: string }
@@ -117,7 +117,7 @@ const initialAppState: AppState = {
   customStartDate: null,
   customEndDate: null,
   filteredTransactions: [],
-  accountType: 'PF', // Adicionado
+  accountType: 'PF',
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -131,16 +131,12 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_SESSION':
       return { ...state, session: action.payload };
     case 'SET_TRANSACTIONS':
-      // Garante que o payload é um array para evitar erros
       return { ...state, transactions: Array.isArray(action.payload) ? action.payload : [] };
     case 'SET_CATEGORIES':
-      // Garante que o payload é um array
       return { ...state, categories: Array.isArray(action.payload) ? action.payload : [] };
     case 'SET_GOALS':
-      // Garante que o payload é um array
       return { ...state, goals: Array.isArray(action.payload) ? action.payload : [] };
     case 'SET_SCHEDULED_TRANSACTIONS':
-      // Garante que o payload é um array
       return { ...state, scheduledTransactions: Array.isArray(action.payload) ? action.payload : [] };
     case 'TOGGLE_HIDE_VALUES':
       return { ...state, hideValues: !state.hideValues };
@@ -237,77 +233,84 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  // Helper function to transform database types to proper types
+  // Helper function to transform database types to proper types - com proteção contra valores undefined
   const transformTransaction = (dbTransaction: any): Transaction => {
     return {
-      id: dbTransaction.id || '',
-      type: (dbTransaction.type as 'income' | 'expense') || 'expense',
-      amount: dbTransaction.amount || 0,
-      category: dbTransaction.category?.name || 'Unknown',
-      categoryIcon: dbTransaction.category?.icon || 'circle',
-      categoryColor: dbTransaction.category?.color || '#607D8B',
-      description: dbTransaction.description || '',
-      date: dbTransaction.date || new Date().toISOString(),
-      goalId: dbTransaction.goal_id || null,
-      category_id: dbTransaction.category_id || null,
-      goal_id: dbTransaction.goal_id || null,
-      user_id: dbTransaction.user_id || '',
-      created_at: dbTransaction.created_at || new Date().toISOString(),
+      id: dbTransaction?.id || '',
+      type: (dbTransaction?.type as 'income' | 'expense') || 'expense',
+      amount: dbTransaction?.amount || 0,
+      category: dbTransaction?.category?.name || 'Unknown',
+      categoryIcon: dbTransaction?.category?.icon || 'circle',
+      categoryColor: dbTransaction?.category?.color || '#607D8B',
+      description: dbTransaction?.description || '',
+      date: dbTransaction?.date || new Date().toISOString(),
+      goalId: dbTransaction?.goal_id || null,
+      category_id: dbTransaction?.category_id || null,
+      goal_id: dbTransaction?.goal_id || null,
+      user_id: dbTransaction?.user_id || '',
+      created_at: dbTransaction?.created_at || new Date().toISOString(),
     };
   };
 
   const transformCategory = (dbCategory: any): Category => ({
-    ...dbCategory,
-    type: dbCategory.type as 'income' | 'expense' | 'operational_inflow' | 'operational_outflow' | 'investment_inflow' | 'investment_outflow' | 'financing_inflow' | 'financing_outflow',
+    id: dbCategory?.id || '',
+    created_at: dbCategory?.created_at || new Date().toISOString(),
+    user_id: dbCategory?.user_id || '',
+    name: dbCategory?.name || 'Unknown',
+    type: (dbCategory?.type as 'income' | 'expense' | 'operational_inflow' | 'operational_outflow' | 'investment_inflow' | 'investment_outflow' | 'financing_inflow' | 'financing_outflow') || 'expense',
+    color: dbCategory?.color || '#607D8B',
+    icon: dbCategory?.icon || null,
+    is_default: dbCategory?.is_default || null,
+    parent_id: dbCategory?.parent_id || null,
   });
 
   const transformGoal = (dbGoal: any): Goal => ({
-    id: dbGoal.id,
-    name: dbGoal.name,
-    targetAmount: dbGoal.target_amount,
-    currentAmount: dbGoal.current_amount || 0,
-    startDate: dbGoal.start_date,
-    endDate: dbGoal.end_date,
-    deadline: dbGoal.deadline,
-    color: dbGoal.color || '#3B82F6',
+    id: dbGoal?.id || '',
+    name: dbGoal?.name || 'Unknown Goal',
+    targetAmount: dbGoal?.target_amount || 0,
+    currentAmount: dbGoal?.current_amount || 0,
+    startDate: dbGoal?.start_date || new Date().toISOString(),
+    endDate: dbGoal?.end_date || new Date().toISOString(),
+    deadline: dbGoal?.deadline || new Date().toISOString(),
+    color: dbGoal?.color || '#3B82F6',
     transactions: [],
-    target_amount: dbGoal.target_amount,
-    current_amount: dbGoal.current_amount,
-    start_date: dbGoal.start_date,
-    end_date: dbGoal.end_date,
-    user_id: dbGoal.user_id,
-    created_at: dbGoal.created_at,
-    updated_at: dbGoal.updated_at,
+    target_amount: dbGoal?.target_amount || 0,
+    current_amount: dbGoal?.current_amount || 0,
+    start_date: dbGoal?.start_date || new Date().toISOString(),
+    end_date: dbGoal?.end_date || new Date().toISOString(),
+    user_id: dbGoal?.user_id || '',
+    created_at: dbGoal?.created_at || new Date().toISOString(),
+    updated_at: dbGoal?.updated_at || new Date().toISOString(),
   });
 
   const transformScheduledTransaction = (dbScheduledTransaction: any): ScheduledTransaction => {
-    const categoryName = dbScheduledTransaction.category?.name || 'Outros';
-    const categoryIcon = dbScheduledTransaction.category?.icon || 'DollarSign';
-    const categoryColor = dbScheduledTransaction.category?.color || '#6B7280';
+    const categoryName = dbScheduledTransaction?.category?.name || 'Outros';
+    const categoryIcon = dbScheduledTransaction?.category?.icon || 'DollarSign';
+    const categoryColor = dbScheduledTransaction?.category?.color || '#6B7280';
     return {
-      id: dbScheduledTransaction.id,
-      type: dbScheduledTransaction.type as 'income' | 'expense',
-      amount: dbScheduledTransaction.amount,
+      id: dbScheduledTransaction?.id || '',
+      type: (dbScheduledTransaction?.type as 'income' | 'expense') || 'expense',
+      amount: dbScheduledTransaction?.amount || 0,
       category: categoryName,
       categoryIcon: categoryIcon,
       categoryColor: categoryColor,
-      description: dbScheduledTransaction.description || '',
-      scheduledDate: dbScheduledTransaction.scheduled_date,
-      recurrence: dbScheduledTransaction.recurrence as 'once' | 'daily' | 'weekly' | 'monthly' | 'yearly',
-      goalId: dbScheduledTransaction.goal_id,
-      status: dbScheduledTransaction.status as 'pending' | 'paid' | 'overdue' | 'upcoming',
-      paidDate: dbScheduledTransaction.paid_date,
-      paidAmount: dbScheduledTransaction.paid_amount,
-      lastExecutionDate: dbScheduledTransaction.last_execution_date,
-      nextExecutionDate: dbScheduledTransaction.next_execution_date,
-      category_id: dbScheduledTransaction.category_id,
-      goal_id: dbScheduledTransaction.goal_id,
-      user_id: dbScheduledTransaction.user_id,
-      scheduled_date: dbScheduledTransaction.scheduled_date,
-      paid_date: dbScheduledTransaction.paid_date,
-      last_execution_date: dbScheduledTransaction.last_execution_date,
-      next_execution_date: dbScheduledTransaction.next_execution_date,
-      created_at: dbScheduledTransaction.created_at,
+      description: dbScheduledTransaction?.description || '',
+      scheduledDate: dbScheduledTransaction?.scheduled_date || new Date().toISOString(),
+      recurrence: (dbScheduledTransaction?.recurrence as 'once' | 'daily' | 'weekly' | 'monthly' | 'yearly') || 'once',
+      goalId: dbScheduledTransaction?.goal_id || null,
+      status: (dbScheduledTransaction?.status as 'pending' | 'paid' | 'overdue' | 'upcoming') || 'pending',
+      paidDate: dbScheduledTransaction?.paid_date || null,
+      paidAmount: dbScheduledTransaction?.paid_amount || null,
+      lastExecutionDate: dbScheduledTransaction?.last_execution_date || null,
+      nextExecutionDate: dbScheduledTransaction?.next_execution_date || null,
+      category_id: dbScheduledTransaction?.category_id || null,
+      goal_id: dbScheduledTransaction?.goal_id || null,
+      user_id: dbScheduledTransaction?.user_id || '',
+      scheduled_date: dbScheduledTransaction?.scheduled_date || new Date().toISOString(),
+      paid_date: dbScheduledTransaction?.paid_date || null,
+      last_execution_date: dbScheduledTransaction?.last_execution_date || null,
+      next_execution_date: dbScheduledTransaction?.next_execution_date || null,
+      created_at: dbScheduledTransaction?.created_at || new Date().toISOString(),
     };
   };
 
@@ -403,7 +406,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     dispatch({ type: 'SET_LOADING', payload: false });
   };
 
-  // Setup auth state listener and initial session check
+  // Setup auth state listener and initial session check - CORRIGIDO
   useEffect(() => {
     let mounted = true;
     
@@ -414,7 +417,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         dispatch({ type: 'SET_SESSION', payload: session });
         dispatch({ type: 'SET_USER', payload: session.user });
         
-        // Only load data if we haven't initialized yet or user changed
         if (!isInitialized || state.user?.id !== session.user.id) {
           await loadUserData(session.user);
         }
@@ -430,8 +432,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     };
 
-    // Set up auth state listener
-    const { data: { subscription } } = setupAuthListener(handleAuthChange);
+    // Set up auth state listener - CORRIGIDO para lidar com diferentes formatos de retorno
+    let subscription: any = null;
+    try {
+      const authResponse = setupAuthListener(handleAuthChange);
+      
+      // Verifica se o retorno tem a estrutura { data: { subscription } }
+      if (authResponse && authResponse.data && authResponse.data.subscription) {
+        subscription = authResponse.data.subscription;
+      }
+      // Ou se é diretamente o subscription
+      else if (authResponse && typeof authResponse.unsubscribe === 'function') {
+        subscription = authResponse;
+      }
+      // Ou se tem um método unsubscribe diretamente
+      else if (authResponse && authResponse.subscription) {
+        subscription = authResponse.subscription;
+      }
+    } catch (error) {
+      console.error('Error setting up auth listener:', error);
+    }
 
     // Check for existing session
     const checkInitialSession = async () => {
@@ -455,7 +475,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      // Cleanup subscription com verificação de tipo
+      if (subscription) {
+        try {
+          if (typeof subscription.unsubscribe === 'function') {
+            subscription.unsubscribe();
+          } else if (typeof subscription === 'function') {
+            subscription();
+          }
+        } catch (error) {
+          console.error('Error unsubscribing from auth listener:', error);
+        }
+      }
     };
   }, []);
 
@@ -476,8 +507,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         throw new Error('Session expired or invalid');
       }
       
-      // Load all data in parallel
-      const [transactionsRes, categoriesRes, goalsRes, scheduledRes] = await Promise.all([
+      // Load all data in parallel with error handling
+      const [transactionsRes, categoriesRes, goalsRes, scheduledRes] = await Promise.allSettled([
         supabase.from('poupeja_transactions')
           .select(`
             *,
@@ -496,34 +527,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           .eq('user_id', user.id)
       ]);
 
-      if (transactionsRes.error) {
-        console.error('Error loading transactions:', transactionsRes.error);
-        throw transactionsRes.error;
-      }
-      if (categoriesRes.error) {
-        console.error('Error loading categories:', categoriesRes.error);
-        throw categoriesRes.error;
-      }
-      if (goalsRes.error) {
-        console.error('Error loading goals:', goalsRes.error);
-        throw goalsRes.error;
-      }
-      if (scheduledRes.error) {
-        console.error('Error loading scheduled transactions:', scheduledRes.error);
-        throw scheduledRes.error;
-      }
+      // Process results with error checking
+      const transactions = transactionsRes.status === 'fulfilled' && !transactionsRes.value.error 
+        ? (transactionsRes.value.data || []).map(transformTransaction)
+        : [];
+      
+      const categories = categoriesRes.status === 'fulfilled' && !categoriesRes.value.error
+        ? (categoriesRes.value.data || []).map(transformCategory)
+        : [];
+      
+      const goals = goalsRes.status === 'fulfilled' && !goalsRes.value.error
+        ? (goalsRes.value.data || []).map(transformGoal)
+        : [];
+      
+      const scheduledTransactions = scheduledRes.status === 'fulfilled' && !scheduledRes.value.error
+        ? (scheduledRes.value.data || []).map(transformScheduledTransaction)
+        : [];
 
-      // Store categories first, then transform transactions
-      const categories = (categoriesRes.data || []).map(transformCategory);
+      // Dispatch the data
       dispatch({ type: 'SET_CATEGORIES', payload: categories });
-      
-      const transactions = (transactionsRes.data || []).map(transformTransaction);
       dispatch({ type: 'SET_TRANSACTIONS', payload: transactions });
-      
-      const goals = (goalsRes.data || []).map(transformGoal);
       dispatch({ type: 'SET_GOALS', payload: goals });
-      
-      const scheduledTransactions = (scheduledRes.data || []).map(transformScheduledTransaction);
       dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: scheduledTransactions });
       
       console.log('AppContext: User data loaded successfully', {
