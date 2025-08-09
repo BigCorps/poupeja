@@ -10,9 +10,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ColorPicker } from '@/components/ColorPicker';
+import { ColorPicker } from '@/components/ColorPicker/ColorPicker'; // Corrigido para garantir o caminho correto
 import { IconPicker } from '@/components/IconPicker';
-import CategoryPicker from '@/components/CategoryPicker'; // O novo seletor de categorias
+import CategoryPicker from '@/components/CategoryPicker';
 import { Category } from '@/types/categories';
 
 interface CategoryFormProps {
