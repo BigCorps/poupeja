@@ -8,7 +8,6 @@ import { addDays, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subM
 // ===================================================
 // TIPOS E INTERFACES
 // ===================================================
-
 // O tipo 'type' da categoria foi atualizado para corresponder exatamente
 // ao que o seu DDL de poupeja_categories define.
 type CategoryType = 'income' | 'expense';
