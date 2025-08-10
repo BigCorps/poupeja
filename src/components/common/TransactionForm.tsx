@@ -36,10 +36,9 @@ const transactionSchemaPF = z.object({
   goalId: z.string().optional(),
 });
 
-// O campo `originalAmount` foi alterado para ser obrigatório
+// Esquema para PJ, agora com campo 'type' unificado
 const transactionSchemaPJ = z.object({
-  dfcType: z.enum(['operational', 'investment', 'financing']), // Tipo de Fluxo de Caixa
-  flowType: z.enum(['inflow', 'outflow']), // Entrada ou Saída
+  type: z.enum(['income', 'expense']), // Agora usa o mesmo seletor de tipo da PF
   originalAmount: z.number({ required_error: "O valor original é obrigatório." }).min(0, "O valor deve ser maior ou igual a zero."),
   lateInterestAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
   paidAmount: z.number().min(0.01, "O valor pago é obrigatório e deve ser maior que zero.").optional(),
@@ -91,7 +90,7 @@ const GoalSelector = ({ form }) => {
   );
 };
 
-// Seletor de Categoria Hierárquico - Agora usado para PJ
+// Seletor de Categoria Hierárquico - Agora usado para PJ e PF
 const HierarchicalCategorySelector = ({ form, allCategories }) => {
   const categoryId = form.watch('categoryId');
 
@@ -197,8 +196,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       description: '',
       goalId: '',
       // Default values for PJ
-      dfcType: 'operational',
-      flowType: 'outflow',
       originalAmount: 0,
       lateInterestAmount: 0,
       paidAmount: 0,
@@ -213,15 +210,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   });
 
   const onSubmit = async (data: any) => {
+    // Para PJ, o tipo já está no `data`
     const finalData = {
       ...initialData,
       ...data,
     };
-    if (personType === 'PJ') {
-      finalData.type = `${data.dfcType}_${data.flowType}`;
-      delete finalData.dfcType;
-      delete finalData.flowType;
-    }
     
     if (mode === 'create') {
       addTransaction(finalData);
@@ -241,10 +234,19 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   useEffect(() => {
     if (open) {
+      // Mapeamento dos antigos tipos PJ para o novo campo 'type'
+      const determineType = (transactionType) => {
+        if (transactionType?.includes('inflow')) return 'income';
+        if (transactionType?.includes('outflow')) return 'expense';
+        return defaultType;
+      };
+
       const defaultValues = {
         ...initialData,
-        dfcType: initialData?.type?.split('_')[0] || 'operational',
-        flowType: initialData?.type?.split('_')[1] || 'outflow',
+        // Agora, para PJ, o campo 'type' é extraído do `initialData.type`
+        type: personType === 'PF' 
+          ? initialData?.type || defaultType
+          : determineType(initialData?.type),
         transactionDate: initialData?.transactionDate ? new Date(initialData.transactionDate) : new Date(),
         referenceDate: initialData?.referenceDate ? new Date(initialData.referenceDate) : new Date(),
         dueDate: initialData?.dueDate ? new Date(initialData.dueDate) : new Date(),
@@ -254,16 +256,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       
       form.reset(defaultValues);
     }
-  }, [open, initialData, form]);
+  }, [open, initialData, form, personType, defaultType]);
 
   const availableCategories = categories.filter(c => {
-    if (personType === 'PF') {
-      return form.watch('type') === 'income' ? c.type === 'income' : c.type === 'expense';
-    } else {
-      const dfcType = form.watch('dfcType');
-      const flowType = form.watch('flowType');
-      return c.type.startsWith(`${dfcType}_${flowType}`);
-    }
+    const selectedType = form.watch('type');
+    return selectedType ? c.type.includes(selectedType) : true;
   });
 
   const dialogTitle = mode === 'create' 
@@ -280,34 +277,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         <div className="p-6 max-h-[calc(85vh-120px)] overflow-y-auto">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Seção PF */}
               {personType === 'PF' && (
                 <>
                   <TransactionTypeSelector form={form} onTypeChange={(type) => form.setValue('type', type as any)} />
                   <AmountInput form={form} />
                   
-                  {/* Seletor de categorias simples para PF */}
-                  <FormField
-                    control={form.control}
-                    name="categoryId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Categoria</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione uma categoria..." />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {availableCategories.map(cat => (
-                              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Seletor de categorias hierárquico para PF */}
+                  <HierarchicalCategorySelector form={form} allCategories={availableCategories} />
 
                   <FormField
                     control={form.control}
@@ -349,53 +326,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 </>
               )}
 
+              {/* Seção PJ */}
               {personType === 'PJ' && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="dfcType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo de Fluxo de Caixa</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o tipo..." />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="operational">Operacional</SelectItem>
-                              <SelectItem value="investment">Investimento</SelectItem>
-                              <SelectItem value="financing">Financiamento</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="flowType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fluxo</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o fluxo..." />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="inflow">Entrada</SelectItem>
-                              <SelectItem value="outflow">Saída</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <TransactionTypeSelector form={form} onTypeChange={(type) => form.setValue('type', type as any)} />
 
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
@@ -637,7 +571,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 </Button>
                 <Button 
                   type="submit" 
-                  className={cn(personType === 'PF' && form.getValues('type') === 'income' ? 'bg-green-600 hover:bg-green-700' : '')}
+                  className={cn(form.getValues('type') === 'income' ? 'bg-green-600 hover:bg-green-700' : '')}
                 >
                   {mode === 'create' ? 'Adicionar' : 'Salvar'}
                 </Button>
