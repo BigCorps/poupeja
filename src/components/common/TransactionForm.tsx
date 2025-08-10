@@ -91,7 +91,7 @@ const GoalSelector = ({ form }) => {
   );
 };
 
-// Seletor de Categoria Hierárquico - Agora usado para PF e PJ
+// Seletor de Categoria Hierárquico - Agora usado apenas para PJ
 const HierarchicalCategorySelector = ({ form, allCategories }) => {
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
 
@@ -201,8 +201,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       type: defaultType,
       amount: 0,
       categoryId: '',
-      // Adicionando o campo pai para o seletor hierárquico
-      parentCategoryId: '',
       transactionDate: new Date(),
       description: '',
       goalId: '',
@@ -212,7 +210,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       originalAmount: 0,
       lateInterestAmount: 0,
       paidAmount: 0,
-      categoryId: '',
       supplier: '',
       description: '',
       paymentMethod: '',
@@ -296,8 +293,29 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   <TransactionTypeSelector form={form} onTypeChange={(type) => form.setValue('type', type as any)} />
                   <AmountInput form={form} />
                   
-                  {/* Seletor de categorias para PF agora usa a versão hierárquica */}
-                  <HierarchicalCategorySelector form={form} allCategories={availableCategories} />
+                  {/* Seletor de categorias simples para PF */}
+                  <FormField
+                    control={form.control}
+                    name="categoryId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categoria</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione uma categoria..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {availableCategories.map(cat => (
+                              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
