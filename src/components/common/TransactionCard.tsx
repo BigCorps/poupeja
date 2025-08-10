@@ -31,8 +31,14 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
   hideValues = false,
   index = 0
 }) => {
-  const { goals } = useAppContext();
+  const { categories, goals } = useAppContext();
   const { t, currency } = usePreferences();
+
+  // Helper para buscar o nome da categoria pelo ID
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : 'N/A';
+  };
 
   // Helper to get goal name
   const getGoalName = (goalId?: string) => {
@@ -61,8 +67,9 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
     }
   };
 
-  const iconColor = transaction.type === 'income' ? '#26DE81' : '#EF4444';
   const isIncome = transaction.type === 'income';
+  const iconColor = isIncome ? '#26DE81' : '#EF4444';
+  const category = categories.find(c => c.id === transaction.categoryId);
 
   return (
     <motion.div
@@ -128,7 +135,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
       <div className="space-y-2 mb-3">
         <div className="flex items-center gap-2">
           <CategoryIcon 
-            icon={transaction.type === 'income' ? 'trending-up' : transaction.category?.name.toLowerCase().includes('food') ? 'utensils' : 'shopping-bag'} 
+            icon={category?.icon || 'default-icon'} 
             color={iconColor} 
             size={16}
           />
@@ -138,7 +145,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
               ? "bg-green-50 text-green-600 border-green-200"
               : "bg-red-50 text-red-600 border-red-200"
           )}>
-            {transaction.category?.name || 'N/A'}
+            {category?.name || 'N/A'}
           </Badge>
         </div>
         
