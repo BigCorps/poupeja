@@ -31,7 +31,7 @@ import { Transaction, TransactionType } from '@/types';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import HierarchicalCategorySelector from '../categories/HierarchicalCategorySelector';
-import Select, { components, SingleValueProps } from 'react-select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Category } from '@/types';
 
 interface TransactionFormProps {
@@ -117,47 +117,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ open, onOpenChange, i
     onOpenChange(false);
     form.reset();
   };
-
-  const getCategoryOptions = (
-    categories: Category[],
-    level: number = 0
-  ): { value: string; label: string; isDisabled?: boolean }[] => {
-    return categories.flatMap(cat => [
-      {
-        value: cat.id,
-        label: `${'-- '.repeat(level)}${cat.name}`,
-        isDisabled: level === 0 && cat.subcategories.length > 0,
-      },
-      ...getCategoryOptions(cat.subcategories, level + 1),
-    ]);
-  };
-
+  
   const allCategories = form.watch('type') === 'income'
     ? categories.filter(c => c.type === 'income')
     : categories.filter(c => c.type === 'expense');
-  
-  const categoryOptions = allCategories.flatMap(c => [
-    { value: c.id, label: c.name, type: c.type },
-    ...c.subcategories.map(sc => ({ value: sc.id, label: `↳ ${sc.name}`, type: sc.type })),
-  ]);
-
-  const subcategoryOptions = categories
-    .flatMap(c => c.subcategories)
-    .map(sc => ({ value: sc.id, label: sc.name }));
   
   const selectedCategory = form.watch('categoryId');
   const availableSubcategories = categories
     .find(c => c.id === selectedCategory)?.subcategories
     .map(sc => ({ value: sc.id, label: sc.name })) || [];
 
-
-  const CustomSingleValue = (props: SingleValueProps<{ value: string; label: string }>) => (
-    <components.SingleValue {...props}>
-      <div className="flex items-center gap-2">
-        {props.data.label}
-      </div>
-    </components.SingleValue>
-  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -210,7 +179,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ open, onOpenChange, i
                   <FormControl>
                     <HierarchicalCategorySelector
                       value={field.value}
-                      onChange={field.onChange}
+                      onChange={(value) => {
+                        // Limpa a subcategoria se a categoria principal mudar
+                        if (form.getValues('categoryId') !== value) {
+                          form.setValue('subcategoryId', undefined);
+                        }
+                        field.onChange(value);
+                      }}
                       categories={allCategories}
                     />
                   </FormControl>
@@ -229,14 +204,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ open, onOpenChange, i
                     <FormLabel>{t('common.subcategory')} ({t('common.optional')})</FormLabel>
                     <FormControl>
                       <Select
-                        {...field}
-                        options={availableSubcategories}
-                        value={availableSubcategories.find(option => option.value === field.value)}
-                        onChange={(option) => field.onChange(option?.value)}
-                        isClearable
-                        placeholder={t('form.selectSubcategory')}
-                        components={{ SingleValue: CustomSingleValue }}
-                      />
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder={t('form.selectSubcategory')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableSubcategories.map((sc) => (
+                            <SelectItem key={sc.value} value={sc.value}>
+                              {sc.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
