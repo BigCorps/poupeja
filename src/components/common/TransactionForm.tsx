@@ -92,13 +92,18 @@ const GoalSelector = ({ form }) => {
 
 // Seletor de Categoria Hierárquico - Agora usado para PJ e PF
 const HierarchicalCategorySelector = ({ form, allCategories }) => {
+  const [selectedParentId, setSelectedParentId] = React.useState('');
   const categoryId = form.watch('categoryId');
 
-  // Determina a categoria pai com base na categoria selecionada
-  // Se a categoria selecionada for uma subcategoria, busca o seu pai
-  // Se a categoria selecionada for uma categoria principal, usa o seu próprio ID
-  const selectedCategory = allCategories.find(c => c.id === categoryId);
-  const selectedParentId = selectedCategory?.parentId || (selectedCategory ? selectedCategory.id : null);
+  // Efeito para sincronizar o estado da categoria pai ao carregar o formulário (modo de edição)
+  useEffect(() => {
+    if (categoryId) {
+      const selectedCategory = allCategories.find(c => c.id === categoryId);
+      if (selectedCategory) {
+        setSelectedParentId(selectedCategory.parentId || selectedCategory.id);
+      }
+    }
+  }, [categoryId, allCategories]);
 
   // Filtra categorias pai (sem parentId)
   const parentCategories = allCategories.filter(c => !c.parentId);
@@ -107,36 +112,30 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
 
   return (
     <>
-      <FormField
-        control={form.control}
-        name="parentCategoryId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Categoria Principal</FormLabel>
-            <Select
-              onValueChange={(value) => {
-                // Ao selecionar a categoria principal, define-a como a categoria padrão
-                // O usuário pode opcionalmente escolher uma subcategoria depois
-                form.setValue('categoryId', value);
-              }}
-              // O valor do seletor pai agora é derivado da categoria selecionada
-              value={selectedParentId || ''}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a categoria principal" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {parentCategories.map(cat => (
-                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <FormItem>
+        <FormLabel>Categoria Principal</FormLabel>
+        <Select
+          onValueChange={(value) => {
+            setSelectedParentId(value);
+            // Ao selecionar a categoria principal, define-a como a categoria padrão
+            // O usuário pode opcionalmente escolher uma subcategoria depois
+            form.setValue('categoryId', value);
+          }}
+          value={selectedParentId}
+        >
+          <FormControl>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione a categoria principal" />
+            </SelectTrigger>
+          </FormControl>
+          <SelectContent>
+            {parentCategories.map(cat => (
+              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <FormMessage />
+      </FormItem>
 
       <FormField
         control={form.control}
