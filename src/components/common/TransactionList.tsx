@@ -39,9 +39,15 @@ const TransactionList: React.FC<TransactionListProps> = ({
   onDelete,
   hideValues = false
 }) => {
-  const { goals } = useAppContext();
+  const { categories, goals } = useAppContext();
   const { t, currency } = usePreferences();
   const isMobile = useIsMobile();
+
+  // Helper para buscar o nome da categoria pelo ID
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : 'N/A';
+  };
 
   // Helper to get goal name
   const getGoalName = (goalId?: string) => {
@@ -127,6 +133,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
           {transactions.map((transaction, index) => {
             // Use different icons and colors based on transaction type
             const iconColor = transaction.type === 'income' ? '#26DE81' : '#EF4444';
+            const category = categories.find(c => c.id === transaction.categoryId);
             
             return (
               <motion.tr
@@ -159,7 +166,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <CategoryIcon 
-                      icon={transaction.type === 'income' ? 'trending-up' : transaction.category?.name.toLowerCase().includes('food') ? 'utensils' : 'shopping-bag'} 
+                      icon={category?.icon || 'default-icon'} 
                       color={iconColor} 
                       size={16}
                     />
@@ -169,7 +176,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         ? "bg-green-50 text-green-600 hover:bg-green-100 border-green-200"
                         : "bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
                     )}>
-                      {transaction.category?.name || 'N/A'}
+                      {category?.name || 'N/A'}
                     </Badge>
                   </div>
                 </TableCell>
