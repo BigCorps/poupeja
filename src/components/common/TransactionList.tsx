@@ -43,10 +43,27 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const { t, currency } = usePreferences();
   const isMobile = useIsMobile();
 
-  // Helper para buscar o nome da categoria pelo ID
-  const getCategoryName = (categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId);
-    return category ? category.name : 'N/A';
+  // Helper para buscar o nome da categoria/subcategoria a partir do ID
+  const getCategoryInfo = (categoryId: string) => {
+    let categoryFound = null;
+    let subcategoryFound = null;
+    
+    for (const mainCat of categories) {
+      if (mainCat.id === categoryId) {
+        categoryFound = mainCat;
+        break;
+      }
+      for (const subCat of mainCat.subcategories) {
+        if (subCat.id === categoryId) {
+          categoryFound = mainCat;
+          subcategoryFound = subCat;
+          break;
+        }
+      }
+      if (categoryFound) break;
+    }
+
+    return { category: categoryFound, subcategory: subcategoryFound };
   };
 
   // Helper to get goal name
@@ -131,9 +148,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
         </TableHeader>
         <TableBody>
           {transactions.map((transaction, index) => {
-            // Use different icons and colors based on transaction type
             const iconColor = transaction.type === 'income' ? '#26DE81' : '#EF4444';
-            const category = categories.find(c => c.id === transaction.categoryId);
+            // ** CORREÇÃO AQUI: Busca a categoria correta usando o ID **
+            const { category, subcategory } = getCategoryInfo(transaction.subcategoryId || transaction.categoryId);
             
             return (
               <motion.tr
@@ -166,7 +183,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <CategoryIcon 
-                      icon={category?.icon || 'default-icon'} 
+                      icon={subcategory?.icon || category?.icon || 'default-icon'} 
                       color={iconColor} 
                       size={16}
                     />
@@ -176,7 +193,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         ? "bg-green-50 text-green-600 hover:bg-green-100 border-green-200"
                         : "bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
                     )}>
-                      {category?.name || 'N/A'}
+                      {subcategory?.name || category?.name || 'N/A'}
                     </Badge>
                   </div>
                 </TableCell>
