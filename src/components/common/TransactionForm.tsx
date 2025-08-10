@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -91,27 +91,18 @@ const GoalSelector = ({ form }) => {
   );
 };
 
-// Seletor de Categoria Hierárquico - Agora usado apenas para PJ
+// Seletor de Categoria Hierárquico - Agora usado para PJ
 const HierarchicalCategorySelector = ({ form, allCategories }) => {
-  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+  const categoryId = form.watch('categoryId');
 
+  // Determina a categoria pai com base na categoria selecionada
+  const selectedCategory = allCategories.find(c => c.id === categoryId);
+  const selectedParentId = selectedCategory?.parentId || (selectedCategory ? selectedCategory.id : null);
+  
   // Filtra categorias pai (sem parentId)
   const parentCategories = allCategories.filter(c => !c.parentId);
   // Filtra subcategorias com base no pai selecionado
   const subcategories = allCategories.filter(c => c.parentId === selectedParentId);
-
-  // Limpa o campo de subcategoria quando a categoria pai muda
-  useEffect(() => {
-    form.setValue('categoryId', '');
-  }, [selectedParentId, form]);
-
-  // Se a categoria inicial for uma subcategoria, pré-seleciona o pai
-  useEffect(() => {
-    const initialCategory = allCategories.find(c => c.id === form.getValues('categoryId'));
-    if (initialCategory && initialCategory.parentId) {
-      setSelectedParentId(initialCategory.parentId);
-    }
-  }, [allCategories, form]);
 
   return (
     <>
@@ -123,14 +114,15 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
             <FormLabel>Categoria Principal</FormLabel>
             <Select 
               onValueChange={(value) => {
-                setSelectedParentId(value);
                 const hasSubcategories = allCategories.some(c => c.parentId === value);
+                // Se a categoria pai não tiver subcategorias, a categoria selecionada é a própria pai
                 if (!hasSubcategories) {
                   form.setValue('categoryId', value);
                 } else {
                   form.setValue('categoryId', '');
                 }
-              }} 
+              }}
+              // O valor do seletor pai agora é derivado da categoria selecionada
               value={selectedParentId || ''}
             >
               <FormControl>
