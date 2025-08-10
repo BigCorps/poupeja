@@ -34,10 +34,27 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
   const { categories, goals } = useAppContext();
   const { t, currency } = usePreferences();
 
-  // Helper para buscar o nome da categoria pelo ID
-  const getCategoryName = (categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId);
-    return category ? category.name : 'N/A';
+  // Helper para buscar o nome da categoria/subcategoria a partir do ID
+  const getCategoryInfo = (categoryId: string) => {
+    let categoryFound = null;
+    let subcategoryFound = null;
+    
+    for (const mainCat of categories) {
+      if (mainCat.id === categoryId) {
+        categoryFound = mainCat;
+        break;
+      }
+      for (const subCat of mainCat.subcategories) {
+        if (subCat.id === categoryId) {
+          categoryFound = mainCat;
+          subcategoryFound = subCat;
+          break;
+        }
+      }
+      if (categoryFound) break;
+    }
+
+    return { category: categoryFound, subcategory: subcategoryFound };
   };
 
   // Helper to get goal name
@@ -69,7 +86,9 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
 
   const isIncome = transaction.type === 'income';
   const iconColor = isIncome ? '#26DE81' : '#EF4444';
-  const category = categories.find(c => c.id === transaction.categoryId);
+  // ** CORREÇÃO AQUI: Busca a categoria correta usando o ID **
+  const { category, subcategory } = getCategoryInfo(transaction.subcategoryId || transaction.categoryId);
+  const categoryToDisplay = subcategory || category;
 
   return (
     <motion.div
@@ -135,7 +154,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
       <div className="space-y-2 mb-3">
         <div className="flex items-center gap-2">
           <CategoryIcon 
-            icon={category?.icon || 'default-icon'} 
+            icon={categoryToDisplay?.icon || 'default-icon'} 
             color={iconColor} 
             size={16}
           />
@@ -145,7 +164,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
               ? "bg-green-50 text-green-600 border-green-200"
               : "bg-red-50 text-red-600 border-red-200"
           )}>
-            {category?.name || 'N/A'}
+            {categoryToDisplay?.name || 'N/A'}
           </Badge>
         </div>
         
