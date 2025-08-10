@@ -25,7 +25,6 @@ import { CalendarIcon } from "lucide-react";
 import TransactionTypeSelector from './TransactionTypeSelector';
 import AmountInput from './AmountInput';
 import DescriptionField from './DescriptionField';
-import GoalSelector from './GoalSelector';
 
 // Zod schemas para os dois tipos de formulário
 const transactionSchemaPF = z.object({
@@ -37,10 +36,11 @@ const transactionSchemaPF = z.object({
   goalId: z.string().optional(),
 });
 
+// O campo `originalAmount` foi alterado para ser obrigatório
 const transactionSchemaPJ = z.object({
   dfcType: z.enum(['operational', 'investment', 'financing']), // Tipo de Fluxo de Caixa
   flowType: z.enum(['inflow', 'outflow']), // Entrada ou Saída
-  originalAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
+  originalAmount: z.number({ required_error: "O valor original é obrigatório." }).min(0, "O valor deve ser maior ou igual a zero."),
   lateInterestAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
   paidAmount: z.number().min(0.01, "O valor pago é obrigatório e deve ser maior que zero.").optional(),
   categoryId: z.string({ required_error: "A categoria é obrigatória." }).min(1),
@@ -62,15 +62,56 @@ interface TransactionFormProps {
   defaultType?: 'income' | 'expense';
 }
 
+// Componente para selecionar metas (mantido para a lógica PF)
+const GoalSelector = ({ form }) => {
+  const mockGoals = [{ id: 'goal-1', name: 'Viagem para o Caribe' }];
+  return (
+    <FormField
+      control={form.control}
+      name="goalId"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Meta (Opcional)</FormLabel>
+          <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+            <FormControl>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma meta..." />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {mockGoals.map(goal => (
+                <SelectItem key={goal.id} value={goal.id}>{goal.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+};
+
+// Seletor de Categoria Hierárquico - Agora usado para PF e PJ
 const HierarchicalCategorySelector = ({ form, allCategories }) => {
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
 
+  // Filtra categorias pai (sem parentId)
   const parentCategories = allCategories.filter(c => !c.parentId);
+  // Filtra subcategorias com base no pai selecionado
   const subcategories = allCategories.filter(c => c.parentId === selectedParentId);
 
+  // Limpa o campo de subcategoria quando a categoria pai muda
   useEffect(() => {
     form.setValue('categoryId', '');
   }, [selectedParentId, form]);
+
+  // Se a categoria inicial for uma subcategoria, pré-seleciona o pai
+  useEffect(() => {
+    const initialCategory = allCategories.find(c => c.id === form.getValues('categoryId'));
+    if (initialCategory && initialCategory.parentId) {
+      setSelectedParentId(initialCategory.parentId);
+    }
+  }, [allCategories, form]);
 
   return (
     <>
@@ -85,12 +126,12 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
                 setSelectedParentId(value);
                 const hasSubcategories = allCategories.some(c => c.parentId === value);
                 if (!hasSubcategories) {
-                    form.setValue('categoryId', value);
+                  form.setValue('categoryId', value);
                 } else {
-                    form.setValue('categoryId', '');
+                  form.setValue('categoryId', '');
                 }
               }} 
-              defaultValue={field.value}
+              value={selectedParentId || ''}
             >
               <FormControl>
                 <SelectTrigger>
@@ -138,33 +179,6 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
   );
 }
 
-const GoalSelector = ({ form }) => {
-  const mockGoals = [{ id: 'goal-1', name: 'Viagem para o Caribe' }];
-  return (
-    <FormField
-      control={form.control}
-      name="goalId"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Meta (Opcional)</FormLabel>
-          <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-            <FormControl>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma meta..." />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {mockGoals.map(goal => (
-                <SelectItem key={goal.id} value={goal.id}>{goal.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
-};
 
 const TransactionForm: React.FC<TransactionFormProps> = ({
   open,
@@ -187,6 +201,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       type: defaultType,
       amount: 0,
       categoryId: '',
+      // Adicionando o campo pai para o seletor hierárquico
+      parentCategoryId: '',
       transactionDate: new Date(),
       description: '',
       goalId: '',
@@ -244,7 +260,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         referenceDate: initialData?.referenceDate ? new Date(initialData.referenceDate) : new Date(),
         dueDate: initialData?.dueDate ? new Date(initialData.dueDate) : new Date(),
         paymentDate: initialData?.paymentDate ? new Date(initialData.paymentDate) : new Date(),
+        paymentStatus: initialData?.paymentStatus || 'pending',
       };
+      
       form.reset(defaultValues);
     }
   }, [open, initialData, form]);
@@ -278,29 +296,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   <TransactionTypeSelector form={form} onTypeChange={(type) => form.setValue('type', type as any)} />
                   <AmountInput form={form} />
                   
-                  {/* Seletor de categorias PF agora usa as categorias do contexto */}
-                  <FormField
-                    control={form.control}
-                    name="categoryId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Categoria</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione uma categoria..." />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {availableCategories.map(cat => (
-                              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Seletor de categorias para PF agora usa a versão hierárquica */}
+                  <HierarchicalCategorySelector form={form} allCategories={availableCategories} />
 
                   <FormField
                     control={form.control}
@@ -396,12 +393,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                       name="originalAmount"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center space-x-1">
-                            <span>Valor Original</span>
-                            <span className="text-muted-foreground text-sm font-normal">(Opcional)</span>
-                          </FormLabel>
+                          <FormLabel>Valor Original</FormLabel>
                           <FormControl>
-                            <Input id="originalAmount" type="number" step="0.01" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                            <Input 
+                              id="originalAmount" 
+                              type="number" 
+                              step="0.01" 
+                              {...field} 
+                              value={field.value ?? ''} 
+                              onChange={e => field.onChange(parseFloat(e.target.value) || 0)} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
