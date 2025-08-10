@@ -95,9 +95,11 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
   const categoryId = form.watch('categoryId');
 
   // Determina a categoria pai com base na categoria selecionada
+  // Se a categoria selecionada for uma subcategoria, busca o seu pai
+  // Se a categoria selecionada for uma categoria principal, usa o seu próprio ID
   const selectedCategory = allCategories.find(c => c.id === categoryId);
   const selectedParentId = selectedCategory?.parentId || (selectedCategory ? selectedCategory.id : null);
-  
+
   // Filtra categorias pai (sem parentId)
   const parentCategories = allCategories.filter(c => !c.parentId);
   // Filtra subcategorias com base no pai selecionado
@@ -111,15 +113,11 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Categoria Principal</FormLabel>
-            <Select 
+            <Select
               onValueChange={(value) => {
-                const hasSubcategories = allCategories.some(c => c.parentId === value);
-                // Se a categoria pai não tiver subcategorias, a categoria selecionada é a própria pai
-                if (!hasSubcategories) {
-                  form.setValue('categoryId', value);
-                } else {
-                  form.setValue('categoryId', '');
-                }
+                // Ao selecionar a categoria principal, define-a como a categoria padrão
+                // O usuário pode opcionalmente escolher uma subcategoria depois
+                form.setValue('categoryId', value);
               }}
               // O valor do seletor pai agora é derivado da categoria selecionada
               value={selectedParentId || ''}
@@ -145,9 +143,9 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
         name="categoryId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Subcategoria</FormLabel>
-            <Select 
-              onValueChange={field.onChange} 
+            <FormLabel>Subcategoria (Opcional)</FormLabel>
+            <Select
+              onValueChange={field.onChange}
               value={field.value}
               disabled={!selectedParentId || subcategories.length === 0}
             >
