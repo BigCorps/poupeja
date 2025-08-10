@@ -30,7 +30,6 @@ import { cn } from '@/lib/utils';
 import { Transaction, TransactionType } from '@/types';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import HierarchicalCategorySelector from '../categories/HierarchicalCategorySelector';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Category } from '@/types';
 
@@ -40,7 +39,6 @@ interface TransactionFormProps {
   initialData?: Transaction | null;
 }
 
-// ** CORREÇÃO AQUI: A subcategoria agora é opcional de verdade **
 const formSchema = z.object({
   type: z.enum(['income', 'expense']),
   date: z.date({
@@ -49,7 +47,7 @@ const formSchema = z.object({
   amount: z.coerce.number().min(0.01, 'O valor deve ser maior que 0.'),
   description: z.string().optional(),
   categoryId: z.string().min(1, 'A categoria é obrigatória.'),
-  subcategoryId: z.string().optional(), // Alterado para opcional
+  subcategoryId: z.string().optional(),
   supplier: z.string().optional(),
   original_amount: z.coerce.number().optional(),
   due_date: z.date().optional(),
@@ -71,7 +69,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ open, onOpenChange, i
       amount: 0,
       description: '',
       categoryId: '',
-      subcategoryId: undefined, // Garantindo que o valor padrão seja undefined
+      subcategoryId: undefined,
       supplier: '',
       original_amount: undefined,
       due_date: undefined,
@@ -105,7 +103,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ open, onOpenChange, i
       ...values,
       date: values.date.toISOString(),
       due_date: values.due_date ? values.due_date.toISOString() : undefined,
-      // Garante que subcategoryId seja null se não for selecionado
       subcategoryId: values.subcategoryId || undefined,
     };
 
@@ -177,24 +174,33 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ open, onOpenChange, i
                 <FormItem>
                   <FormLabel>{t('common.category')}</FormLabel>
                   <FormControl>
-                    <HierarchicalCategorySelector
-                      value={field.value}
-                      onChange={(value) => {
+                    <Select
+                      onValueChange={(value) => {
                         // Limpa a subcategoria se a categoria principal mudar
                         if (form.getValues('categoryId') !== value) {
                           form.setValue('subcategoryId', undefined);
                         }
                         field.onChange(value);
                       }}
-                      categories={allCategories}
-                    />
+                      value={field.value}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t('form.selectCategory')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allCategories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Subcategoria agora só aparece se a categoria principal tiver subcategorias */}
             {availableSubcategories.length > 0 && (
               <FormField
                 control={form.control}
