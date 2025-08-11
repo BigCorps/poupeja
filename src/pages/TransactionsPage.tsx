@@ -12,236 +12,241 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 // import { useUserPlan } from '@/hooks/useUserPlan';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const TransactionsPage = () => {
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [viewMode, setViewMode] = useState<'PF' | 'PJ'>('PF');
-  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
-  
-  const { transactions, deleteTransaction, categories } = useAppContext();
-  const isMobile = useIsMobile();
-  
-  const hasPremiumPlan = true;
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [viewMode, setViewMode] = useState<'PF' | 'PJ'>('PF');
+  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+  
+  const { transactions, deleteTransaction, categories } = useAppContext();
+  const isMobile = useIsMobile();
+  
+  // Assumindo um plano premium para fins de demonstração
+  const hasPremiumPlan = true;
 
-  const handleAddTransaction = useCallback(() => {
-    setEditingTransaction(null);
-    setFormOpen(true);
-  }, []);
+  const handleAddTransaction = useCallback(() => {
+    setEditingTransaction(null);
+    setFormOpen(true);
+  }, []);
 
-  const handleEditTransaction = useCallback((transaction: Transaction) => {
-    setEditingTransaction(transaction);
-    setFormOpen(true);
-  }, []);
+  const handleEditTransaction = useCallback((transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setFormOpen(true);
+  }, []);
 
-  const handleDeleteTransaction = useCallback((id: string) => {
-    deleteTransaction(id);
-  }, [deleteTransaction]);
+  const handleDeleteTransaction = useCallback((id: string) => {
+    deleteTransaction(id);
+  }, [deleteTransaction]);
 
-  useEffect(() => {
-    const getFilteredTransactions = () => {
-      // Filtra as categorias com base na viewMode e depois filtra as transações.
-      if (viewMode === 'PJ') {
-        // Filtra transações PJ com base no tipo
-        return transactions.filter(t => 
-          t.type && (
-            t.type.startsWith('operational') ||
-            t.type.startsWith('investment') ||
-            t.type.startsWith('financing')
-          )
-        );
-      }
-      // Filtra transações PF com base no tipo
-      return transactions.filter(t => 
-        t.type === 'income' || t.type === 'expense'
-      );
-    };
-    setFilteredTransactions(getFilteredTransactions());
-  }, [viewMode, transactions]);
+  useEffect(() => {
+    const getFilteredTransactions = () => {
+      if (viewMode === 'PJ') {
+        // A lógica de filtragem para PJ parece depender de um tipo mais complexo
+        // de transação que não está definido no useTransactionForm.ts.
+        // Para evitar erros, o código abaixo usa o filtro original, mas é recomendado
+        // ajustar o tipo de transação para PJ para evitar "N/A" em outros campos.
+        return transactions.filter(t => 
+          t.type && (
+            t.type.startsWith('operational') ||
+            t.type.startsWith('investment') ||
+            t.type.startsWith('financing')
+          )
+        );
+      }
+      return transactions.filter(t => 
+        t.type === 'income' || t.type === 'expense'
+      );
+    };
+    setFilteredTransactions(getFilteredTransactions());
+  }, [viewMode, transactions]);
 
-  const getCategoryNameById = (categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId);
-    return category ? category.name : 'N/A';
-  }
+  const getCategoryNameById = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : 'N/A';
+  }
 
-  const renderTablePJ = (data: Transaction[]) => {
-    if (data.length === 0) {
-      return (
-        <div className="flex items-center justify-center p-6 text-muted-foreground">
-          Nenhum dado disponível
-        </div>
-      );
-    }
-    
-    const displayHeaders = ['Fornecedor', 'Descrição', 'Categoria', 'Valor Original', 'Data de Vencimento', 'Status'];
+  const renderTablePJ = (data: Transaction[]) => {
+    if (data.length === 0) {
+      return (
+        <div className="flex items-center justify-center p-6 text-muted-foreground">
+          Nenhum dado disponível
+        </div>
+      );
+    }
+    
+    const displayHeaders = ['Fornecedor', 'Descrição', 'Categoria', 'Valor Original', 'Data de Vencimento', 'Status'];
 
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {displayHeaders.map((header, index) => (
-              <TableHead key={index}>{header}</TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((transaction, index) => (
-            <TableRow key={index} onClick={() => handleEditTransaction(transaction)}>
-              <TableCell>{transaction.supplier || 'N/A'}</TableCell>
-              <TableCell>{transaction.description || 'N/A'}</TableCell>
-              <TableCell>{getCategoryNameById(transaction.categoryId) || 'N/A'}</TableCell>
-              <TableCell>
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                }).format(transaction.originalAmount || 0)}
-              </TableCell>
-              <TableCell>
-                {transaction.dueDate ? format(parseISO(transaction.dueDate), "dd/MM/yyyy") : 'N/A'}
-              </TableCell>
-              <TableCell>{transaction.paymentStatus || 'N/A'}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  };
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {displayHeaders.map((header, index) => (
+              <TableHead key={index}>{header}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((transaction, index) => (
+            <TableRow key={index} onClick={() => handleEditTransaction(transaction)}>
+              <TableCell>{transaction.supplier || 'N/A'}</TableCell>
+              <TableCell>{transaction.description || 'N/A'}</TableCell>
+              {/* ✅ CORRIGIDO: Usando transaction.category_id */}
+              <TableCell>{getCategoryNameById(transaction.category_id) || 'N/A'}</TableCell>
+              <TableCell>
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                }).format(transaction.originalAmount || 0)}
+              </TableCell>
+              <TableCell>
+                {transaction.dueDate ? format(parseISO(transaction.dueDate), "dd/MM/yyyy") : 'N/A'}
+              </TableCell>
+              <TableCell>{transaction.paymentStatus || 'N/A'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
 
-  const renderTablePF = (data: Transaction[]) => {
-    if (data.length === 0) {
-      return (
-        <div className="flex items-center justify-center p-6 text-muted-foreground">
-          Nenhum dado disponível
-        </div>
-      );
-    }
-    
-    const displayHeaders = ['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor'];
+  const renderTablePF = (data: Transaction[]) => {
+    if (data.length === 0) {
+      return (
+        <div className="flex items-center justify-center p-6 text-muted-foreground">
+          Nenhum dado disponível
+        </div>
+      );
+    }
+    
+    const displayHeaders = ['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor'];
 
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {displayHeaders.map((header, index) => (
-              <TableHead key={index}>{header}</TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((transaction, index) => (
-            <TableRow key={index} onClick={() => handleEditTransaction(transaction)}>
-              <TableCell>
-                {transaction.transactionDate ? format(parseISO(transaction.transactionDate), "dd/MM/yyyy", { locale: ptBR }) : 'N/A'}
-              </TableCell>
-              <TableCell>
-                <span className={cn(
-                  "font-semibold",
-                  transaction.type === 'income' ? "text-green-500" : "text-red-500"
-                )}>
-                  {transaction.type === 'income' ? 'Receita' : 'Despesa'}
-                </span>
-              </TableCell>
-              <TableCell>{getCategoryNameById(transaction.categoryId) || 'N/A'}</TableCell>
-              <TableCell>{transaction.description || 'N/A'}</TableCell>
-              <TableCell>
-                {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                }).format(transaction.amount || 0)}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  };
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {displayHeaders.map((header, index) => (
+              <TableHead key={index}>{header}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((transaction, index) => (
+            <TableRow key={index} onClick={() => handleEditTransaction(transaction)}>
+              <TableCell>
+                {/* ✅ CORRIGIDO: Usando transaction.date */}
+                {transaction.date ? format(parseISO(transaction.date), "dd/MM/yyyy", { locale: ptBR }) : 'N/A'}
+              </TableCell>
+              <TableCell>
+                <span className={cn(
+                  "font-semibold",
+                  transaction.type === 'income' ? "text-green-500" : "text-red-500"
+                )}>
+                  {transaction.type === 'income' ? 'Receita' : 'Despesa'}
+                </span>
+              </TableCell>
+              {/* ✅ CORRIGIDO: Usando transaction.category_id */}
+              <TableCell>{getCategoryNameById(transaction.category_id) || 'N/A'}</TableCell>
+              <TableCell>{transaction.description || 'N/A'}</TableCell>
+              <TableCell>
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                }).format(transaction.amount || 0)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
 
-  return (
-    <MainLayout>
-      <SubscriptionGuard feature="movimentações ilimitadas">
-        <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8">
-          <div className="mb-6 flex items-center justify-between">
-            <h1 className="text-xl md:text-3xl font-semibold">Transações</h1>
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={() => setViewMode('PF')}
-                variant={viewMode === 'PF' ? 'default' : 'ghost'}
-                size="sm"
-              >
-                Pessoa Física
-              </Button>
-              {hasPremiumPlan && (
-                <Button
-                  onClick={() => setViewMode('PJ')}
-                  variant={viewMode === 'PJ' ? 'default' : 'ghost'}
-                  size="sm"
-                >
-                  Pessoa Jurídica
-                </Button>
-              )}
-            </div>
-            {!isMobile && (
-              <Button onClick={handleAddTransaction} size="lg">
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar Transação
-              </Button>
-            )}
-          </div>
-          
-          <div className={cn(isMobile ? "space-y-4" : "")}>
-            {isMobile ? (
-              <TransactionList 
-                transactions={filteredTransactions}
-                onEdit={handleEditTransaction}
-                onDelete={handleDeleteTransaction}
-              />
-            ) : (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>
-                    {viewMode === 'PF' ? 'Transações Recentes (PF)' : 'Transações Recentes (PJ)'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {viewMode === 'PF' ? renderTablePF(filteredTransactions) : renderTablePJ(filteredTransactions)}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
+  return (
+    <MainLayout>
+      <SubscriptionGuard feature="movimentações ilimitadas">
+        <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8">
+          <div className="mb-6 flex items-center justify-between">
+            <h1 className="text-xl md:text-3xl font-semibold">Transações</h1>
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => setViewMode('PF')}
+                variant={viewMode === 'PF' ? 'default' : 'ghost'}
+                size="sm"
+              >
+                Pessoa Física
+              </Button>
+              {hasPremiumPlan && (
+                <Button
+                  onClick={() => setViewMode('PJ')}
+                  variant={viewMode === 'PJ' ? 'default' : 'ghost'}
+                  size="sm"
+                >
+                  Pessoa Jurídica
+                </Button>
+              )}
+            </div>
+            {!isMobile && (
+              <Button onClick={handleAddTransaction} size="lg">
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar Transação
+              </Button>
+            )}
+          </div>
+          
+          <div className={cn(isMobile ? "space-y-4" : "")}>
+            {isMobile ? (
+              <TransactionList 
+                transactions={filteredTransactions}
+                onEdit={handleEditTransaction}
+                onDelete={handleDeleteTransaction}
+              />
+            ) : (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>
+                    {viewMode === 'PF' ? 'Transações Recentes (PF)' : 'Transações Recentes (PJ)'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {viewMode === 'PF' ? renderTablePF(filteredTransactions) : renderTablePJ(filteredTransactions)}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
 
-        {isMobile && (
-          <div className="fixed bottom-20 right-4 z-50">
-            <Button 
-              onClick={handleAddTransaction}
-              size="lg"
-              className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-primary hover:bg-primary/90"
-            >
-              <Plus className="h-6 w-6" />
-              <span className="sr-only">Adicionar Transação</span>
-            </Button>
-          </div>
-        )}
+        {isMobile && (
+          <div className="fixed bottom-20 right-4 z-50">
+            <Button 
+              onClick={handleAddTransaction}
+              size="lg"
+              className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-primary hover:bg-primary/90"
+            >
+              <Plus className="h-6 w-6" />
+              <span className="sr-only">Adicionar Transação</span>
+            </Button>
+          </div>
+        )}
 
-        <TransactionForm
-          open={formOpen}
-          onOpenChange={setFormOpen}
-          initialData={editingTransaction}
-          mode={editingTransaction ? 'edit' : 'create'}
-          personType={viewMode}
-        />
-      </SubscriptionGuard>
-    </MainLayout>
-  );
+        <TransactionForm
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          initialData={editingTransaction}
+          mode={editingTransaction ? 'edit' : 'create'}
+          personType={viewMode}
+        />
+      </SubscriptionGuard>
+    </MainLayout>
+  );
 };
 
 export default TransactionsPage;
