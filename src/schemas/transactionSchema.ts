@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 export const createTransactionSchema = (translationFn: (key: string) => string) => {
@@ -6,6 +5,8 @@ export const createTransactionSchema = (translationFn: (key: string) => string) 
     type: z.enum(['income', 'expense']),
     amount: z.coerce.number().positive(translationFn('validation.positive')),
     category: z.string().min(1, translationFn('validation.required')),
+    // Adicionado o campo subcategory e tornado opcional com .optional()
+    subcategory: z.string().optional(),
     description: z.string().optional(),
     date: z.string().min(1, translationFn('validation.required')),
     goalId: z.union([z.string().min(1), z.literal("none"), z.null(), z.undefined()]).optional(),
