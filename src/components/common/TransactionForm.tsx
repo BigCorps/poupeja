@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -38,7 +38,7 @@ const transactionSchemaPF = z.object({
 
 const transactionSchemaPJ = z.object({
   type: z.enum(['income', 'expense']),
-  originalAmount: z.number({ required_error: "O valor original é obrigatório." }).min(0, "O valor deve ser maior ou igual a zero."),
+  originalAmount: z.number({ required_error: "O valor original é obrigatório." }).min(0, "O valor deve ser maior ou igual a zero.").optional(),
   lateInterestAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
   paidAmount: z.number().min(0.01, "O valor pago é obrigatório e deve ser maior que zero.").optional(),
   categoryId: z.string({ required_error: "A categoria é obrigatória." }).min(1),
@@ -90,45 +90,32 @@ const GoalSelector = ({ form }) => {
 };
 
 // Seletor de Categoria Hierárquico - Agora usado para PJ e PF
-const HierarchicalCategorySelector = ({ form, allCategories }) => {
+const HierarchicalCategorySelector = ({ form, allCategories, initialData }) => {
+  const [parentCategoryId, setParentCategoryId] = useState('');
   const categoryId = form.watch('categoryId');
 
-  // Encontra a categoria selecionada (pode ser pai ou subcategoria)
-  const selectedCategory = React.useMemo(() => allCategories.find(c => c.id === categoryId), [categoryId, allCategories]);
+  // Inicializa parentCategoryId com base no initialData, se disponível
+  useEffect(() => {
+    if (initialData?.categoryId) {
+      const initialCategory = allCategories.find(c => c.id === initialData.categoryId);
+      if (initialCategory) {
+        setParentCategoryId(initialCategory.parentId || initialCategory.id);
+      }
+    } else {
+      setParentCategoryId('');
+    }
+  }, [initialData, allCategories]);
 
-  // Se a categoria selecionada é uma subcategoria, o `parentId` é o ID do pai.
-  // Se a categoria selecionada é um pai, o `id` é o ID do pai.
-  const selectedParentId = selectedCategory?.parentId || selectedCategory?.id;
-
-  // Filtra categorias pai (sem parentId)
+  // Deriva as subcategorias disponíveis com base no estado do seletor pai
+  const subcategories = allCategories.filter(c => c.parentId === parentCategoryId);
   const parentCategories = allCategories.filter(c => !c.parentId);
-  // Filtra subcategorias com base no pai selecionado
-  const subcategories = allCategories.filter(c => c.parentId === selectedParentId);
 
   // Manipulador de mudança para a categoria principal
-  const handleParentCategoryChange = (value) => {
-    // Ao selecionar a categoria principal, define-a como a categoria padrão
-    // Isso garante que o campo `categoryId` não fique vazio.
-    form.setValue('categoryId', value);
+  const handleParentChange = (value) => {
+    setParentCategoryId(value);
+    // Quando a categoria principal muda, reseta o valor da subcategoria no formulário
+    form.setValue('categoryId', '');
   };
-  
-  // Verifica se o ID selecionado no `categoryId` é de fato uma subcategoria
-  const isSubcategorySelected = !!selectedCategory?.parentId;
-
-  // Usa `useEffect` para resetar a subcategoria se a categoria pai mudar e não houver subcategorias
-  useEffect(() => {
-    // Se o ID atual é de uma subcategoria, mas o parent ID dela não é o ID pai selecionado,
-    // ou se o parent ID selecionado não tem subcategorias, resetamos o `categoryId` para o `selectedParentId`
-    const isCurrentIdAParent = parentCategories.some(c => c.id === categoryId);
-    const hasSubcategories = subcategories.length > 0;
-
-    if (!isCurrentIdAParent && !isSubcategorySelected) {
-      // Se a categoria selecionada não é uma subcategoria, e não é um pai,
-      // algo deu errado no estado. Reseta para o pai.
-      form.setValue('categoryId', selectedParentId);
-    }
-  }, [selectedParentId, subcategories.length, form, categoryId, isSubcategorySelected]);
-
 
   return (
     <>
@@ -138,7 +125,7 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
         render={() => (
           <FormItem>
             <FormLabel>Categoria Principal</FormLabel>
-            <Select onValueChange={handleParentCategoryChange} value={selectedParentId}>
+            <Select onValueChange={handleParentChange} value={parentCategoryId}>
               <FormControl>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a categoria principal" />
@@ -162,11 +149,9 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
           <FormItem>
             <FormLabel>Subcategoria (Opcional)</FormLabel>
             <Select
-              onValueChange={field.onChange}
-              // Apenas exibe o valor da subcategoria se o ID do campo for de uma subcategoria.
-              // Caso contrário, usa string vazia para exibir o placeholder.
-              value={isSubcategorySelected ? field.value : ''}
-              disabled={!selectedParentId || subcategories.length === 0}
+              onValueChange={(value) => field.onChange(value)}
+              value={field.value}
+              disabled={!parentCategoryId || subcategories.length === 0}
             >
               <FormControl>
                 <SelectTrigger>
@@ -185,7 +170,7 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
       />
     </>
   );
-}
+};
 
 
 const TransactionForm: React.FC<TransactionFormProps> = ({
@@ -301,7 +286,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                   <AmountInput form={form} />
                   
                   {/* Seletor de categorias hierárquico para PF */}
-                  <HierarchicalCategorySelector form={form} allCategories={availableCategories} />
+                  <HierarchicalCategorySelector form={form} allCategories={availableCategories} initialData={initialData} />
 
                   <FormField
                     control={form.control}
@@ -410,7 +395,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                     />
                   </div>
                   
-                  <HierarchicalCategorySelector form={form} allCategories={availableCategories} />
+                  <HierarchicalCategorySelector form={form} allCategories={availableCategories} initialData={initialData} />
 
                   <DescriptionField form={form} />
 
