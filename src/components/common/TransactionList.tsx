@@ -26,6 +26,13 @@ import CategoryIcon from '../categories/CategoryIcon';
 import TransactionCard from './TransactionCard';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+// ATENÇÃO:
+// O tipo `Transaction` precisou ser ajustado para incluir os objetos de categoria
+// e subcategoria, que devem ser buscados com JOINs na sua query do Supabase.
+// Garanta que a sua função de busca (`useGetTransactions.ts` ou similar)
+// já retorna os dados aninhados para que esta correção funcione.
+// Exemplo: `.select('*, categories (name), subcategories (name)')`
+
 interface TransactionListProps {
   transactions: Transaction[];
   onEdit?: (transaction: Transaction) => void;
@@ -43,13 +50,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const { t, currency } = usePreferences();
   const isMobile = useIsMobile();
 
-  // Helper para buscar o nome da categoria pelo ID
-  const getCategoryName = (categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId);
-    return category ? category.name : 'N/A';
-  };
-
-  // Helper to get goal name
+  // Helper para buscar o nome da meta pelo ID
   const getGoalName = (goalId?: string) => {
     if (!goalId) return null;
     const goal = goals.find(g => g.id === goalId);
@@ -133,7 +134,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
           {transactions.map((transaction, index) => {
             // Use different icons and colors based on transaction type
             const iconColor = transaction.type === 'income' ? '#26DE81' : '#EF4444';
-            const category = categories.find(c => c.id === transaction.categoryId);
+            
+            // Removido a busca de categoria manual. O objeto `transaction` agora deve conter a categoria.
+            // O `?.` garante que a aplicação não quebre se o dado não vier.
             
             return (
               <motion.tr
@@ -166,7 +169,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <CategoryIcon 
-                      icon={category?.icon || 'default-icon'} 
+                      icon={transaction.categories?.icon || 'default-icon'} // Acessando o ícone diretamente do objeto de categoria aninhado
                       color={iconColor} 
                       size={16}
                     />
@@ -176,12 +179,12 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         ? "bg-green-50 text-green-600 hover:bg-green-100 border-green-200"
                         : "bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
                     )}>
-                      {category?.name || 'N/A'}
+                      {transaction.categories?.name || 'N/A'} // Acessando o nome da categoria diretamente do objeto
                     </Badge>
                   </div>
                 </TableCell>
                 <TableCell className="text-xs md:text-sm">
-                  {transaction.description}
+                  {transaction.description || 'N/A'}
                 </TableCell>
                 <TableCell className="text-xs md:text-sm">
                   {transaction.supplier || 'N/A'}
