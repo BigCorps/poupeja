@@ -310,6 +310,8 @@ const CategoriesPage: React.FC = () => {
           parentName={initialFormData?.parent_id
             ? categories.find(cat => cat.id === initialFormData.parent_id)?.name || null
             : selectedParentCategory?.name}
+          // Adicionamos um novo prop para passar o texto traduzido do botão
+          saveButtonText={t('common.saveChanges')}
         />
 
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
