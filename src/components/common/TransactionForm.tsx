@@ -36,9 +36,8 @@ const transactionSchemaPF = z.object({
   goalId: z.string().optional(),
 });
 
-// Esquema para PJ, agora com campo 'type' unificado
 const transactionSchemaPJ = z.object({
-  type: z.enum(['income', 'expense']), // Agora usa o mesmo seletor de tipo da PF
+  type: z.enum(['income', 'expense']), // Usamos o mesmo seletor de tipo da PF
   originalAmount: z.number({ required_error: "O valor original é obrigatório." }).min(0, "O valor deve ser maior ou igual a zero."),
   lateInterestAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
   paidAmount: z.number().min(0.01, "O valor pago é obrigatório e deve ser maior que zero.").optional(),
@@ -70,7 +69,7 @@ const GoalSelector = ({ form }) => {
       name="goalId"
       render={({ field }) => (
         <FormItem>
-          <FormLabel>Meta (Opcional)</FormLabel>
+          <FormLabel>Meta</FormLabel>
           <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
             <FormControl>
               <SelectTrigger>
@@ -92,17 +91,19 @@ const GoalSelector = ({ form }) => {
 
 // Seletor de Categoria Hierárquico - Agora usado para PJ e PF
 const HierarchicalCategorySelector = ({ form, allCategories }) => {
-  const [selectedParentId, setSelectedParentId] = React.useState('');
+  // Observa o valor de categoryId para renderizar corretamente no modo de edição
   const categoryId = form.watch('categoryId');
 
-  // Efeito para sincronizar o estado da categoria pai ao carregar o formulário (modo de edição)
-  useEffect(() => {
+  // Determina a categoria pai selecionada ou a categoria principal se houver
+  const selectedParentId = React.useMemo(() => {
     if (categoryId) {
       const selectedCategory = allCategories.find(c => c.id === categoryId);
       if (selectedCategory) {
-        setSelectedParentId(selectedCategory.parentId || selectedCategory.id);
+        return selectedCategory.parentId || selectedCategory.id;
       }
     }
+    // Retorna a categoria pai do estado ou uma string vazia como padrão
+    return '';
   }, [categoryId, allCategories]);
 
   // Filtra categorias pai (sem parentId)
@@ -110,32 +111,37 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
   // Filtra subcategorias com base no pai selecionado
   const subcategories = allCategories.filter(c => c.parentId === selectedParentId);
 
+  // Manipulador de mudança para a categoria principal
+  const handleParentCategoryChange = (value) => {
+    // Ao selecionar a categoria principal, define-a como a categoria padrão
+    // O usuário pode opcionalmente escolher uma subcategoria depois
+    form.setValue('categoryId', value);
+  };
+
   return (
     <>
-      <FormItem>
-        <FormLabel>Categoria Principal</FormLabel>
-        <Select
-          onValueChange={(value) => {
-            setSelectedParentId(value);
-            // Ao selecionar a categoria principal, define-a como a categoria padrão
-            // O usuário pode opcionalmente escolher uma subcategoria depois
-            form.setValue('categoryId', value);
-          }}
-          value={selectedParentId}
-        >
-          <FormControl>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione a categoria principal" />
-            </SelectTrigger>
-          </FormControl>
-          <SelectContent>
-            {parentCategories.map(cat => (
-              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <FormMessage />
-      </FormItem>
+      <FormField
+        control={form.control}
+        name="parentCategory"
+        render={() => (
+          <FormItem>
+            <FormLabel>Categoria Principal</FormLabel>
+            <Select onValueChange={handleParentCategoryChange} value={selectedParentId}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria principal" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {parentCategories.map(cat => (
+                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       <FormField
         control={form.control}
@@ -245,9 +251,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
           ? initialData?.type || defaultType
           : determineType(initialData?.type),
         transactionDate: initialData?.transactionDate ? new Date(initialData.transactionDate) : new Date(),
-        referenceDate: initialData?.referenceDate ? new Date(initialData.referenceDate) : new Date(),
-        dueDate: initialData?.dueDate ? new Date(initialData.dueDate) : new Date(),
-        paymentDate: initialData?.paymentDate ? new Date(initialData.paymentDate) : new Date(),
+        referenceDate: initialData?.referenceDate ? new Date(initialData.referenceDate) : undefined,
+        dueDate: initialData?.dueDate ? new Date(initialData.dueDate) : undefined,
+        paymentDate: initialData?.paymentDate ? new Date(initialData.paymentDate) : undefined,
         paymentStatus: initialData?.paymentStatus || 'pending',
       };
       
@@ -354,10 +360,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                       name="paidAmount"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center space-x-1">
-                            <span>Valor Pago</span>
-                            <span className="text-muted-foreground text-sm font-normal">(Opcional)</span>
-                          </FormLabel>
+                          <FormLabel>Valor Pago</FormLabel>
                           <FormControl>
                             <Input id="paidAmount" type="number" step="0.01" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
                           </FormControl>
@@ -370,10 +373,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                       name="lateInterestAmount"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center space-x-1">
-                            <span>Juros em Atraso</span>
-                            <span className="text-muted-foreground text-sm font-normal">(Opcional)</span>
-                          </FormLabel>
+                          <FormLabel>Juros em Atraso</FormLabel>
                           <FormControl>
                             <Input id="lateInterestAmount" type="number" step="0.01" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
                           </FormControl>
@@ -386,10 +386,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                       name="supplier"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center space-x-1">
-                            <span>Fornecedor</span>
-                            <span className="text-muted-foreground text-sm font-normal">(Opcional)</span>
-                          </FormLabel>
+                          <FormLabel>Fornecedor</FormLabel>
                           <FormControl>
                             <Input id="supplier" {...field} />
                           </FormControl>
@@ -409,10 +406,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                       name="referenceDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel className="flex items-center space-x-1">
-                            <span>Data de Referência</span>
-                            <span className="text-muted-foreground text-sm font-normal">(Opcional)</span>
-                          </FormLabel>
+                          <FormLabel>Data de Referência</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -446,10 +440,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                       name="dueDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel className="flex items-center space-x-1">
-                            <span>Data de Vencimento</span>
-                            <span className="text-muted-foreground text-sm font-normal">(Opcional)</span>
-                          </FormLabel>
+                          <FormLabel>Data de Vencimento</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -483,10 +474,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                       name="paymentDate"
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
-                          <FormLabel className="flex items-center space-x-1">
-                            <span>Data Pagamento / Projeção</span>
-                            <span className="text-muted-foreground text-sm font-normal">(Opcional)</span>
-                          </FormLabel>
+                          <FormLabel>Data Pagamento</FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -520,7 +508,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                       name="paymentStatus"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Status Pagamento (Opcional)</FormLabel>
+                          <FormLabel>Status Pagamento</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -543,10 +531,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                       name="paymentMethod"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center space-x-1">
-                            <span>Forma de Pagamento</span>
-                            <span className="text-muted-foreground text-sm font-normal">(Opcional)</span>
-                          </FormLabel>
+                          <FormLabel>Forma de Pagamento</FormLabel>
                           <FormControl>
                             <Input id="paymentMethod" {...field} />
                           </FormControl>
