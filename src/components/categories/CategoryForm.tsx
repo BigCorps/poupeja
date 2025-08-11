@@ -101,7 +101,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]" aria-describedby="category-dialog-description">
         <DialogHeader>
-          <DialogTitle>{initialData ? t('categories.edit') : t('categories.add')}</DialogTitle>
+          <DialogTitle>{initialData ? 'Editar categoria' : 'Adicionar categoria'}</DialogTitle>
           <DialogDescription id="category-dialog-description">
             {initialData ? 'Edite os detalhes da categoria.' : 'Preencha os detalhes para adicionar uma nova categoria.'}
           </DialogDescription>
@@ -187,7 +187,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
             />
             <div className="flex justify-end pt-4">
               <Button type="submit">
-                {initialData ? t('common.saveChanges') : t('common.add')}
+                {initialData ? 'Salvar alterações' : 'Adicionar'}
               </Button>
             </div>
           </form>
