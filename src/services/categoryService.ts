@@ -1,13 +1,13 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Category } from "@/types/categories";
 import { v4 as uuidv4 } from "uuid";
 
+// Ajustado para garantir que o parent_id é sempre mapeado
 export const getCategories = async (): Promise<Category[]> => {
   try {
     const { data, error } = await supabase
       .from("poupeja_categories")
-      .select("*")
+      .select("*, parent_id") // Inclui explicitamente o parent_id
       .order("name");
 
     if (error) throw error;
@@ -18,7 +18,8 @@ export const getCategories = async (): Promise<Category[]> => {
       type: item.type as 'income' | 'expense',
       color: item.color,
       icon: item.icon || "circle",
-      isDefault: item.is_default
+      isDefault: item.is_default,
+      parent_id: item.parent_id || null // Garante que a propriedade exista
     }));
   } catch (error) {
     console.error("Error fetching categories:", error);
@@ -30,7 +31,7 @@ export const getCategoriesByType = async (type: 'income' | 'expense'): Promise<C
   try {
     const { data, error } = await supabase
       .from("poupeja_categories")
-      .select("*")
+      .select("*, parent_id") // Inclui explicitamente o parent_id
       .eq("type", type)
       .order("name");
 
@@ -42,7 +43,8 @@ export const getCategoriesByType = async (type: 'income' | 'expense'): Promise<C
       type: item.type as 'income' | 'expense',
       color: item.color,
       icon: item.icon || "circle",
-      isDefault: item.is_default
+      isDefault: item.is_default,
+      parent_id: item.parent_id || null // Garante que a propriedade exista
     }));
   } catch (error) {
     console.error(`Error fetching ${type} categories:`, error);
@@ -52,7 +54,6 @@ export const getCategoriesByType = async (type: 'income' | 'expense'): Promise<C
 
 export const addCategory = async (category: Omit<Category, "id">): Promise<Category | null> => {
   try {
-    // Get current authenticated user
     const { data: authData } = await supabase.auth.getUser();
     if (!authData?.user) {
       console.error("No authenticated user found");
@@ -73,7 +74,8 @@ export const addCategory = async (category: Omit<Category, "id">): Promise<Categ
         color: category.color,
         icon: category.icon,
         is_default: category.isDefault || false,
-        user_id: userId // Add user_id to the inserted data
+        user_id: userId,
+        parent_id: category.parent_id // Passa o parent_id para o insert
       })
       .select()
       .single();
@@ -90,7 +92,8 @@ export const addCategory = async (category: Omit<Category, "id">): Promise<Categ
       type: data.type as 'income' | 'expense',
       color: data.color,
       icon: data.icon || "circle",
-      isDefault: data.is_default
+      isDefault: data.is_default,
+      parent_id: data.parent_id // Garante que o objeto retornado tenha o parent_id
     };
   } catch (error) {
     console.error("Error adding category:", error);
@@ -106,7 +109,8 @@ export const updateCategory = async (category: Category): Promise<Category | nul
         name: category.name,
         color: category.color,
         icon: category.icon,
-        is_default: category.isDefault
+        is_default: category.isDefault,
+        parent_id: category.parent_id // Passa o parent_id para o update
       })
       .eq("id", category.id)
       .select()
@@ -120,7 +124,8 @@ export const updateCategory = async (category: Category): Promise<Category | nul
       type: data.type as 'income' | 'expense',
       color: data.color,
       icon: data.icon || "circle",
-      isDefault: data.is_default
+      isDefault: data.is_default,
+      parent_id: data.parent_id // Garante que o objeto retornado tenha o parent_id
     };
   } catch (error) {
     console.error("Error updating category:", error);
@@ -130,7 +135,6 @@ export const updateCategory = async (category: Category): Promise<Category | nul
 
 export const deleteCategory = async (id: string): Promise<boolean> => {
   try {
-    // First check if this is a default category
     const { data: category } = await supabase
       .from("poupeja_categories")
       .select("is_default")
@@ -142,7 +146,6 @@ export const deleteCategory = async (id: string): Promise<boolean> => {
       return false;
     }
 
-    // Get default category of same type to reassign transactions
     const { data: defaultCategory } = await supabase
       .from("poupeja_categories")
       .select("id, type")
@@ -151,14 +154,12 @@ export const deleteCategory = async (id: string): Promise<boolean> => {
       .single();
 
     if (defaultCategory) {
-      // Update any transactions using this category
       await supabase
         .from("poupeja_transactions")
         .update({ category_id: defaultCategory.id })
         .eq("category_id", id);
     }
 
-    // Now delete the category
     const { error } = await supabase
       .from("poupeja_categories")
       .delete()
