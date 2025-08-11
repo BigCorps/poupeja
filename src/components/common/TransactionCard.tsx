@@ -31,14 +31,15 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
   hideValues = false,
   index = 0
 }) => {
-  const { categories, goals } = useAppContext();
+  const { goals } = useAppContext();
   const { t, currency } = usePreferences();
 
-  // Helper para buscar o nome da categoria pelo ID
-  const getCategoryName = (categoryId: string) => {
-    const category = categories.find(c => c.id === categoryId);
-    return category ? category.name : 'N/A';
-  };
+  // ATENÇÃO:
+  // A função `getCategoryName` foi removida, pois agora esperamos que a
+  // propriedade `categories` venha populada com os dados aninhados do Supabase.
+  // Garanta que a sua função de busca (`useGetTransactions.ts` ou similar)
+  // está usando um `JOIN` para incluir os dados da categoria na transação.
+  // Exemplo: `.select('*, categories (name, icon)')`
 
   // Helper to get goal name
   const getGoalName = (goalId?: string) => {
@@ -69,7 +70,6 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
 
   const isIncome = transaction.type === 'income';
   const iconColor = isIncome ? '#26DE81' : '#EF4444';
-  const category = categories.find(c => c.id === transaction.categoryId);
 
   return (
     <motion.div
@@ -135,7 +135,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
       <div className="space-y-2 mb-3">
         <div className="flex items-center gap-2">
           <CategoryIcon 
-            icon={category?.icon || 'default-icon'} 
+            icon={transaction.categories?.icon || 'default-icon'} // Acessando o ícone do objeto aninhado
             color={iconColor} 
             size={16}
           />
@@ -145,7 +145,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({
               ? "bg-green-50 text-green-600 border-green-200"
               : "bg-red-50 text-red-600 border-red-200"
           )}>
-            {category?.name || 'N/A'}
+            {transaction.categories?.name || 'N/A'} // Acessando o nome da categoria do objeto aninhado
           </Badge>
         </div>
         
