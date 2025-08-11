@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Transaction, Goal, ScheduledTransaction, User, TimeRange } from '@/types';
-import { setupAuthListener, getCurrentSession } from '@/services/authService';
 import { recalculateGoalAmounts as recalculateGoalAmountsService } from '@/services/goalService';
 
 // ===================================================
@@ -44,11 +43,7 @@ interface AppContextType extends AppState {
   logout: () => void;
   setTimeRange: (timeRange: TimeRange) => void;
   setCustomDateRange: (startDate: string, endDate: string) => void;
-  getTransactions: () => Promise<void>;
-  getCategories: () => Promise<void>;
-  getGoals: () => Promise<Goal[]>;
-  getScheduledTransactions: () => Promise<void>;
-  addTransaction: (transaction: Transaction) => Promise<void>;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
   updateTransaction: (transaction: Transaction) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   addCategory: (category: Omit<Category, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
@@ -76,19 +71,7 @@ type AppAction =
   | { type: 'SET_TIME_RANGE'; payload: TimeRange }
   | { type: 'SET_CUSTOM_DATE_RANGE'; payload: { startDate: string; endDate: string } }
   | { type: 'SET_FILTERED_TRANSACTIONS'; payload: Transaction[] }
-  | { type: 'SET_ACCOUNT_TYPE'; payload: 'PF' | 'PJ' }
-  | { type: 'ADD_TRANSACTION'; payload: Transaction }
-  | { type: 'UPDATE_TRANSACTION'; payload: Transaction }
-  | { type: 'DELETE_TRANSACTION'; payload: string }
-  | { type: 'ADD_CATEGORY'; payload: Category }
-  | { type: 'UPDATE_CATEGORY'; payload: Category }
-  | { type: 'DELETE_CATEGORY'; payload: string }
-  | { type: 'ADD_GOAL'; payload: Goal }
-  | { type: 'UPDATE_GOAL'; payload: Goal }
-  | { type: 'DELETE_GOAL'; payload: string }
-  | { type: 'ADD_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
-  | { type: 'UPDATE_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
-  | { type: 'DELETE_SCHEDULED_TRANSACTION'; payload: string };
+  | { type: 'SET_ACCOUNT_TYPE'; payload: 'PF' | 'PJ' };
 
 const initialAppState: AppState = {
   transactions: [],
@@ -141,30 +124,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, filteredTransactions: action.payload };
     case 'SET_ACCOUNT_TYPE':
       return { ...state, accountType: action.payload };
-    case 'ADD_TRANSACTION':
-      return { ...state, transactions: [action.payload, ...state.transactions] };
-    case 'UPDATE_TRANSACTION':
-      return { ...state, transactions: state.transactions.map(t => t.id === action.payload.id ? action.payload : t ) };
-    case 'DELETE_TRANSACTION':
-      return { ...state, transactions: state.transactions.filter(t => t.id !== action.payload) };
-    case 'ADD_CATEGORY':
-      return { ...state, categories: [...state.categories, action.payload] };
-    case 'UPDATE_CATEGORY':
-      return { ...state, categories: state.categories.map(c => c.id === action.payload.id ? action.payload : c) };
-    case 'DELETE_CATEGORY':
-      return { ...state, categories: state.categories.filter(c => c.id !== action.payload) };
-    case 'ADD_GOAL':
-      return { ...state, goals: [...state.goals, action.payload] };
-    case 'UPDATE_GOAL':
-      return { ...state, goals: state.goals.map(g => g.id === action.payload.id ? action.payload : g) };
-    case 'DELETE_GOAL':
-      return { ...state, goals: state.goals.filter(g => g.id !== action.payload) };
-    case 'ADD_SCHEDULED_TRANSACTION':
-      return { ...state, scheduledTransactions: [...state.scheduledTransactions, action.payload] };
-    case 'UPDATE_SCHEDULED_TRANSACTION':
-      return { ...state, scheduledTransactions: state.scheduledTransactions.map(st => st.id === action.payload.id ? action.payload : st) };
-    case 'DELETE_SCHEDULED_TRANSACTION':
-      return { ...state, scheduledTransactions: state.scheduledTransactions.filter(st => st.id !== action.payload) };
     default:
       return state;
   }
@@ -206,213 +165,82 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
     dispatch({ type: 'SET_USER', payload: null });
   }, []);
-  
-  const getTransactions = useCallback(async () => {
-    try {
-      if (!state.user) return; // ✅ Adicionado para evitar chamadas de API desnecessárias
-      dispatch({ type: 'SET_LOADING', payload: true });
-      const { data, error } = await supabase.from('poupeja_transactions')
-        .select(`
-          id, created_at, date, amount, description, type, is_recurring, is_paid,
-          category:poupeja_categories(id, name, icon, color, type, parent_id),
-          goal_id, account_id, currency, user_id, supplier, due_date, payment_date,
-          original_amount, late_interest_amount, payment_status, account_type
-        `)
-        .eq('user_id', state.user.id)
-        .eq('account_type', state.accountType)
-        .order('date', { ascending: false });
 
-      if (error) {
-        console.error("Erro ao buscar transações:", error);
-        dispatch({ type: 'SET_ERROR', payload: error.message });
-        dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
-      } else {
-        dispatch({ type: 'SET_TRANSACTIONS', payload: data || [] });
-      }
-    } catch (err) {
-      console.error("Erro inesperado ao buscar transações:", err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar transações.' });
-      dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  }, [state.user, state.accountType]);
-
-  const getCategories = useCallback(async () => {
-    try {
-      if (!state.user) return; // ✅ Adicionado para evitar chamadas de API desnecessárias
-      dispatch({ type: 'SET_LOADING', payload: true });
-      const { data, error } = await supabase.from('poupeja_categories')
-        .select('*')
-        .or(`user_id.eq.${state.user.id},is_default.eq.true`);
-
-      if (error) {
-        console.error("Erro ao buscar categorias:", error);
-        dispatch({ type: 'SET_ERROR', payload: error.message });
-        dispatch({ type: 'SET_CATEGORIES', payload: [] });
-      } else {
-        dispatch({ type: 'SET_CATEGORIES', payload: data || [] });
-      }
-    } catch (err) {
-      console.error("Erro inesperado ao buscar categorias:", err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar categorias.' });
-      dispatch({ type: 'SET_CATEGORIES', payload: [] });
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  }, [state.user]);
-
-  const getGoals = useCallback(async (): Promise<Goal[]> => {
-    try {
-      if (!state.user) return []; // ✅ Adicionado para evitar chamadas de API desnecessárias
-      dispatch({ type: 'SET_LOADING', payload: true });
-      const { data, error } = await supabase
-        .from('poupeja_goals')
-        .select('*')
-        .eq('user_id', state.user.id);
-
-      if (error) throw error;
-      
-      const goals = (data || []).map(transformGoal); // Garante que a transformação é feita em um array
-      dispatch({ type: 'SET_GOALS', payload: goals });
-      return goals;
-    } catch (error) {
-      console.error('Error fetching goals:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao buscar metas' });
-      dispatch({ type: 'SET_GOALS', payload: [] });
-      throw error;
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  }, [state.user]);
-
-  const getScheduledTransactions = useCallback(async (): Promise<void> => {
-    try {
-      if (!state.user) return; // ✅ Adicionado para evitar chamadas de API desnecessárias
-      dispatch({ type: 'SET_LOADING', payload: true });
-      const { data, error } = await supabase.from('poupeja_scheduled_transactions')
-        .select('*')
-        .eq('user_id', state.user.id);
-
-      if (error) throw error;
-
-      dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: data || [] });
-    } catch (error) {
-      console.error('Error fetching scheduled transactions:', error);
-      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Erro ao buscar transações agendadas' });
-      dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  }, [state.user]);
-
-  // Ações de manipulação do estado (transações, categorias, etc.)
-  const addTransaction = useCallback(async (transaction: Transaction) => {
+  // Funções de CRUD do Supabase, agora com melhor tratamento de erro
+  const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'>) => {
     if (!state.user) return;
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('poupeja_transactions')
-        .insert({ ...transaction, user_id: state.user.id, account_type: state.accountType })
-        .select(`
-          id, created_at, date, amount, description, type, is_recurring, is_paid,
-          category:poupeja_categories(id, name, icon, color, type, parent_id),
-          goal_id, account_id, currency, user_id, supplier, due_date, payment_date,
-          original_amount, late_interest_amount, payment_status, account_type
-        `)
-        .single();
+        .insert({ ...transaction, user_id: state.user.id, account_type: state.accountType });
       
       if (error) throw error;
-      dispatch({ type: 'ADD_TRANSACTION', payload: data });
-      if (data.goal_id) {
-        await recalculateGoalAmountsService(state.user.id, data.goal_id);
-        getGoals();
-      }
+      // Não precisamos de dispatch aqui, pois a assinatura em tempo real fará isso.
     } catch (err) {
       console.error('Error adding transaction:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar transação.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao adicionar transação: ${err.message}` });
     }
-  }, [state.user, state.accountType, getGoals]);
+  }, [state.user, state.accountType]);
 
   const updateTransaction = useCallback(async (transaction: Transaction) => {
     if (!state.user) return;
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('poupeja_transactions')
-        .update({ ...transaction, user_id: state.user.id })
-        .eq('id', transaction.id)
-        .select(`
-          id, created_at, date, amount, description, type, is_recurring, is_paid,
-          category:poupeja_categories(id, name, icon, color, type, parent_id),
-          goal_id, account_id, currency, user_id, supplier, due_date, payment_date,
-          original_amount, late_interest_amount, payment_status, account_type
-        `)
-        .single();
+        .update(transaction)
+        .eq('id', transaction.id);
 
       if (error) throw error;
-      dispatch({ type: 'UPDATE_TRANSACTION', payload: data });
-      if (data.goal_id) {
-        await recalculateGoalAmountsService(state.user.id, data.goal_id);
-        getGoals();
-      }
+
     } catch (err) {
       console.error('Error updating transaction:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar transação.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao atualizar transação: ${err.message}` });
     }
-  }, [state.user, getGoals]);
+  }, [state.user]);
 
   const deleteTransaction = useCallback(async (id: string) => {
     if (!state.user) return;
     try {
-      const transactionToDelete = state.transactions.find(t => t.id === id);
       const { error } = await supabase
         .from('poupeja_transactions')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-      dispatch({ type: 'DELETE_TRANSACTION', payload: id });
-      if (transactionToDelete?.goal_id) {
-        await recalculateGoalAmountsService(state.user.id, transactionToDelete.goal_id);
-        getGoals();
-      }
+      
     } catch (err) {
       console.error('Error deleting transaction:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao deletar transação.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao deletar transação: ${err.message}` });
     }
-  }, [state.user, state.transactions, getGoals]);
+  }, [state.user]);
 
   const addCategory = useCallback(async (category: Omit<Category, 'id' | 'created_at' | 'user_id'>) => {
     if (!state.user) return;
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('poupeja_categories')
-        .insert({ ...category, user_id: state.user.id })
-        .select()
-        .single();
+        .insert({ ...category, user_id: state.user.id });
       
       if (error) throw error;
-      dispatch({ type: 'ADD_CATEGORY', payload: data });
     } catch (err) {
       console.error('Error adding category:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar categoria.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao adicionar categoria: ${err.message}` });
     }
   }, [state.user]);
 
   const updateCategory = useCallback(async (category: Category) => {
     if (!state.user) return;
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('poupeja_categories')
-        .update({ ...category, user_id: state.user.id })
-        .eq('id', category.id)
-        .select()
-        .single();
+        .update(category)
+        .eq('id', category.id);
 
       if (error) throw error;
-      dispatch({ type: 'UPDATE_CATEGORY', payload: data });
+
     } catch (err) {
       console.error('Error updating category:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar categoria.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao atualizar categoria: ${err.message}` });
     }
   }, [state.user]);
 
@@ -425,45 +253,40 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', id);
 
       if (error) throw error;
-      dispatch({ type: 'DELETE_CATEGORY', payload: id });
+
     } catch (err) {
       console.error('Error deleting category:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao deletar categoria.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao deletar categoria: ${err.message}` });
     }
   }, [state.user]);
 
   const addGoal = useCallback(async (goal: Omit<Goal, 'id' | 'created_at' | 'user_id'>) => {
     if (!state.user) return;
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('poupeja_goals')
-        .insert({ ...goal, user_id: state.user.id })
-        .select()
-        .single();
+        .insert({ ...goal, user_id: state.user.id });
       
       if (error) throw error;
-      dispatch({ type: 'ADD_GOAL', payload: transformGoal(data) });
     } catch (err) {
       console.error('Error adding goal:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar meta.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao adicionar meta: ${err.message}` });
     }
   }, [state.user]);
 
   const updateGoal = useCallback(async (goal: Goal) => {
     if (!state.user) return;
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('poupeja_goals')
-        .update({ ...goal, user_id: state.user.id })
-        .eq('id', goal.id)
-        .select()
-        .single();
+        .update(goal)
+        .eq('id', goal.id);
 
       if (error) throw error;
-      dispatch({ type: 'UPDATE_GOAL', payload: transformGoal(data) });
+
     } catch (err) {
       console.error('Error updating goal:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar meta.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao atualizar meta: ${err.message}` });
     }
   }, [state.user]);
 
@@ -476,45 +299,39 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', id);
 
       if (error) throw error;
-      dispatch({ type: 'DELETE_GOAL', payload: id });
+
     } catch (err) {
       console.error('Error deleting goal:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao deletar meta.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao deletar meta: ${err.message}` });
     }
   }, [state.user]);
 
   const addScheduledTransaction = useCallback(async (scheduledTransaction: Omit<ScheduledTransaction, 'id' | 'created_at' | 'user_id'>) => {
     if (!state.user) return;
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('poupeja_scheduled_transactions')
-        .insert({ ...scheduledTransaction, user_id: state.user.id })
-        .select()
-        .single();
+        .insert({ ...scheduledTransaction, user_id: state.user.id });
       
       if (error) throw error;
-      dispatch({ type: 'ADD_SCHEDULED_TRANSACTION', payload: data });
     } catch (err) {
       console.error('Error adding scheduled transaction:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar transação agendada.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao adicionar transação agendada: ${err.message}` });
     }
   }, [state.user]);
 
   const updateScheduledTransaction = useCallback(async (scheduledTransaction: ScheduledTransaction) => {
     if (!state.user) return;
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('poupeja_scheduled_transactions')
-        .update({ ...scheduledTransaction, user_id: state.user.id })
-        .eq('id', scheduledTransaction.id)
-        .select()
-        .single();
+        .update(scheduledTransaction)
+        .eq('id', scheduledTransaction.id);
 
       if (error) throw error;
-      dispatch({ type: 'UPDATE_SCHEDULED_TRANSACTION', payload: data });
     } catch (err) {
       console.error('Error updating scheduled transaction:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar transação agendada.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao atualizar transação agendada: ${err.message}` });
     }
   }, [state.user]);
 
@@ -527,48 +344,166 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', id);
 
       if (error) throw error;
-      dispatch({ type: 'DELETE_SCHEDULED_TRANSACTION', payload: id });
     } catch (err) {
       console.error('Error deleting scheduled transaction:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao deletar transação agendada.' });
+      dispatch({ type: 'SET_ERROR', payload: `Erro ao deletar transação agendada: ${err.message}` });
     }
   }, [state.user]);
-  
-  // Efeito para o listener de autenticação
+
+  // Efeito para o listener de autenticação e busca inicial de dados
   useEffect(() => {
-    // Configura o listener e armazena o objeto de unsubscribe
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    let transactionSubscription: any;
+    let categorySubscription: any;
+    let goalSubscription: any;
+    let scheduledTransactionSubscription: any;
+
+    const setupSubscriptions = async (userId: string) => {
+      // Listener de transações em tempo real
+      transactionSubscription = supabase
+        .channel('public:poupeja_transactions')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'poupeja_transactions' },
+          (payload) => {
+            console.log('Change received!', payload);
+            if (payload.new) {
+              dispatch({ type: 'SET_TRANSACTIONS', payload: payload.new });
+            }
+          }
+        )
+        .subscribe();
+      
+      // Listener de categorias em tempo real
+      categorySubscription = supabase
+        .channel('public:poupeja_categories')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'poupeja_categories' },
+          (payload) => {
+            console.log('Change received!', payload);
+            if (payload.new) {
+              dispatch({ type: 'SET_CATEGORIES', payload: payload.new });
+            }
+          }
+        )
+        .subscribe();
+      
+      // Listener de metas em tempo real
+      goalSubscription = supabase
+        .channel('public:poupeja_goals')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'poupeja_goals' },
+          (payload) => {
+            console.log('Change received!', payload);
+            if (payload.new) {
+              dispatch({ type: 'SET_GOALS', payload: payload.new });
+            }
+          }
+        )
+        .subscribe();
+
+      // Listener de transações agendadas em tempo real
+      scheduledTransactionSubscription = supabase
+        .channel('public:poupeja_scheduled_transactions')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'poupeja_scheduled_transactions' },
+          (payload) => {
+            console.log('Change received!', payload);
+            if (payload.new) {
+              dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: payload.new });
+            }
+          }
+        )
+        .subscribe();
+
+      // Busca inicial de dados
+      const { data: transactions, error: transactionsError } = await supabase.from('poupeja_transactions')
+        .select(`
+          id, created_at, date, amount, description, type, is_recurring, is_paid,
+          category:poupeja_categories(id, name, icon, color, type, parent_id),
+          goal_id, account_id, currency, user_id, supplier, due_date, payment_date,
+          original_amount, late_interest_amount, payment_status, account_type
+        `)
+        .eq('user_id', userId)
+        .eq('account_type', state.accountType)
+        .order('date', { ascending: false });
+
+      if (transactionsError) {
+        console.error("Erro ao buscar transações:", transactionsError);
+        dispatch({ type: 'SET_ERROR', payload: transactionsError.message });
+      } else {
+        dispatch({ type: 'SET_TRANSACTIONS', payload: transactions || [] });
+      }
+      
+      const { data: categories, error: categoriesError } = await supabase.from('poupeja_categories')
+        .select('*')
+        .or(`user_id.eq.${userId},is_default.eq.true`);
+
+      if (categoriesError) {
+        console.error("Erro ao buscar categorias:", categoriesError);
+        dispatch({ type: 'SET_ERROR', payload: categoriesError.message });
+      } else {
+        dispatch({ type: 'SET_CATEGORIES', payload: categories || [] });
+      }
+
+      const { data: goals, error: goalsError } = await supabase.from('poupeja_goals')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (goalsError) {
+        console.error("Erro ao buscar metas:", goalsError);
+        dispatch({ type: 'SET_ERROR', payload: goalsError.message });
+      } else {
+        dispatch({ type: 'SET_GOALS', payload: (goals || []).map(transformGoal) });
+      }
+
+      const { data: scheduledTransactions, error: scheduledTransactionsError } = await supabase.from('poupeja_scheduled_transactions')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (scheduledTransactionsError) {
+        console.error("Erro ao buscar transações agendadas:", scheduledTransactionsError);
+        dispatch({ type: 'SET_ERROR', payload: scheduledTransactionsError.message });
+      } else {
+        dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: scheduledTransactions || [] });
+      }
+
+      dispatch({ type: 'SET_LOADING', payload: false });
+    };
+
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         dispatch({ type: 'SET_SESSION', payload: session });
         if (session) {
           dispatch({ type: 'SET_USER', payload: session.user });
+          setupSubscriptions(session.user.id);
         } else {
           dispatch({ type: 'SET_USER', payload: null });
+          // Cleanup subscriptions on logout
+          if (transactionSubscription) supabase.removeChannel(transactionSubscription);
+          if (categorySubscription) supabase.removeChannel(categorySubscription);
+          if (goalSubscription) supabase.removeChannel(goalSubscription);
+          if (scheduledTransactionSubscription) supabase.removeChannel(scheduledTransactionSubscription);
+          
+          dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
+          dispatch({ type: 'SET_CATEGORIES', payload: [] });
+          dispatch({ type: 'SET_GOALS', payload: [] });
+          dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
+          dispatch({ type: 'SET_LOADING', payload: false });
         }
       }
     );
 
-    // Retorna a função de cleanup que cancela a assinatura do listener
     return () => {
-      subscription.unsubscribe();
+      authSubscription.unsubscribe();
+      if (transactionSubscription) supabase.removeChannel(transactionSubscription);
+      if (categorySubscription) supabase.removeChannel(categorySubscription);
+      if (goalSubscription) supabase.removeChannel(goalSubscription);
+      if (scheduledTransactionSubscription) supabase.removeChannel(scheduledTransactionSubscription);
     };
-  }, []);
-
-  // Efeito para buscar os dados quando o usuário muda
-  useEffect(() => {
-    if (state.user) {
-      getTransactions();
-      getCategories();
-      getGoals();
-      getScheduledTransactions();
-    } else {
-      // Limpar o estado quando o usuário faz logout
-      dispatch({ type: 'SET_TRANSACTIONS', payload: [] });
-      dispatch({ type: 'SET_CATEGORIES', payload: [] });
-      dispatch({ type: 'SET_GOALS', payload: [] });
-      dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
-    }
-  }, [state.user, getTransactions, getCategories, getGoals, getScheduledTransactions]);
+  }, [state.accountType]);
 
   const value = useMemo(() => ({
     ...state,
@@ -578,10 +513,6 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     setCustomDateRange,
     setTimeRange,
     setAccountType,
-    getTransactions,
-    getCategories,
-    getGoals,
-    getScheduledTransactions,
     addTransaction,
     updateTransaction,
     deleteTransaction,
@@ -601,10 +532,6 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     setCustomDateRange,
     setTimeRange,
     setAccountType,
-    getTransactions,
-    getCategories,
-    getGoals,
-    getScheduledTransactions,
     addTransaction,
     updateTransaction,
     deleteTransaction,
@@ -634,12 +561,4 @@ const useApp = () => {
   return context;
 };
 
-const useAppContext = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useAppContext must be used within an AppProvider');
-  }
-  return context;
-};
-
-export { useApp, useAppContext, AppProvider };
+export { useApp, AppProvider };
