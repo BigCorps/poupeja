@@ -61,6 +61,9 @@ interface AppContextType extends AppState {
   updateScheduledTransaction: (scheduledTransaction: ScheduledTransaction) => Promise<void>;
   deleteScheduledTransaction: (id: string) => Promise<void>;
   setAccountType: (accountType: 'PF' | 'PJ') => void;
+  // Adicionado para expor as categorias já processadas
+  parentCategories: Category[];
+  subcategories: Category[];
 }
 
 type AppAction =
@@ -241,6 +244,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (!state.user) return; // ✅ Adicionado para evitar chamadas de API desnecessárias
       dispatch({ type: 'SET_LOADING', payload: true });
+      // O `parent_id` já está sendo selecionado corretamente com `*`
       const { data, error } = await supabase.from('poupeja_categories')
         .select('*')
         .or(`user_id.eq.${state.user.id},is_default.eq.true`);
@@ -250,6 +254,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         dispatch({ type: 'SET_ERROR', payload: error.message });
         dispatch({ type: 'SET_CATEGORIES', payload: [] });
       } else {
+        // A lista de categorias e subcategorias é salva no estado
         dispatch({ type: 'SET_CATEGORIES', payload: data || [] });
       }
     } catch (err) {
@@ -565,7 +570,16 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: 'SET_SCHEDULED_TRANSACTIONS', payload: [] });
     }
   }, [state.user, getTransactions, getCategories, getGoals, getScheduledTransactions]);
+  
+  // Lógica para separar categorias e subcategorias
+  const parentCategories = useMemo(() => {
+    return state.categories.filter(cat => !cat.parent_id);
+  }, [state.categories]);
 
+  const subcategories = useMemo(() => {
+    return state.categories.filter(cat => cat.parent_id);
+  }, [state.categories]);
+  
   const value = useMemo(() => ({
     ...state,
     dispatch,
@@ -590,6 +604,9 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     addScheduledTransaction,
     updateScheduledTransaction,
     deleteScheduledTransaction,
+    // Adicionado para expor as listas processadas
+    parentCategories,
+    subcategories
   }), [
     state,
     toggleHideValues,
@@ -613,6 +630,8 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     addScheduledTransaction,
     updateScheduledTransaction,
     deleteScheduledTransaction,
+    parentCategories,
+    subcategories
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
