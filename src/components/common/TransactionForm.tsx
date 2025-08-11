@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Transaction } from '@/types';
@@ -37,7 +37,7 @@ const transactionSchemaPF = z.object({
 });
 
 const transactionSchemaPJ = z.object({
-  type: z.enum(['income', 'expense']), // Usamos o mesmo seletor de tipo da PF
+  type: z.enum(['income', 'expense']),
   originalAmount: z.number({ required_error: "O valor original é obrigatório." }).min(0, "O valor deve ser maior ou igual a zero."),
   lateInterestAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
   paidAmount: z.number().min(0.01, "O valor pago é obrigatório e deve ser maior que zero.").optional(),
@@ -91,15 +91,14 @@ const GoalSelector = ({ form }) => {
 
 // Seletor de Categoria Hierárquico - Agora usado para PJ e PF
 const HierarchicalCategorySelector = ({ form, allCategories }) => {
-  // Observa o valor de categoryId para renderizar corretamente no modo de edição
   const categoryId = form.watch('categoryId');
 
-  // Determina a categoria pai selecionada ou a categoria principal se houver
+  // Encontra a categoria selecionada (pode ser pai ou subcategoria)
   const selectedCategory = React.useMemo(() => allCategories.find(c => c.id === categoryId), [categoryId, allCategories]);
-  const selectedParentId = selectedCategory?.parentId || selectedCategory?.id || '';
-  
-  // Determina se a categoria selecionada é uma subcategoria.
-  const isSubcategorySelected = !!selectedCategory?.parentId;
+
+  // Se a categoria selecionada é uma subcategoria, o `parentId` é o ID do pai.
+  // Se a categoria selecionada é um pai, o `id` é o ID do pai.
+  const selectedParentId = selectedCategory?.parentId || selectedCategory?.id;
 
   // Filtra categorias pai (sem parentId)
   const parentCategories = allCategories.filter(c => !c.parentId);
@@ -109,9 +108,27 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
   // Manipulador de mudança para a categoria principal
   const handleParentCategoryChange = (value) => {
     // Ao selecionar a categoria principal, define-a como a categoria padrão
-    // O usuário pode opcionalmente escolher uma subcategoria depois
+    // Isso garante que o campo `categoryId` não fique vazio.
     form.setValue('categoryId', value);
   };
+  
+  // Verifica se o ID selecionado no `categoryId` é de fato uma subcategoria
+  const isSubcategorySelected = !!selectedCategory?.parentId;
+
+  // Usa `useEffect` para resetar a subcategoria se a categoria pai mudar e não houver subcategorias
+  useEffect(() => {
+    // Se o ID atual é de uma subcategoria, mas o parent ID dela não é o ID pai selecionado,
+    // ou se o parent ID selecionado não tem subcategorias, resetamos o `categoryId` para o `selectedParentId`
+    const isCurrentIdAParent = parentCategories.some(c => c.id === categoryId);
+    const hasSubcategories = subcategories.length > 0;
+
+    if (!isCurrentIdAParent && !isSubcategorySelected) {
+      // Se a categoria selecionada não é uma subcategoria, e não é um pai,
+      // algo deu errado no estado. Reseta para o pai.
+      form.setValue('categoryId', selectedParentId);
+    }
+  }, [selectedParentId, subcategories.length, form, categoryId, isSubcategorySelected]);
+
 
   return (
     <>
@@ -148,7 +165,7 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
               onValueChange={field.onChange}
               // Apenas exibe o valor da subcategoria se o ID do campo for de uma subcategoria.
               // Caso contrário, usa string vazia para exibir o placeholder.
-              value={isSubcategorySelected ? field.value : ''} 
+              value={isSubcategorySelected ? field.value : ''}
               disabled={!selectedParentId || subcategories.length === 0}
             >
               <FormControl>
@@ -210,7 +227,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   });
 
   const onSubmit = async (data: any) => {
-    // Para PJ, o tipo já está no `data`
     const finalData = {
       ...initialData,
       ...data,
@@ -234,7 +250,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   useEffect(() => {
     if (open) {
-      // Mapeamento dos antigos tipos PJ para o novo campo 'type'
       const determineType = (transactionType) => {
         if (transactionType?.includes('inflow')) return 'income';
         if (transactionType?.includes('outflow')) return 'expense';
@@ -243,7 +258,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
       const defaultValues = {
         ...initialData,
-        // Agora, para PJ, o campo 'type' é extraído do `initialData.type`
         type: personType === 'PF' 
           ? initialData?.type || defaultType
           : determineType(initialData?.type),
@@ -272,6 +286,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden">
         <DialogHeader className="bg-background p-6 border-b">
           <DialogTitle className="text-xl">{dialogTitle}</DialogTitle>
+          <DialogDescription>
+            {mode === 'create' ? 'Preencha os detalhes para adicionar uma nova transação.' : 'Edite os detalhes da transação selecionada.'}
+          </DialogDescription>
         </DialogHeader>
         
         <div className="p-6 max-h-[calc(85vh-120px)] overflow-y-auto">
