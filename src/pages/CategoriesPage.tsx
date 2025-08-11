@@ -32,10 +32,11 @@ type ViewMode = 'mainCategories' | 'subcategories';
 const CategoriesPage: React.FC = () => {
   const { t } = usePreferences();
   const { categories, isLoading, addCategory, updateCategory, deleteCategory } = useApp();
-  
+
+  // Estados para controlar a visualização e o formulário
   const [viewMode, setViewMode] = useState<ViewMode>('mainCategories');
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [initialFormData, setInitialFormData] = useState<Category | null>(null);
   const [categoryType, setCategoryType] = useState<'expense' | 'income'>('expense');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
@@ -53,17 +54,29 @@ const CategoriesPage: React.FC = () => {
   }, [categories, selectedParentCategory]);
 
   const handleAddCategory = () => {
-    setEditingCategory(null);
+    // Ao adicionar uma categoria principal, o initialData é nulo e o tipo é o da aba atual
+    setInitialFormData(null);
     setCategoryFormOpen(true);
   };
 
   const handleAddSubcategory = () => {
-    setEditingCategory(null);
+    // Ao adicionar uma subcategoria, o initialData é nulo, mas herdamos o parentId e o tipo
+    if (!selectedParentCategory) return;
+    const newSubcategoryData = {
+      name: '', // Nome inicial vazio
+      type: selectedParentCategory.type,
+      color: '#000000',
+      icon: 'LayoutList',
+      is_default: false,
+      parent_id: selectedParentCategory.id,
+    } as Omit<Category, 'id'>;
+    setInitialFormData(newSubcategoryData as Category);
     setCategoryFormOpen(true);
   };
 
   const handleEditCategory = (category: Category) => {
-    setEditingCategory(category);
+    // Ao editar, passamos a categoria completa para o formulário
+    setInitialFormData(category);
     setCategoryFormOpen(true);
   };
 
@@ -85,16 +98,15 @@ const CategoriesPage: React.FC = () => {
     }
   };
 
-  const handleSaveCategory = async (category: Omit<Category, 'id'> | Category) => {
+  const handleSaveCategory = async (categoryData: Omit<Category, 'id'> | Category) => {
     try {
-      if ('id' in category) {
-        await updateCategory(category as Category);
+      if ('id' in categoryData) {
+        // Se a categoria tem ID, é uma edição
+        await updateCategory(categoryData as Category);
       } else {
-        await addCategory({
-          ...category,
-          type: categoryType,
-          parent_id: viewMode === 'subcategories' ? selectedParentCategory?.id || null : null,
-        });
+        // Se não tem ID, é uma nova categoria
+        // O parent_id e o type já estão no categoryData, definidos no handleAdd*
+        await addCategory(categoryData);
       }
     } catch (error) {
       console.error("Erro ao salvar categoria:", error);
@@ -121,13 +133,16 @@ const CategoriesPage: React.FC = () => {
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">{t('categories.title')}</h1>
             <div className="flex space-x-2">
-              <Button 
+              <Button
                 variant={viewMode === 'mainCategories' ? 'default' : 'outline'}
-                onClick={() => setViewMode('mainCategories')}
+                onClick={() => {
+                  setViewMode('mainCategories');
+                  setSelectedParentCategory(null);
+                }}
               >
                 Categorias
               </Button>
-              <Button 
+              <Button
                 variant={viewMode === 'subcategories' ? 'default' : 'outline'}
                 onClick={() => setViewMode('subcategories')}
               >
@@ -135,9 +150,9 @@ const CategoriesPage: React.FC = () => {
               </Button>
             </div>
           </div>
-          
+
           <Separator />
-          
+
           {/* Controles de filtro e botão de ação */}
           <div className="flex justify-between items-center">
             {viewMode === 'subcategories' && selectedParentCategory ? (
@@ -166,7 +181,7 @@ const CategoriesPage: React.FC = () => {
               </Tabs>
             )}
 
-            <Button 
+            <Button
               onClick={viewMode === 'mainCategories' ? handleAddCategory : handleAddSubcategory}
               disabled={viewMode === 'subcategories' && !selectedParentCategory}
             >
@@ -174,7 +189,7 @@ const CategoriesPage: React.FC = () => {
               {viewMode === 'mainCategories' ? 'Adicionar Categoria' : 'Adicionar Subcategoria'}
             </Button>
           </div>
-          
+
           {/* Seção principal de conteúdo (lista de categorias) */}
           <div className="mt-4">
             {viewMode === 'mainCategories' ? (
@@ -272,11 +287,27 @@ const CategoriesPage: React.FC = () => {
         <CategoryForm
           open={categoryFormOpen}
           onOpenChange={setCategoryFormOpen}
-          initialData={editingCategory}
+          initialData={initialFormData}
           onSave={handleSaveCategory}
-          categoryType={categoryType}
-          parentId={viewMode === 'subcategories' ? selectedParentCategory?.id : null}
-          parentName={selectedParentCategory?.name}
+          categoryType={
+            initialFormData
+              ? initialFormData.type
+              : viewMode === 'subcategories' && selectedParentCategory
+              ? selectedParentCategory.type
+              : categoryType
+          }
+          parentId={
+            initialFormData
+              ? initialFormData.parent_id
+              : viewMode === 'subcategories'
+              ? selectedParentCategory?.id || null
+              : null
+          }
+          parentName={
+            initialFormData
+              ? categories.find(cat => cat.id === initialFormData.parent_id)?.name || null
+              : selectedParentCategory?.name
+          }
         />
 
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
