@@ -54,23 +54,33 @@ const CategoriesPage: React.FC = () => {
   }, [categories, selectedParentCategory]);
 
   const handleAddCategory = () => {
-    // Ao adicionar uma categoria principal, o initialData é nulo e o tipo é o da aba atual
-    setInitialFormData(null);
+    // Ao adicionar uma categoria principal, inicializamos com os valores padrão
+    // O ID vazio indica que é uma nova categoria
+    setInitialFormData({
+      id: '',
+      name: '',
+      type: categoryType,
+      color: '#000000',
+      icon: 'LayoutList',
+      is_default: false,
+      parent_id: null,
+    } as Category);
     setCategoryFormOpen(true);
   };
 
   const handleAddSubcategory = () => {
-    // Ao adicionar uma subcategoria, o initialData é nulo, mas herdamos o parentId e o tipo
+    // Ao adicionar uma subcategoria, herdamos o parentId e o tipo da categoria principal
     if (!selectedParentCategory) return;
-    const newSubcategoryData = {
-      name: '', // Nome inicial vazio
+    // O ID vazio indica que é uma nova categoria
+    setInitialFormData({
+      id: '',
+      name: '',
       type: selectedParentCategory.type,
       color: '#000000',
       icon: 'LayoutList',
       is_default: false,
       parent_id: selectedParentCategory.id,
-    } as Omit<Category, 'id'>;
-    setInitialFormData(newSubcategoryData as Category);
+    } as Category);
     setCategoryFormOpen(true);
   };
 
@@ -100,18 +110,23 @@ const CategoriesPage: React.FC = () => {
 
   const handleSaveCategory = async (categoryData: Omit<Category, 'id'> | Category) => {
     try {
-      if ('id' in categoryData) {
-        // Se a categoria tem ID, é uma edição
-        await updateCategory(categoryData as Category);
+      // Verifica se o objeto de dados possui um id válido para decidir se é uma edição
+      if ('id' in categoryData && categoryData.id) {
+        // Se a categoria tem um ID, é uma edição.
+        // Desestruturamos para separar o ID dos dados a serem atualizados.
+        const { id, ...dataToUpdate } = categoryData;
+        await updateCategory(id, dataToUpdate);
       } else {
-        // Se não tem ID, é uma nova categoria
-        // O parent_id e o type já estão no categoryData, definidos no handleAdd*
-        await addCategory(categoryData);
+        // Se não tem ID, é uma nova categoria.
+        // Removemos o campo 'id' antes de adicionar.
+        const { id, ...dataToSave } = categoryData;
+        await addCategory(dataToSave);
       }
     } catch (error) {
       console.error("Erro ao salvar categoria:", error);
     } finally {
       setCategoryFormOpen(false);
+      setInitialFormData(null); // Limpa o estado do formulário após a operação
     }
   };
 
