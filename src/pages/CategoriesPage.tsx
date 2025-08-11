@@ -36,7 +36,7 @@ const CategoriesPage: React.FC = () => {
   // Estados para controlar a visualização e o formulário
   const [viewMode, setViewMode] = useState<ViewMode>('mainCategories');
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
-  const [initialFormData, setInitialFormData] = useState<Category | null>(null);
+  const [initialFormData, setInitialFormData] = useState<Partial<Category> | null>(null);
   const [categoryType, setCategoryType] = useState<'expense' | 'income'>('expense');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
@@ -53,43 +53,42 @@ const CategoriesPage: React.FC = () => {
     return categories.filter(cat => cat.parent_id === selectedParentCategory.id);
   }, [categories, selectedParentCategory]);
 
+  // Função para abrir o formulário para adicionar uma nova categoria principal
   const handleAddCategory = () => {
-    // Ao adicionar uma categoria principal, inicializamos com os valores padrão
-    // O ID vazio indica que é uma nova categoria
+    // Inicializamos o formulário com dados padrão para uma nova categoria
     setInitialFormData({
-      id: '',
       name: '',
       type: categoryType,
       color: '#000000',
       icon: 'LayoutList',
       is_default: false,
       parent_id: null,
-    } as Category);
+    });
     setCategoryFormOpen(true);
   };
 
+  // Função para abrir o formulário para adicionar uma nova subcategoria
   const handleAddSubcategory = () => {
-    // Ao adicionar uma subcategoria, herdamos o parentId e o tipo da categoria principal
+    // Inicializamos o formulário herdando os dados do pai
     if (!selectedParentCategory) return;
-    // O ID vazio indica que é uma nova categoria
     setInitialFormData({
-      id: '',
       name: '',
       type: selectedParentCategory.type,
       color: '#000000',
       icon: 'LayoutList',
       is_default: false,
       parent_id: selectedParentCategory.id,
-    } as Category);
+    });
     setCategoryFormOpen(true);
   };
 
+  // Função para abrir o formulário para editar uma categoria existente
   const handleEditCategory = (category: Category) => {
-    // Ao editar, passamos a categoria completa para o formulário
     setInitialFormData(category);
     setCategoryFormOpen(true);
   };
 
+  // Função para confirmar a exclusão de uma categoria
   const handleDeleteCategory = (category: Category) => {
     setCategoryToDelete(category);
     setDeleteDialogOpen(true);
@@ -108,18 +107,19 @@ const CategoriesPage: React.FC = () => {
     }
   };
 
-  const handleSaveCategory = async (categoryData: Omit<Category, 'id'> | Category) => {
+  // Função para salvar uma categoria (adição ou edição)
+  const handleSaveCategory = async (categoryData: Partial<Category>) => {
     try {
-      // Verifica se o objeto de dados possui um id válido para decidir se é uma edição
-      if ('id' in categoryData && categoryData.id) {
-        // Se a categoria tem um ID, é uma edição.
-        // Desestruturamos para separar o ID dos dados a serem atualizados.
+      // Verifica se a categoria já tem um ID, indicando que é uma edição
+      if (categoryData.id) {
+        // Separa o ID dos demais dados para a requisição de PATCH
         const { id, ...dataToUpdate } = categoryData;
         await updateCategory(id, dataToUpdate);
       } else {
-        // Se não tem ID, é uma nova categoria.
-        // Removemos o campo 'id' antes de adicionar.
-        const { id, ...dataToSave } = categoryData;
+        // Se não tem ID, é uma nova categoria. Removemos o ID nulo/vazio
+        // para a requisição de POST.
+        const dataToSave = { ...categoryData };
+        delete dataToSave.id;
         await addCategory(dataToSave);
       }
     } catch (error) {
@@ -304,25 +304,12 @@ const CategoriesPage: React.FC = () => {
           onOpenChange={setCategoryFormOpen}
           initialData={initialFormData}
           onSave={handleSaveCategory}
-          categoryType={
-            initialFormData
-              ? initialFormData.type
-              : viewMode === 'subcategories' && selectedParentCategory
-              ? selectedParentCategory.type
-              : categoryType
-          }
-          parentId={
-            initialFormData
-              ? initialFormData.parent_id
-              : viewMode === 'subcategories'
-              ? selectedParentCategory?.id || null
-              : null
-          }
-          parentName={
-            initialFormData
-              ? categories.find(cat => cat.id === initialFormData.parent_id)?.name || null
-              : selectedParentCategory?.name
-          }
+          // Essas props agora são determinadas diretamente pelo initialFormData ou pela navegação
+          categoryType={initialFormData?.type || categoryType}
+          parentId={initialFormData?.parent_id || selectedParentCategory?.id || null}
+          parentName={initialFormData?.parent_id
+            ? categories.find(cat => cat.id === initialFormData.parent_id)?.name || null
+            : selectedParentCategory?.name}
         />
 
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
