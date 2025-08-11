@@ -1,160 +1,173 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Transaction } from '@/types';
-import { createTransactionSchema, TransactionFormValues } from '@/schemas/transactionSchema';
-import { useAppContext } from '@/contexts/AppContext';
-import { usePreferences } from '@/contexts/PreferencesContext';
-import { getCategoriesByType } from '@/services/categoryService';
+import { z } from 'zod';
+import { lucideReact as icons } from 'lucide-react';
 
-interface UseTransactionFormProps {
-  initialData?: Transaction;
-  mode: 'create' | 'edit';
-  onComplete: () => void;
-  defaultType?: 'income' | 'expense';
+// Dados mockados para simular categorias e subcategorias
+// No seu sistema, esses dados viriam do seu AppContext
+const mockCategories = [
+  { id: '1', name: 'Alimentação', parent_id: null, type: 'expense', color: '#ff6b6b' },
+  { id: '2', name: 'Transporte', parent_id: null, type: 'expense', color: '#4ecdc4' },
+  { id: '3', name: 'Moradia', parent_id: null, type: 'expense', color: '#45b7d1' },
+  { id: '4', name: 'Supermercado', parent_id: '1', type: 'expense', color: '#ff6b6b' },
+  { id: '5', name: 'Restaurante', parent_id: '1', type: 'expense', color: '#ff6b6b' },
+  { id: '6', name: 'Combustível', parent_id: '2', type: 'expense', color: '#4ecdc4' },
+  { id: '7', name: 'Seguro', parent_id: '2', type: 'expense', color: '#4ecdc4' },
+  { id: '8', name: 'Aluguel', parent_id: '3', type: 'expense', color: '#45b7d1' },
+  { id: '9', name: 'Contas', parent_id: '3', type: 'expense', color: '#45b7d1' },
+];
+
+// O esquema de validação corrigido (do seu Canvas)
+export const createTransactionSchema = z.object({
+  type: z.enum(['income', 'expense']),
+  amount: z.coerce.number().positive(),
+  category: z.string().min(1),
+  subcategory: z.string().optional(),
+  description: z.string().optional(),
+  date: z.string().min(1),
+  goalId: z.union([z.string().min(1), z.literal("none"), z.null(), z.undefined()]).optional(),
+});
+
+// Tipos do formulário
+export type TransactionFormValues = z.infer<typeof createTransactionSchema>;
+
+// Adaptando o seu hook useTransactionForm para este exemplo
+const useTransactionForm = () => {
+    const [selectedType, setSelectedType] = useState<'income' | 'expense'>('expense');
+    const form = useForm<TransactionFormValues>({
+        resolver: zodResolver(createTransactionSchema),
+        defaultValues: {
+            type: 'expense',
+            amount: 0,
+            category: '',
+            subcategory: '',
+            date: new Date().toISOString().split('T')[0],
+            goalId: undefined,
+        }
+    });
+
+    const onSubmit = (values: TransactionFormValues) => {
+        console.log("Formulário enviado com sucesso!", values);
+        // Aqui a lógica para salvar a transação
+    };
+
+    return { form, selectedType, onSubmit, setSelectedType };
 }
 
-export const useTransactionForm = ({ 
-  initialData, 
-  mode, 
-  onComplete, 
-  defaultType = 'expense' 
-}: UseTransactionFormProps) => {
-  const { addTransaction, updateTransaction, getGoals } = useAppContext();
-  const { t } = usePreferences();
-  const [selectedType, setSelectedType] = useState<'income' | 'expense'>(
-    initialData?.type || defaultType
-  );
-
-  const transactionSchema = createTransactionSchema(t);
+export default function App() {
+  const { form, selectedType, onSubmit, setSelectedType } = useTransactionForm();
+  const { register, handleSubmit, setValue, watch } = form;
   
-  // Get default category for selected type
-  const getDefaultCategory = async () => {
-    if (initialData?.category_id) return initialData.category_id;
-    const categories = await getCategoriesByType(selectedType);
-    return categories.length > 0 ? categories[0].id : '';
-  };
+  // Watch the value of the 'category' field
+  const selectedParentCategory = watch('category');
 
-  // Initialize form with proper defaults
-  const form = useForm<TransactionFormValues>({
-    resolver: zodResolver(transactionSchema),
-    defaultValues: {
-      type: initialData?.type || defaultType,
-      amount: initialData?.amount || 0,
-      category: initialData?.category_id || '',
-      description: initialData?.description || '',
-      date: initialData?.date 
-        ? new Date(initialData.date).toISOString().split('T')[0] 
-        : new Date().toISOString().split('T')[0],
-      goalId: initialData?.goalId || undefined,
-    },
-  });
-
-  // Simple type change handler that doesn't cause infinite loops
-  const handleTypeChange = async (type: 'income' | 'expense') => {
-    if (type !== selectedType) {
-      setSelectedType(type);
-      
-      // Update category when type changes
-      const categories = await getCategoriesByType(type);
-      if (categories.length > 0) {
-        form.setValue('category', categories[0].id, { shouldValidate: true });
-      }
-    }
-  };
-
-  const onSubmit = async (values: TransactionFormValues) => {
-    console.log("Form submitted with values:", values);
-    console.log("Form validation state:", form.formState);
-    
-    // Convert "none" value and null back to undefined for goalId
-    const processedValues = {
-      ...values,
-      goalId: values.goalId === "none" || values.goalId === null ? undefined : values.goalId
-    };
-    
-    try {
-      if (mode === 'create') {
-        console.log("Creating transaction...");
-        await addTransaction({
-          type: processedValues.type,
-          amount: processedValues.amount,
-          category_id: processedValues.category,
-          description: processedValues.description || '',
-          date: new Date(processedValues.date).toISOString(),
-          goalId: processedValues.goalId,
-          // Removido o campo 'category' redundante.
-          // A função de busca de transações (`useGetTransactions`) deve
-          // agora se encarregar de fazer o JOIN com a tabela de categorias.
-        });
-        
-        console.log("Transaction created successfully, refreshing data...");
-      } else if (initialData) {
-        console.log("Updating transaction...");
-        await updateTransaction(initialData.id, {
-          type: processedValues.type,
-          amount: processedValues.amount,
-          category_id: processedValues.category,
-          description: processedValues.description || '',
-          date: new Date(processedValues.date).toISOString(),
-          goalId: processedValues.goalId,
-        });
-        
-        console.log("Transaction updated successfully, refreshing data...");
-      }
-
-      // AppContext automatically updates state after add/update operations
-      console.log("Transaction operation completed successfully");
-      onComplete();
-    } catch (error) {
-      console.error("Error saving transaction:", error);
-      throw error;
-    }
-  };
-
-  // Set default category when form loads
-  useEffect(() => {
-    const loadDefaultCategory = async () => {
-      if (!form.getValues('category')) {
-        const defaultCategory = await getDefaultCategory();
-        if (defaultCategory) {
-          form.setValue('category', defaultCategory);
-        }
-      }
-    };
-    
-    loadDefaultCategory();
+  const parentCategories = useMemo(() => {
+    return mockCategories.filter(cat => cat.parent_id === null && cat.type === selectedType);
   }, [selectedType]);
 
-  // Sync form when initialData or defaultType changes
-  useEffect(() => {
-    if (initialData) {
-      setSelectedType(initialData.type);
-      form.reset({
-        type: initialData.type,
-        amount: initialData.amount,
-        category: initialData.category_id || '',
-        description: initialData.description || '',
-        date: new Date(initialData.date).toISOString().split('T')[0],
-        goalId: initialData.goalId,
-      });
-    } else {
-      setSelectedType(defaultType);
-      form.reset({
-        type: defaultType,
-        amount: 0,
-        category: '',
-        description: '',
-        date: new Date().toISOString().split('T')[0],
-        goalId: undefined,
-      });
-    }
-  }, [initialData, defaultType]);
+  const subcategories = useMemo(() => {
+    if (!selectedParentCategory) return [];
+    return mockCategories.filter(cat => cat.parent_id === selectedParentCategory);
+  }, [selectedParentCategory]);
 
-  return {
-    form,
-    selectedType,
-    handleTypeChange,
-    onSubmit
+  // Handle the change for parent category and reset subcategory
+  const handleParentCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newParentId = e.target.value;
+    setValue('category', newParentId, { shouldValidate: true });
+    // Reset the subcategory when the parent category changes
+    setValue('subcategory', '', { shouldValidate: true });
   };
-};
+  
+  // Update the form's type when the user clicks the buttons
+  useEffect(() => {
+    form.setValue('type', selectedType);
+  }, [selectedType, form]);
+
+  return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 antialiased">
+      <div className="bg-gray-800 text-gray-200 p-8 rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Editar Transação (PF)</h2>
+          <button className="text-gray-400 hover:text-white transition-colors">
+            <icons.X size={24} />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Botões de tipo (Receita/Despesa) */}
+          <div className="flex justify-center p-1 bg-gray-700 rounded-xl space-x-2">
+            <button
+              type="button"
+              onClick={() => setSelectedType('income')}
+              className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-colors ${selectedType === 'income' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-600'}`}
+            >
+              Receita
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedType('expense')}
+              className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-colors ${selectedType === 'expense' ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-gray-600'}`}
+            >
+              Despesa
+            </button>
+          </div>
+
+          {/* Campo Categoria Principal */}
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium mb-2">
+              Categoria Principal
+            </label>
+            <select
+              id="category"
+              {...register('category')}
+              onChange={handleParentCategoryChange}
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="" disabled>Selecione a categoria principal</option>
+              {parentCategories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Campo Subcategoria (opcional) */}
+          {selectedParentCategory && subcategories.length > 0 && (
+            <div>
+              <label htmlFor="subcategory" className="block text-sm font-medium mb-2">
+                Subcategoria (Opcional)
+              </label>
+              <select
+                id="subcategory"
+                {...register('subcategory')}
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Selecione uma subcategoria</option>
+                {subcategories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Botões de Ação */}
+          <div className="flex justify-end space-x-4 pt-4">
+            <button
+              type="button"
+              className="px-6 py-2 bg-gray-600 text-gray-200 rounded-lg font-semibold hover:bg-gray-500 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg font-semibold shadow-lg hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!selectedParentCategory}
+            >
+              Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
