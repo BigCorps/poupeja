@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,7 +20,7 @@ export const useTransactionForm = ({
   onComplete, 
   defaultType = 'expense' 
 }: UseTransactionFormProps) => {
-  const { addTransaction, updateTransaction, getTransactions, getGoals } = useAppContext();
+  const { addTransaction, updateTransaction, getGoals } = useAppContext();
   const { t } = usePreferences();
   const [selectedType, setSelectedType] = useState<'income' | 'expense'>(
     initialData?.type || defaultType
@@ -84,7 +83,9 @@ export const useTransactionForm = ({
           description: processedValues.description || '',
           date: new Date(processedValues.date).toISOString(),
           goalId: processedValues.goalId,
-          category: '',
+          // Removido o campo 'category' redundante.
+          // A função de busca de transações (`useGetTransactions`) deve
+          // agora se encarregar de fazer o JOIN com a tabela de categorias.
         });
         
         console.log("Transaction created successfully, refreshing data...");
@@ -103,7 +104,6 @@ export const useTransactionForm = ({
       }
 
       // AppContext automatically updates state after add/update operations
-      // No need to manually reload data here
       console.log("Transaction operation completed successfully");
       onComplete();
     } catch (error) {
