@@ -95,16 +95,11 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
   const categoryId = form.watch('categoryId');
 
   // Determina a categoria pai selecionada ou a categoria principal se houver
-  const selectedParentId = React.useMemo(() => {
-    if (categoryId) {
-      const selectedCategory = allCategories.find(c => c.id === categoryId);
-      if (selectedCategory) {
-        return selectedCategory.parentId || selectedCategory.id;
-      }
-    }
-    // Retorna a categoria pai do estado ou uma string vazia como padrão
-    return '';
-  }, [categoryId, allCategories]);
+  const selectedCategory = React.useMemo(() => allCategories.find(c => c.id === categoryId), [categoryId, allCategories]);
+  const selectedParentId = selectedCategory?.parentId || selectedCategory?.id || '';
+  
+  // Determina se a categoria selecionada é uma subcategoria.
+  const isSubcategorySelected = !!selectedCategory?.parentId;
 
   // Filtra categorias pai (sem parentId)
   const parentCategories = allCategories.filter(c => !c.parentId);
@@ -151,7 +146,9 @@ const HierarchicalCategorySelector = ({ form, allCategories }) => {
             <FormLabel>Subcategoria (Opcional)</FormLabel>
             <Select
               onValueChange={field.onChange}
-              value={field.value}
+              // Apenas exibe o valor da subcategoria se o ID do campo for de uma subcategoria.
+              // Caso contrário, usa string vazia para exibir o placeholder.
+              value={isSubcategorySelected ? field.value : ''} 
               disabled={!selectedParentId || subcategories.length === 0}
             >
               <FormControl>
