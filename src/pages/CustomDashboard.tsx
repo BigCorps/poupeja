@@ -1,6 +1,6 @@
 import React from 'react';
-// Importação correta do componente HtmlJsSectionManager
-import HtmlJsSectionManager from '../components/htmljs/HtmlJsSectionManager';
+// Importação do componente que gerencia todas as seções
+import HtmlJsSectionManager from './components/htmljs/HtmlJsSectionManager';
 
 // Este componente é a página do seu dashboard
 const ExampleDashboardPage = () => {
@@ -214,7 +214,7 @@ const ExampleDashboardPage = () => {
             background-color: #f8fafc;
             padding: 24px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
           }
           .quick-form {
             display: grid;
@@ -623,11 +623,10 @@ const ExampleDashboardPage = () => {
     }
   ];
 
-  // Função para gerenciar as mensagens recebidas das seções HTML/JS
   const handleSectionMessage = (sectionId, message) => {
     console.log(`Mensagem da seção ${sectionId}:`, message);
     
-    // Você pode adicionar mais lógica aqui para reagir às mensagens
+    // Adicione a lógica de reação à mensagem aqui
     switch (message.type) {
       case 'calculation_completed':
         console.log('Cálculo completado na calculadora.');
@@ -651,7 +650,6 @@ const ExampleDashboardPage = () => {
         <p className="text-gray-600 mt-2">Suas ferramentas financeiras personalizadas</p>
       </div>
 
-      {/* Este é o componente que vai renderizar todas as seções definidas acima */}
       <HtmlJsSectionManager
         sections={sections}
         onSectionMessage={handleSectionMessage}
