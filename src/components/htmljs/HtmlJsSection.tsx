@@ -14,14 +14,12 @@ interface HtmlJsSectionProps {
 }
 
 interface SupabaseBridge {
-  // Métodos seguros para acesso ao Supabase
   getCurrentUser: () => Promise<any>;
   getSession: () => Promise<any>;
   executeQuery: (table: string, query: any) => Promise<any>;
   insertData: (table: string, data: any) => Promise<any>;
   updateData: (table: string, id: string, data: any) => Promise<any>;
   deleteData: (table: string, id: string) => Promise<any>;
-  // Métodos do contexto da aplicação
   getTransactions: () => Promise<any>;
   getCategories: () => Promise<any>;
   getGoals: () => Promise<any>;
@@ -44,7 +42,6 @@ const HtmlJsSection: React.FC<HtmlJsSectionProps> = ({
   const [error, setError] = useState<string | null>(null);
   const appContext = useApp();
 
-  // Criar bridge do Supabase se necessário
   const createSupabaseBridge = useCallback((): SupabaseBridge => {
     return {
       getCurrentUser: async () => {
@@ -75,7 +72,6 @@ const HtmlJsSection: React.FC<HtmlJsSectionProps> = ({
         if (error) throw error;
         return true;
       },
-      // Métodos do contexto da aplicação
       getTransactions: appContext.getTransactions,
       getCategories: appContext.getCategories,
       getGoals: appContext.getGoals,
@@ -85,13 +81,10 @@ const HtmlJsSection: React.FC<HtmlJsSectionProps> = ({
     };
   }, [appContext]);
 
-  // Sistema de mensagens
   const sendMessage = useCallback((message: any) => {
     if (onMessage) {
       onMessage({ sectionId, ...message });
     }
-    
-    // Também enviar para o contexto global da seção
     const event = new CustomEvent(`htmljs-message-${sectionId}`, {
       detail: message
     });
@@ -110,33 +103,25 @@ const HtmlJsSection: React.FC<HtmlJsSectionProps> = ({
     };
   }, [sectionId]);
 
-  // Carregar e executar o conteúdo HTML/JS
   useEffect(() => {
     if (!containerRef.current) return;
 
     try {
-      // Sanitizar o HTML
       const sanitizedHtml = DOMPurify.sanitize(htmlContent, {
         ADD_TAGS: ['script'],
         ADD_ATTR: ['onclick', 'onload', 'onerror']
       });
 
-      // Inserir HTML sanitizado
       containerRef.current.innerHTML = sanitizedHtml;
 
-      // Criar namespace para a seção
       const sectionNamespace = `HtmlJsSection_${sectionId}`;
       
-      // Expor APIs para a seção HTML/JS
       (window as any)[sectionNamespace] = {
-        // Bridge do Supabase (se habilitado)
         ...(supabaseAccess ? { supabase: createSupabaseBridge() } : {}),
         
-        // Sistema de mensagens
         sendMessage,
         receiveMessage,
         
-        // Dados do contexto da aplicação
         appData: {
           user: appContext.user,
           transactions: appContext.transactions,
@@ -146,7 +131,6 @@ const HtmlJsSection: React.FC<HtmlJsSectionProps> = ({
           accountType: appContext.accountType,
         },
         
-        // Utilitários
         utils: {
           formatCurrency: (value: number) => {
             return new Intl.NumberFormat('pt-BR', {
@@ -160,25 +144,18 @@ const HtmlJsSection: React.FC<HtmlJsSectionProps> = ({
         }
       };
 
-      // Executar JavaScript se fornecido
       if (jsContent) {
-        // Criar um script element para execução
         const script = document.createElement('script');
         script.textContent = `
           (function() {
-            // Disponibilizar o namespace da seção
             const section = window.${sectionNamespace};
-            
-            // Código do usuário
             ${jsContent}
           })();
         `;
         
-        // Adicionar script ao container
         containerRef.current.appendChild(script);
       }
 
-      // Executar scripts inline no HTML
       const scripts = containerRef.current.querySelectorAll('script');
       scripts.forEach((script) => {
         if (script.textContent) {
@@ -202,7 +179,6 @@ const HtmlJsSection: React.FC<HtmlJsSectionProps> = ({
       setIsLoaded(false);
     }
 
-    // Cleanup
     return () => {
       const sectionNamespace = `HtmlJsSection_${sectionId}`;
       delete (window as any)[sectionNamespace];
@@ -231,4 +207,3 @@ const HtmlJsSection: React.FC<HtmlJsSectionProps> = ({
 };
 
 export default HtmlJsSection;
-
