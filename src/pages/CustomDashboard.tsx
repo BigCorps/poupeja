@@ -1,5 +1,5 @@
 import React from 'react';
-import HtmlJsSectionManager from './HtmlJsSectionManager';
+import HtmlJsSectionManager from '../components/htmljs/HtmlJsSectionManager';
 
 // Exemplo de como usar o HtmlJsSectionManager no dashboard
 const ExampleDashboardPage = () => {
