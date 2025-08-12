@@ -36,6 +36,7 @@ interface AppState {
   customEndDate: string | null;
   filteredTransactions: Transaction[];
   accountType: 'PF' | 'PJ';
+  isAuthReady: boolean; // Adicionado para indicar que a autenticação inicial foi verificada
 }
 
 interface AppContextType extends AppState {
@@ -61,7 +62,6 @@ interface AppContextType extends AppState {
   updateScheduledTransaction: (scheduledTransaction: ScheduledTransaction) => Promise<void>;
   deleteScheduledTransaction: (id: string) => Promise<void>;
   setAccountType: (accountType: 'PF' | 'PJ') => void;
-  // Adicionado para expor as categorias já processadas
   parentCategories: Category[];
   subcategories: Category[];
 }
@@ -80,6 +80,7 @@ type AppAction =
   | { type: 'SET_CUSTOM_DATE_RANGE'; payload: { startDate: string; endDate: string } }
   | { type: 'SET_FILTERED_TRANSACTIONS'; payload: Transaction[] }
   | { type: 'SET_ACCOUNT_TYPE'; payload: 'PF' | 'PJ' }
+  | { type: 'SET_AUTH_READY'; payload: boolean }
   | { type: 'ADD_TRANSACTION'; payload: Transaction }
   | { type: 'UPDATE_TRANSACTION'; payload: Transaction }
   | { type: 'DELETE_TRANSACTION'; payload: string }
@@ -92,6 +93,7 @@ type AppAction =
   | { type: 'ADD_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
   | { type: 'UPDATE_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
   | { type: 'DELETE_SCHEDULED_TRANSACTION'; payload: string };
+
 
 const initialAppState: AppState = {
   transactions: [],
@@ -108,6 +110,7 @@ const initialAppState: AppState = {
   customEndDate: null,
   filteredTransactions: [],
   accountType: 'PF', // Default to PF
+  isAuthReady: false, // Inicia como falso
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -144,6 +147,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, filteredTransactions: action.payload };
     case 'SET_ACCOUNT_TYPE':
       return { ...state, accountType: action.payload };
+    case 'SET_AUTH_READY':
+        return { ...state, isAuthReady: action.payload };
     case 'ADD_TRANSACTION':
       return { ...state, transactions: [action.payload, ...state.transactions] };
     case 'UPDATE_TRANSACTION':
@@ -211,7 +216,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
   
   const getTransactions = useCallback(async () => {
     try {
-      if (!state.user) return; // ✅ Adicionado para evitar chamadas de API desnecessárias
+      if (!state.user) return;
       dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase.from('poupeja_transactions')
         .select(`
@@ -242,9 +247,8 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const getCategories = useCallback(async () => {
     try {
-      if (!state.user) return; // ✅ Adicionado para evitar chamadas de API desnecessárias
+      if (!state.user) return;
       dispatch({ type: 'SET_LOADING', payload: true });
-      // O `parent_id` já está sendo selecionado corretamente com `*`
       const { data, error } = await supabase.from('poupeja_categories')
         .select('*')
         .or(`user_id.eq.${state.user.id},is_default.eq.true`);
@@ -254,7 +258,6 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         dispatch({ type: 'SET_ERROR', payload: error.message });
         dispatch({ type: 'SET_CATEGORIES', payload: [] });
       } else {
-        // A lista de categorias e subcategorias é salva no estado
         dispatch({ type: 'SET_CATEGORIES', payload: data || [] });
       }
     } catch (err) {
@@ -268,7 +271,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const getGoals = useCallback(async (): Promise<Goal[]> => {
     try {
-      if (!state.user) return []; // ✅ Adicionado para evitar chamadas de API desnecessárias
+      if (!state.user) return [];
       dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase
         .from('poupeja_goals')
@@ -277,7 +280,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) throw error;
       
-      const goals = (data || []).map(transformGoal); // Garante que a transformação é feita em um array
+      const goals = (data || []).map(transformGoal);
       dispatch({ type: 'SET_GOALS', payload: goals });
       return goals;
     } catch (error) {
@@ -292,7 +295,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const getScheduledTransactions = useCallback(async (): Promise<void> => {
     try {
-      if (!state.user) return; // ✅ Adicionado para evitar chamadas de API desnecessárias
+      if (!state.user) return;
       dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase.from('poupeja_scheduled_transactions')
         .select('*')
@@ -310,7 +313,6 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state.user]);
 
-  // Ações de manipulação do estado (transações, categorias, etc.)
   const addTransaction = useCallback(async (transaction: Transaction) => {
     if (!state.user) return;
     try {
@@ -515,7 +517,7 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (error) throw error;
-      dispatch({ type: 'UPDATE_SCHEDULEED_TRANSACTION', payload: data });
+      dispatch({ type: 'UPDATE_SCHEDULED_TRANSACTION', payload: data });
     } catch (err) {
       console.error('Error updating scheduled transaction:', err);
       dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar transação agendada.' });
@@ -548,11 +550,10 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         } else {
           dispatch({ type: 'SET_USER', payload: null });
         }
+        dispatch({ type: 'SET_AUTH_READY', payload: true });
       }
     );
 
-    // ✅ Adicionado: verificamos se a assinatura existe antes de tentar cancelar.
-    // Isso evita o erro 'v.data.unsubscribe is not a function' quando o componente é desmontado.
     return () => {
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe();
@@ -608,7 +609,6 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
     addScheduledTransaction,
     updateScheduledTransaction,
     deleteScheduledTransaction,
-    // Adicionado para expor as listas processadas
     parentCategories,
     subcategories
   }), [
