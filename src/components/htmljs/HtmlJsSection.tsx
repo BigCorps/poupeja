@@ -47,7 +47,13 @@ const CustomDashboard = () => {
       function primeiro() {
         console.log('A função "primeiro" foi chamada com sucesso!');
         document.getElementById('mensagem').innerText = 'Ação realizada com sucesso!';
-        // Aqui você pode adicionar a lógica que precisa, como enviar uma mensagem para o React
+        
+        // ATENÇÃO: Se o seu site travar, verifique a linha abaixo!
+        // A função `postMessage` pode causar um loop infinito de renderização
+        // se o componente React pai reagir à mensagem e disparar uma nova renderização
+        // que executa este script novamente. 
+        // Use com cuidado e certifique-se de que o código React lida com a mensagem de forma assíncrona
+        // e não causa uma nova renderização em loop.
         // parent.postMessage({ type: 'data_changed', data: 'nova mensagem' }, '*');
       }
     </script>
