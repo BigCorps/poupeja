@@ -1,136 +1,115 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, User } from 'firebase/auth';
-import { getFirestore, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabaseClient'; // Assumindo que o cliente Supabase está configurado aqui
+import { Category } from '@/types'; // Assumindo que o tipo 'Category' está em '@/types'
 
-// Define the type for a category
+// Defina a interface para a categoria, caso ainda não exista
+// Se você já tiver em '@/types', pode remover esta definição.
 export interface Category {
   id?: string;
+  user_id: string;
   name: string;
   type: 'expense' | 'income';
-  description: string;
+  icon: string; // Adicionado ícone, pois é comum para categorias
+  description?: string;
 }
 
-// Global variables provided by the Canvas environment
-declare const __firebase_config: string;
-declare const __initial_auth_token: string;
-declare const __app_id: string;
-
-const firebaseConfig = JSON.parse(__firebase_config);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
 /**
- * Custom hook to manage categories in Firestore.
- * Provides real-time updates and functions to add, update, and delete categories.
+ * Custom hook para gerenciar categorias com o Supabase.
+ * Fornece dados em tempo real e funções para adicionar, atualizar e excluir.
  */
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [db, setDb] = useState<any>(null);
-  const [auth, setAuth] = useState<any>(null);
 
+  // A função de busca inicial de categorias e assinatura para atualizações em tempo real
   useEffect(() => {
-    // 1. Initialize Firebase services
-    const app = initializeApp(firebaseConfig);
-    const firestore = getFirestore(app);
-    const firebaseAuth = getAuth(app);
-    setDb(firestore);
-    setAuth(firebaseAuth);
-    
-    // 2. Handle user authentication state
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-      } else {
-        try {
-          // Sign in using the provided custom token or anonymously if not available
-          if (typeof __initial_auth_token !== 'undefined') {
-            await signInWithCustomToken(firebaseAuth, __initial_auth_token);
-          } else {
-            await signInAnonymously(firebaseAuth);
-          }
-        } catch (authError: any) {
-          console.error("Failed to sign in:", authError);
-          setError("Failed to authenticate with Firebase.");
-        }
+    // Busca inicial de dados
+    const fetchAndSubscribeCategories = async () => {
+      setLoading(true);
+      const { data, error: fetchError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+      
+      if (fetchError) {
+        console.error('Error fetching categories:', fetchError);
+        setError(fetchError.message);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
-    });
 
-    return () => unsubscribe();
+      setCategories(data || []);
+      setLoading(false);
+    };
+
+    fetchAndSubscribeCategories();
+
+    // Assinatura para atualizações em tempo real.
+    // 'on' é o equivalente do 'onSnapshot' do Firebase para o Supabase.
+    const subscription = supabase
+      .channel('public:categories')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, (payload) => {
+        console.log('Change received!', payload);
+        // Atualiza a lista de categorias com base no evento
+        setCategories(prevCategories => {
+          if (payload.eventType === 'INSERT') {
+            return [...prevCategories, payload.new as Category];
+          }
+          if (payload.eventType === 'UPDATE') {
+            return prevCategories.map(cat => cat.id === payload.new.id ? payload.new as Category : cat);
+          }
+          if (payload.eventType === 'DELETE') {
+            return prevCategories.filter(cat => cat.id !== payload.old.id);
+          }
+          return prevCategories;
+        });
+      })
+      .subscribe();
+      
+    // Limpeza da subscrição quando o componente é desmontado
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  useEffect(() => {
-    // 3. Set up Firestore listener after authentication
-    if (!db || !user) {
-      return;
-    }
-
-    const userId = user.uid;
-    const categoriesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/categories`);
-    const q = query(categoriesCollectionRef);
-    
-    // Listen for real-time changes using onSnapshot
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const fetchedCategories: Category[] = [];
-      querySnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
-        fetchedCategories.push({ id: doc.id, ...doc.data() } as Category);
-      });
-      setCategories(fetchedCategories);
-    }, (snapshotError: any) => {
-      console.error("Error fetching categories:", snapshotError);
-      setError("Failed to fetch categories.");
-    });
-    
-    // Clean up the listener on component unmount
-    return () => unsubscribe();
-  }, [db, user]);
-
-  /**
-   * Adds a new category to Firestore.
-   */
   const addCategory = useCallback(async (newCategory: Omit<Category, 'id'>) => {
-    if (!db || !user) return;
-    try {
-      const categoriesCollectionRef = collection(db, `artifacts/${appId}/users/${user.uid}/categories`);
-      await addDoc(categoriesCollectionRef, newCategory);
-    } catch (opError: any) {
-      console.error("Error adding category:", opError);
-      setError("Failed to add category.");
+    const { error: insertError } = await supabase
+      .from('categories')
+      .insert(newCategory);
+    
+    if (insertError) {
+      console.error('Error adding category:', insertError);
+      setError(insertError.message);
     }
-  }, [db, user]);
+  }, []);
 
-  /**
-   * Updates an existing category in Firestore.
-   */
   const updateCategory = useCallback(async (id: string, updatedData: Partial<Category>) => {
-    if (!db || !user || !id) return;
-    try {
-      const categoryDocRef = doc(db, `artifacts/${appId}/users/${user.uid}/categories`, id);
-      await updateDoc(categoryDocRef, updatedData);
-    } catch (opError: any) {
-      console.error("Error updating category:", opError);
-      setError("Failed to update category.");
-    }
-  }, [db, user]);
+    const { error: updateError } = await supabase
+      .from('categories')
+      .update(updatedData)
+      .eq('id', id);
 
-  /**
-   * Deletes a category from Firestore.
-   */
-  const deleteCategory = useCallback(async (id: string) => {
-    if (!db || !user || !id) return;
-    try {
-      const categoryDocRef = doc(db, `artifacts/${appId}/users/${user.uid}/categories`, id);
-      await deleteDoc(categoryDocRef);
-    } catch (opError: any) {
-      console.error("Error deleting category:", opError);
-      setError("Failed to delete category.");
+    if (updateError) {
+      console.error('Error updating category:', updateError);
+      setError(updateError.message);
     }
-  }, [db, user]);
+  }, []);
+
+  const deleteCategory = useCallback(async (id: string) => {
+    const { error: deleteError } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
+    
+    if (deleteError) {
+      console.error('Error deleting category:', deleteError);
+      setError(deleteError.message);
+    }
+  }, []);
 
   return { categories, loading, error, addCategory, updateCategory, deleteCategory };
 };
 
 export default useCategories;
+
