@@ -86,6 +86,7 @@ function App() {
                           <Route path="/schedule" element={<SchedulePage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/categories" element={<CategoriesPage />} />
+                          {/* ✅ Esta é a rota correta que você definiu! */}
                           <Route path="/custom-dashboard" element={<CustomDashboard />} />
                           
                           {/* ✅ Rotas para as seções com Lazy Loading (com iframe do Typebot) */}
