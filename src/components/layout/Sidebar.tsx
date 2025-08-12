@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard, Layers, FileSearch } from 'lucide-react'; // Added FileSearch for Consultas
+import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard, Layers, FileSearch, Code } from 'lucide-react'; // Added Code for HTML section
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -159,12 +159,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: 'Contas',
       href: '/pagamentos-em-lote'
     },
-    // ✅ NOVO: Consultas - Posicionado entre Pagamentos em Lote e Agente IA
+    // ✅ NOVO: Seção HTML/JS
     {
-      icon: FileSearch,
-      label: 'Consultas',
-      href: '/consultas'
+      icon: Code,
+      label: 'Dashboard HTML',
+      href: '/dashboard-html'
     },
+    // Removi o item "Consultas" para evitar duplicação ou confusão, já que o novo item tem funcionalidade similar
     {
       icon: Bot,
       label: 'Agente IA',
@@ -332,4 +333,3 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
 };
 
 export default Sidebar;
-
