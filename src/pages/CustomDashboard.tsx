@@ -1,8 +1,5 @@
 import React from 'react';
-// O caminho de importação foi ajustado para usar a pasta 'htmljs'.
-// Isso assume que você tem um arquivo 'index.ts' dentro de src/components/htmljs
-// que exporta o componente 'HtmlJsSection'.
-import { HtmlJsSection } from '@/components/htmljs';
+import { HtmlJsSection } from '@/components/htmljs/HtmlJsSection';
 
 // A página CustomDashboard, que renderizará o conteúdo HTML/JS
 const CustomDashboard = () => {
@@ -17,9 +14,7 @@ const CustomDashboard = () => {
     </div>
     <script>
       document.getElementById('my-button').addEventListener('click', () => {
-        // Substituído 'alert' por 'console.log' para evitar problemas de compatibilidade
-        // com o ambiente. Você pode verificar a saída no console do navegador.
-        console.log('Botão clicado!');
+        alert('Botão clicado!');
       });
     </script>
   `;
