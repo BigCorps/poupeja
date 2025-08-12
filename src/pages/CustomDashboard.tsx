@@ -1,7 +1,7 @@
 // src/pages/CustomDashboard.tsx
 
 import React, { useState, useEffect } from 'react';
-import { HtmlJsSectionManager } from "../components/htmljs/HtmlJsSectionManager";
+import HtmlJsSectionManager from "../components/htmljs/HtmlJsSectionManager";
 import { useApp } from '@/contexts/AppContext';
 
 // Esta é a interface que define a estrutura de uma seção.
