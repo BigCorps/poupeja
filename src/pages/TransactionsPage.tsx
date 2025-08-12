@@ -1,243 +1,259 @@
-import React, { useEffect } from 'react';
-import { z } from 'zod';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import React, { useState, useEffect, useCallback } from 'react';
+import MainLayout from '@/components/layout/MainLayout';
+import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
+import TransactionList from '@/components/common/TransactionList';
+import TransactionForm from '@/components/common/TransactionForm';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useCategories } from '@/hooks/use-categories'; // Importa o novo hook de categorias
-import { ArrowLeft } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { useAppContext } from '@/contexts/AppContext';
+import { Transaction } from '@/types';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+// import { useUserPlan } from '@/hooks/useUserPlan';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-// Defina o tipo de dados da transação com base no seu esquema
-// ou no que você já usa no app.
-type TransactionData = {
-  type: 'expense' | 'income';
-  value: number;
-  categoryId?: string;
-  subcategoryId?: string;
-  date: string;
-  description: string;
-};
+const TransactionsPage = () => {
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [viewMode, setViewMode] = useState<'PF' | 'PJ'>('PF');
+  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
+  
+  const { transactions, deleteTransaction, parentCategories, subcategories } = useAppContext();
+  const isMobile = useIsMobile();
+  
+  // Assumindo um plano premium para fins de demonstração
+  const hasPremiumPlan = true;
 
-// Schema de validação usando Zod
-const formSchema = z.object({
-  type: z.enum(['expense', 'income']),
-  value: z.number().positive('O valor deve ser maior que zero.'),
-  // A categoria é obrigatória se o tipo for despesa ou receita
-  categoryId: z.string().uuid().optional(),
-  // A subcategoria é obrigatória se a categoria principal for selecionada
-  subcategoryId: z.string().uuid().optional(),
-  date: z.string().min(1, 'A data é obrigatória.'),
-  description: z.string().optional(),
-}).refine(data => {
-  // Validação personalizada para garantir que categoria e subcategoria
-  // são selecionadas quando necessário
-  if (data.type === 'expense' || data.type === 'income') {
-    return data.categoryId !== undefined;
-  }
-  return true;
-}, {
-  message: 'A categoria é obrigatória.',
-  path: ['categoryId'],
-});
+  const handleAddTransaction = useCallback(() => {
+    setEditingTransaction(null);
+    setFormOpen(true);
+  }, []);
 
+  const handleEditTransaction = useCallback((transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setFormOpen(true);
+  }, []);
 
-export default function TransactionForm({ open, onOpenChange, initialData, mode, personType }) {
-  const { categories, loading, error } = useCategories();
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useForm<TransactionData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: initialData || {
-      type: 'expense',
-      value: 0,
-      categoryId: undefined,
-      subcategoryId: undefined,
-      date: format(new Date(), 'yyyy-MM-dd'),
-      description: '',
-    },
-  });
-
-  const selectedCategoryId = watch('categoryId');
+  const handleDeleteTransaction = useCallback((id: string) => {
+    deleteTransaction(id);
+  }, [deleteTransaction]);
 
   useEffect(() => {
-    if (initialData) {
-      reset({
-        ...initialData,
-        date: format(parseISO(initialData.date), 'yyyy-MM-dd')
-      });
-    } else {
-      reset({
-        type: 'expense',
-        value: 0,
-        categoryId: undefined,
-        subcategoryId: undefined,
-        date: format(new Date(), 'yyyy-MM-dd'),
-        description: '',
-      });
-    }
-  }, [initialData, reset]);
+    const getFilteredTransactions = () => {
+      // ✅ A lógica de filtragem foi ajustada para usar 'viewMode'
+      if (viewMode === 'PJ') {
+        // Filtra transações que podem ser classificadas como PJ
+        return transactions.filter(t => t.personType === 'PJ');
+      }
+      // Filtra transações que podem ser classificadas como PF
+      return transactions.filter(t => t.personType === 'PF' || !t.personType); // Considera transações sem personType como PF
+    };
+    setFilteredTransactions(getFilteredTransactions());
+  }, [viewMode, transactions]);
 
-  const onSubmit = (data: TransactionData) => {
-    console.log(data);
-    // Aqui você faria a lógica de adicionar/editar a transação
-    // usando o Supabase.
-    onOpenChange(false);
+  // ✅ NOVO: Função para obter o nome completo da categoria e subcategoria
+  const getFullCategoryName = (categoryId: string | undefined, subcategoryId?: string) => {
+    if (!categoryId) {
+      return 'N/A';
+    }
+    const category = parentCategories.find(c => c.id === categoryId);
+    if (!category) {
+      return 'N/A';
+    }
+    const categoryName = category.name;
+    
+    // Encontra a subcategoria dentro da lista de subcategorias
+    const subcategory = subcategories.find(s => s.id === subcategoryId);
+    const subcategoryName = subcategory ? subcategory.name : null;
+
+    if (subcategoryName) {
+      return `${categoryName} / ${subcategoryName}`;
+    }
+
+    return categoryName;
+  }
+
+  const renderTablePJ = (data: Transaction[]) => {
+    if (data.length === 0) {
+      return (
+        <div className="flex items-center justify-center p-6 text-muted-foreground">
+          Nenhum dado disponível
+        </div>
+      );
+    }
+    
+    const displayHeaders = ['Fornecedor', 'Descrição', 'Categoria', 'Valor Original', 'Data de Vencimento', 'Status'];
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {displayHeaders.map((header, index) => (
+              <TableHead key={index}>{header}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((transaction, index) => (
+            <TableRow key={index} onClick={() => handleEditTransaction(transaction)}>
+              <TableCell>{transaction.supplier || 'N/A'}</TableCell>
+              <TableCell>{transaction.description || 'N/A'}</TableCell>
+              {/* ✅ CORRIGIDO: Usando a nova função getFullCategoryName */}
+              <TableCell>{getFullCategoryName(transaction.categoryId, transaction.subcategoryId)}</TableCell>
+              <TableCell>
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                }).format(transaction.originalAmount || 0)}
+              </TableCell>
+              <TableCell>
+                {transaction.dueDate ? format(parseISO(transaction.dueDate), "dd/MM/yyyy") : 'N/A'}
+              </TableCell>
+              <TableCell>{transaction.paymentStatus || 'N/A'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
   };
 
-  const handleSubcategoryChange = (subcategoryId: string) => {
-    // Encontra a subcategoria para determinar a categoria pai
-    const subcategory = categories.flatMap(c => c.subcategories || []).find(s => s.id === subcategoryId);
-    if (subcategory) {
-      // Define a categoria principal com base na subcategoria
-      setValue('categoryId', subcategory.parent_id);
+  const renderTablePF = (data: Transaction[]) => {
+    if (data.length === 0) {
+      return (
+        <div className="flex items-center justify-center p-6 text-muted-foreground">
+          Nenhum dado disponível
+        </div>
+      );
     }
+    
+    const displayHeaders = ['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor'];
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {displayHeaders.map((header, index) => (
+              <TableHead key={index}>{header}</TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((transaction, index) => (
+            <TableRow key={index} onClick={() => handleEditTransaction(transaction)}>
+              <TableCell>
+                {transaction.date ? format(parseISO(transaction.date), "dd/MM/yyyy", { locale: ptBR }) : 'N/A'}
+              </TableCell>
+              <TableCell>
+                <span className={cn(
+                  "font-semibold",
+                  transaction.type === 'income' ? "text-green-500" : "text-red-500"
+                )}>
+                  {transaction.type === 'income' ? 'Receita' : 'Despesa'}
+                </span>
+              </TableCell>
+              {/* ✅ CORRIGIDO: Usando a nova função getFullCategoryName */}
+              <TableCell>{getFullCategoryName(transaction.categoryId, transaction.subcategoryId)}</TableCell>
+              <TableCell>{transaction.description || 'N/A'}</TableCell>
+              <TableCell>
+                {new Intl.NumberFormat('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                }).format(transaction.amount || 0)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === 'edit' ? 'Editar Transação' : 'Adicionar Transação (PF)'}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="flex justify-center space-x-2 p-1 bg-gray-100 rounded-md">
-            <Button
-              type="button"
-              variant={watch('type') === 'income' ? 'default' : 'ghost'}
-              onClick={() => setValue('type', 'income')}
-              className={cn("w-1/2 rounded-md transition-colors", watch('type') === 'income' ? 'bg-primary text-primary-foreground' : 'hover:bg-gray-200')}
-            >
-              Receita
-            </Button>
-            <Button
-              type="button"
-              variant={watch('type') === 'expense' ? 'default' : 'ghost'}
-              onClick={() => setValue('type', 'expense')}
-              className={cn("w-1/2 rounded-md transition-colors", watch('type') === 'expense' ? 'bg-destructive text-destructive-foreground' : 'hover:bg-gray-200')}
-            >
-              Despesa
-            </Button>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="value">Valor</Label>
-            <Input
-              id="value"
-              type="number"
-              step="0.01"
-              {...register('value', { valueAsNumber: true })}
-            />
-            {errors.value && <p className="text-red-500 text-sm">{errors.value.message}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label>Categoria Principal</Label>
-            <Controller
-              name="categoryId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    setValue('subcategoryId', undefined); // Limpa a subcategoria ao mudar a categoria principal
-                  }}
-                  value={field.value}
+    <MainLayout>
+      <SubscriptionGuard feature="movimentações ilimitadas">
+        <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8">
+          <div className="mb-6 flex items-center justify-between">
+            <h1 className="text-xl md:text-3xl font-semibold">Transações</h1>
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => setViewMode('PF')}
+                variant={viewMode === 'PF' ? 'default' : 'ghost'}
+                size="sm"
+              >
+                Pessoa Física
+              </Button>
+              {hasPremiumPlan && (
+                <Button
+                  onClick={() => setViewMode('PJ')}
+                  variant={viewMode === 'PJ' ? 'default' : 'ghost'}
+                  size="sm"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  Pessoa Jurídica
+                </Button>
               )}
-            />
-            {errors.categoryId && <p className="text-red-500 text-sm">{errors.categoryId.message}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label>Subcategoria</Label>
-            <Controller
-              name="subcategoryId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    handleSubcategoryChange(value);
-                  }}
-                  value={field.value}
-                  disabled={!selectedCategoryId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a subcategoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories
-                      .find(c => c.id === selectedCategoryId)
-                      ?.subcategories?.map((sub) => (
-                        <SelectItem key={sub.id} value={sub.id}>
-                          {sub.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
+            </div>
+            {!isMobile && (
+              <Button onClick={handleAddTransaction} size="lg">
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar Transação
+              </Button>
+            )}
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="date">Data</Label>
-            <Input
-              id="date"
-              type="date"
-              {...register('date')}
-            />
-            {errors.date && <p className="text-red-500 text-sm">{errors.date.message}</p>}
+          <div className={cn(isMobile ? "space-y-4" : "")}>
+            {isMobile ? (
+              <TransactionList 
+                transactions={filteredTransactions}
+                onEdit={handleEditTransaction}
+                onDelete={handleDeleteTransaction}
+              />
+            ) : (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>
+                    {viewMode === 'PF' ? 'Transações Recentes (PF)' : 'Transações Recentes (PJ)'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {viewMode === 'PF' ? renderTablePF(filteredTransactions) : renderTablePJ(filteredTransactions)}
+                </CardContent>
+              </Card>
+            )}
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição (Opcional)</Label>
-            <Input
-              id="description"
-              type="text"
-              {...register('description')}
-            />
-          </div>
+        </div>
 
-          <div className="flex justify-end">
-            <Button type="submit">Salvar Transação</Button>
+        {isMobile && (
+          <div className="fixed bottom-20 right-4 z-50">
+            <Button 
+              onClick={handleAddTransaction}
+              size="lg"
+              className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-primary hover:bg-primary/90"
+            >
+              <Plus className="h-6 w-6" />
+              <span className="sr-only">Adicionar Transação</span>
+            </Button>
           </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        )}
+
+        <TransactionForm
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          initialData={editingTransaction}
+          mode={editingTransaction ? 'edit' : 'create'}
+          personType={viewMode}
+        />
+      </SubscriptionGuard>
+    </MainLayout>
   );
-}
+};
+
+export default TransactionsPage;
