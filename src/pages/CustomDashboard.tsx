@@ -1,5 +1,5 @@
 import React from 'react';
-import HtmlJsSectionManager from './components/htmljs/HtmlJsSectionManager';
+import HtmlJsSectionManager from '../components/htmljs/HtmlJsSectionManager';
 
 // O nome do componente foi alterado para ser consistente com o nome do arquivo
 const CustomDashboard = () => {
