@@ -1,9 +1,11 @@
 import React from 'react';
+// Importação correta do componente HtmlJsSectionManager
 import HtmlJsSectionManager from '../components/htmljs/HtmlJsSectionManager';
 
-// Exemplo de como usar o HtmlJsSectionManager no dashboard
+// Este componente é a página do seu dashboard
 const ExampleDashboardPage = () => {
-  // Configuração das seções HTML/JS
+  // A definição das seções é a parte central.
+  // Cada objeto no array representa uma "janela" com seu próprio HTML e JS.
   const sections = [
     {
       id: 'financial-calculator',
@@ -212,7 +214,7 @@ const ExampleDashboardPage = () => {
             background-color: #f8fafc;
             padding: 24px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba;
           }
           .quick-form {
             display: grid;
@@ -621,28 +623,23 @@ const ExampleDashboardPage = () => {
     }
   ];
 
-  // Gerenciar mensagens das seções
+  // Função para gerenciar as mensagens recebidas das seções HTML/JS
   const handleSectionMessage = (sectionId, message) => {
     console.log(`Mensagem da seção ${sectionId}:`, message);
     
-    // Aqui você pode implementar lógica específica baseada no tipo de mensagem
+    // Você pode adicionar mais lógica aqui para reagir às mensagens
     switch (message.type) {
       case 'calculation_completed':
-        // Fazer algo quando um cálculo é completado
-        console.log('Cálculo completado na seção da calculadora.');
+        console.log('Cálculo completado na calculadora.');
         break;
       case 'expense_added':
-        // Atualizar dados quando uma despesa é adicionada
-        // Você pode chamar appContext.getTransactions() aqui
-        console.log('Despesa adicionada na seção do rastreador.');
+        console.log('Despesa adicionada no rastreador.');
         break;
       case 'goal_created':
-        // Atualizar metas quando uma nova é criada
-        console.log('Nova meta criada na seção da calculadora.');
+        console.log('Nova meta criada na calculadora.');
         break;
       case 'summary_updated':
-        // Processar estatísticas atualizadas
-        console.log('Resumo atualizado na seção de resumo.');
+        console.log('Resumo atualizado.');
         break;
     }
   };
@@ -654,6 +651,7 @@ const ExampleDashboardPage = () => {
         <p className="text-gray-600 mt-2">Suas ferramentas financeiras personalizadas</p>
       </div>
 
+      {/* Este é o componente que vai renderizar todas as seções definidas acima */}
       <HtmlJsSectionManager
         sections={sections}
         onSectionMessage={handleSectionMessage}
