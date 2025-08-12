@@ -94,23 +94,37 @@ const GoalSelector = ({ form }) => {
 
 // Seletor de Categoria Hierárquico - Agora usado para PJ e PF
 const HierarchicalCategorySelector = ({ form, allCategories, initialData }) => {
+  const [parentCategoryId, setParentCategoryId] = useState('');
   const selectedCategoryId = form.watch('categoryId');
 
-  // Encontra a categoria principal com base na subcategoria selecionada
-  const parentCategoryOfSelected = allCategories.find(c => c.id === selectedCategoryId)?.parentId;
-  const initialParentId = parentCategoryOfSelected || initialData?.categoryId; // if initialData is a parent category itself
+  // Efeito para sincronizar o estado local com os dados iniciais do formulário
+  useEffect(() => {
+    if (initialData) {
+      const selectedCat = allCategories.find(c => c.id === initialData.categoryId);
+      if (selectedCat?.parentId) {
+        setParentCategoryId(selectedCat.parentId);
+      } else if (selectedCat) {
+        setParentCategoryId(selectedCat.id);
+      } else {
+        setParentCategoryId('');
+      }
+      form.setValue('categoryId', initialData.categoryId);
+    } else {
+      setParentCategoryId('');
+      form.setValue('categoryId', '');
+    }
+  }, [initialData, allCategories, form.setValue]);
 
-  const [parentCategoryId, setParentCategoryId] = useState(initialParentId || '');
-
-  // Deriva as subcategorias disponíveis
-  const subcategories = allCategories.filter(c => c.parentId === parentCategoryId);
   const parentCategories = allCategories.filter(c => !c.parentId);
+  const subcategories = allCategories.filter(c => c.parentId === parentCategoryId);
 
-  // Manipulador de mudança para a categoria principal
   const handleParentChange = (value) => {
     setParentCategoryId(value);
-    // Quando a categoria principal muda, reseta o valor da subcategoria no formulário
-    form.setValue('categoryId', '');
+    form.setValue('categoryId', value);
+  };
+
+  const handleSubcategoryChange = (value) => {
+    form.setValue('categoryId', value);
   };
 
   return (
@@ -140,8 +154,8 @@ const HierarchicalCategorySelector = ({ form, allCategories, initialData }) => {
               <FormItem>
                 <FormLabel>Subcategoria (Opcional)</FormLabel>
                 <Select
-                  onValueChange={(value) => field.onChange(value)}
-                  value={field.value}
+                  onValueChange={handleSubcategoryChange}
+                  value={selectedCategoryId || ''}
                   disabled={!parentCategoryId}
                 >
                   <FormControl>
