@@ -92,40 +92,52 @@ const GoalSelector = ({ form }) => {
   );
 };
 
-// Seletor de Categoria Hierárquico - Agora usado para PJ e PF
+// Seletor de Categoria Unificado
 const HierarchicalCategorySelector = ({ form, allCategories, initialData }) => {
-  const [parentCategoryId, setParentCategoryId] = useState('');
   const selectedCategoryId = form.watch('categoryId');
+  const [selectedParentName, setSelectedParentName] = useState('');
 
   // Efeito para sincronizar o estado local com os dados iniciais do formulário
   useEffect(() => {
-    if (initialData) {
+    if (initialData && initialData.categoryId) {
       const selectedCat = allCategories.find(c => c.id === initialData.categoryId);
-      if (selectedCat?.parentId) {
-        setParentCategoryId(selectedCat.parentId);
-      } else if (selectedCat) {
-        setParentCategoryId(selectedCat.id);
-      } else {
-        setParentCategoryId('');
+      if (selectedCat) {
+        form.setValue('categoryId', selectedCat.id);
+        if (selectedCat.parentId) {
+          const parentCat = allCategories.find(c => c.id === selectedCat.parentId);
+          setSelectedParentName(parentCat?.name || '');
+        } else {
+          setSelectedParentName(selectedCat.name);
+        }
       }
-      form.setValue('categoryId', initialData.categoryId);
     } else {
-      setParentCategoryId('');
       form.setValue('categoryId', '');
+      setSelectedParentName('');
     }
   }, [initialData, allCategories, form.setValue]);
 
-  const parentCategories = allCategories.filter(c => !c.parentId);
-  const subcategories = allCategories.filter(c => c.parentId === parentCategoryId);
-
-  const handleParentChange = (value) => {
-    setParentCategoryId(value);
+  // Manipulador de mudança para o seletor unificado
+  const handleCategoryChange = (value) => {
     form.setValue('categoryId', value);
+    const selectedCat = allCategories.find(c => c.id === value);
+    if (selectedCat?.parentId) {
+      const parentCat = allCategories.find(c => c.id === selectedCat.parentId);
+      setSelectedParentName(parentCat?.name || '');
+    } else if (selectedCat) {
+      setSelectedParentName(selectedCat.name);
+    } else {
+      setSelectedParentName('');
+    }
   };
-
-  const handleSubcategoryChange = (value) => {
-    form.setValue('categoryId', value);
-  };
+  
+  // Lista de categorias e subcategorias para o seletor
+  const flattenedCategories = allCategories.map(cat => {
+    if (cat.parentId) {
+      const parentName = allCategories.find(p => p.id === cat.parentId)?.name;
+      return { ...cat, displayName: `${parentName} > ${cat.name}` };
+    }
+    return { ...cat, displayName: cat.name };
+  });
 
   return (
     <>
@@ -133,48 +145,29 @@ const HierarchicalCategorySelector = ({ form, allCategories, initialData }) => {
         control={form.control}
         name="categoryId"
         render={({ field }) => (
-          <>
-            <FormItem>
-              <FormLabel>Categoria Principal</FormLabel>
-              <Select onValueChange={handleParentChange} value={parentCategoryId}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a categoria principal" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {parentCategories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-            {subcategories.length > 0 && (
-              <FormItem>
-                <FormLabel>Subcategoria (Opcional)</FormLabel>
-                <Select
-                  onValueChange={handleSubcategoryChange}
-                  value={selectedCategoryId || ''}
-                  disabled={!parentCategoryId}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a subcategoria" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {subcategories.map(subcat => (
-                      <SelectItem key={subcat.id} value={subcat.id}>{subcat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          </>
+          <FormItem>
+            <FormLabel>Categoria</FormLabel>
+            <Select onValueChange={handleCategoryChange} value={field.value || ''}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {flattenedCategories.map(cat => (
+                  <SelectItem key={cat.id} value={cat.id}>{cat.displayName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
         )}
       />
+      {selectedParentName && (
+        <div className="mt-2 text-sm text-muted-foreground">
+          Categoria Principal: {selectedParentName}
+        </div>
+      )}
     </>
   );
 };
