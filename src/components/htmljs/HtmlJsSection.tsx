@@ -2,8 +2,7 @@ import React from 'react';
 import { HtmlJsSection } from '@/components/htmljs'; // Importe o componente
 
 const CustomDashboard = () => {
-  // Exemplo de como o conteúdo HTML deve ser estruturado.
-  // A função 'primeiro' está declarada no <script>.
+  // Conteúdo HTML com um script que se comunica com o React
   const htmlContent = `
     <style>
       .content-container {
@@ -38,7 +37,7 @@ const CustomDashboard = () => {
     </style>
     <div class="content-container">
       <h2>Minha Seção Personalizada</h2>
-      <p>Este é um exemplo de conteúdo HTML dentro do seu dashboard. A função 'primeiro' será chamada ao clicar no botão abaixo.</p>
+      <p>Este é um exemplo de conteúdo HTML dentro do seu dashboard. A função 'primeiro' irá enviar uma mensagem para o React ao clicar no botão abaixo.</p>
       <button class="action-button" onclick="primeiro()">Clique em mim!</button>
       <p id="mensagem"></p>
     </div>
@@ -48,15 +47,28 @@ const CustomDashboard = () => {
         console.log('A função "primeiro" foi chamada com sucesso!');
         document.getElementById('mensagem').innerText = 'Ação realizada com sucesso!';
         
-        // ATENÇÃO: Se o seu site travar, verifique a comunicação com o componente React pai.
-        // O envio de mensagens pode causar um loop infinito de renderização.
+        // Esta é a forma correta de enviar mensagens para o componente React pai.
+        // A API da solução já lida com o gerenciamento e previne loops de renderização.
+        // Você deve usar 'window.HtmlJsSectionManager.sendMessageToSection'
+        // ou o método 'sendMessage' disponível no namespace da seção.
+        // Como o Manager já expõe um método global, podemos usá-lo diretamente.
+        if (window.HtmlJsSectionManager) {
+          window.HtmlJsSectionManager.sendMessageToSection("primeira-secao-id", {
+            type: "button_click",
+            timestamp: new Date().toISOString()
+          });
+          console.log('Mensagem enviada para o React.');
+        } else {
+          console.error('HtmlJsSectionManager não está disponível no objeto global window.');
+        }
       }
     </script>
   `;
 
   return (
     <div>
-      <HtmlJsSection htmlContent={htmlContent} />
+      {/* O 'sectionId' é crucial para a comunicação. Ele deve ser único para cada seção. */}
+      <HtmlJsSection sectionId="primeira-secao-id" htmlContent={htmlContent} />
     </div>
   );
 };
