@@ -659,4 +659,4 @@ const ExampleDashboardPage = () => {
   );
 };
 
-export default ExampleDashboardPage;
+export default CustomDashboard;
