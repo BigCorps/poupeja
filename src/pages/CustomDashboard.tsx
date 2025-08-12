@@ -1,6 +1,6 @@
 import React from 'react';
 // Importação do componente que gerencia todas as seções
-import HtmlJsSectionManager from './components/htmljs/HtmlJsSectionManager';
+import HtmlJsSectionManager from '../components/htmljs/HtmlJsSectionManager';
 
 // Este componente é a página do seu dashboard
 const ExampleDashboardPage = () => {
