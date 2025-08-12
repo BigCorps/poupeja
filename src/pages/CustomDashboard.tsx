@@ -1,9 +1,8 @@
 import React from 'react';
-// Importação do componente que gerencia todas as seções
-import HtmlJsSectionManager from '../components/htmljs/HtmlJsSectionManager';
+import HtmlJsSectionManager from './components/htmljs/HtmlJsSectionManager';
 
-// Este componente é a página do seu dashboard
-const ExampleDashboardPage = () => {
+// O nome do componente foi alterado para ser consistente com o nome do arquivo
+const CustomDashboard = () => {
   // A definição das seções é a parte central.
   // Cada objeto no array representa uma "janela" com seu próprio HTML e JS.
   const sections = [
