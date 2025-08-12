@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Trash2, Edit, MoreVertical, ArrowLeft } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useApp } from '@/contexts/AppContext';
+import { useApp } from '@/contexts/AppContext'; // Mantendo, mas o ideal seria usar um hook mais específico
 import CategoryForm from '@/components/categories/CategoryForm';
 import CategoryIcon from '@/components/categories/CategoryIcon';
 import {
@@ -27,13 +27,19 @@ import {
 import { Category, TransactionType } from '@/types/categories';
 import { Separator } from '@/components/ui/separator';
 
+// NOVO: Importa o hook de categorias que criamos anteriormente para buscar a estrutura aninhada
+import { useCategories } from '@/hooks/use-categories'; 
+
 type ViewMode = 'mainCategories' | 'subcategories';
 
 const CategoriesPage: React.FC = () => {
   const { t } = usePreferences();
-  const { categories, isLoading, addCategory, updateCategory, deleteCategory } = useApp();
+  // Alteração aqui: Agora usamos nosso novo hook para buscar as categorias,
+  // que já retorna a estrutura aninhada.
+  const { categories: nestedCategories, loading: isLoading } = useCategories();
+  // Mantemos o `useApp` para as funções de manipulação de dados
+  const { addCategory, updateCategory, deleteCategory } = useApp();
 
-  // Estados para controlar a visualização e o formulário
   const [viewMode, setViewMode] = useState<ViewMode>('mainCategories');
   const [categoryFormOpen, setCategoryFormOpen] = useState(false);
   const [initialFormData, setInitialFormData] = useState<Partial<Category> | null>(null);
@@ -42,20 +48,20 @@ const CategoriesPage: React.FC = () => {
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [selectedParentCategory, setSelectedParentCategory] = useState<Category | null>(null);
 
-  // Filtra as categorias principais (sem parent_id)
+  // Agora, `mainCategories` e `subCategoriesForSelectedParent` são mais simples,
+  // pois a estrutura já vem aninhada do hook `useCategories`.
   const mainCategories = useMemo(() => {
-    return categories.filter(cat => !cat.parent_id);
-  }, [categories]);
+    return nestedCategories.filter(cat => cat.type === categoryType);
+  }, [nestedCategories, categoryType]);
 
-  // Filtra as subcategorias para a categoria principal selecionada
   const subCategoriesForSelectedParent = useMemo(() => {
     if (!selectedParentCategory) return [];
-    return categories.filter(cat => cat.parent_id === selectedParentCategory.id);
-  }, [categories, selectedParentCategory]);
+    // Acessa diretamente as subcategorias do objeto pai selecionado
+    const parent = nestedCategories.find(cat => cat.id === selectedParentCategory.id);
+    return parent?.subcategories || [];
+  }, [nestedCategories, selectedParentCategory]);
 
-  // Função para abrir o formulário para adicionar uma nova categoria principal
   const handleAddCategory = () => {
-    // Inicializamos o formulário com dados padrão para uma nova categoria
     setInitialFormData({
       name: '',
       type: categoryType,
@@ -67,9 +73,7 @@ const CategoriesPage: React.FC = () => {
     setCategoryFormOpen(true);
   };
 
-  // Função para abrir o formulário para adicionar uma nova subcategoria
   const handleAddSubcategory = () => {
-    // Inicializamos o formulário herdando os dados do pai
     if (!selectedParentCategory) return;
     setInitialFormData({
       name: '',
@@ -82,13 +86,11 @@ const CategoriesPage: React.FC = () => {
     setCategoryFormOpen(true);
   };
 
-  // Função para abrir o formulário para editar uma categoria existente
   const handleEditCategory = (category: Category) => {
     setInitialFormData(category);
     setCategoryFormOpen(true);
   };
 
-  // Função para confirmar a exclusão de uma categoria
   const handleDeleteCategory = (category: Category) => {
     setCategoryToDelete(category);
     setDeleteDialogOpen(true);
@@ -107,17 +109,12 @@ const CategoriesPage: React.FC = () => {
     }
   };
 
-  // Função para salvar uma categoria (adição ou edição)
   const handleSaveCategory = async (categoryData: Partial<Category>) => {
     try {
-      // Verifica se a categoria já tem um ID, indicando que é uma edição
       if (categoryData.id) {
-        // Separa o ID dos demais dados para a requisição de PATCH
         const { id, ...dataToUpdate } = categoryData;
         await updateCategory(id, dataToUpdate);
       } else {
-        // Se não tem ID, é uma nova categoria. Removemos o ID nulo/vazio
-        // para a requisição de POST.
         const dataToSave = { ...categoryData };
         delete dataToSave.id;
         await addCategory(dataToSave);
@@ -126,9 +123,16 @@ const CategoriesPage: React.FC = () => {
       console.error("Erro ao salvar categoria:", error);
     } finally {
       setCategoryFormOpen(false);
-      setInitialFormData(null); // Limpa o estado do formulário após a operação
+      setInitialFormData(null);
     }
   };
+
+  // Garante que o `viewMode` seja redefinido se o parent_id for nulo
+  useEffect(() => {
+    if (!selectedParentCategory && viewMode === 'subcategories') {
+      setViewMode('mainCategories');
+    }
+  }, [selectedParentCategory, viewMode]);
 
   if (isLoading) {
     return (
@@ -144,7 +148,6 @@ const CategoriesPage: React.FC = () => {
     <MainLayout title={t('categories.title')}>
       <SubscriptionGuard feature="categorias personalizadas">
         <div className="space-y-4">
-          {/* Cabeçalho da página: Título e botões de navegação */}
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">{t('categories.title')}</h1>
             <div className="flex space-x-2">
@@ -168,10 +171,8 @@ const CategoriesPage: React.FC = () => {
 
           <Separator />
 
-          {/* Controles de filtro e botão de ação */}
           <div className="flex justify-between items-center">
             {viewMode === 'subcategories' && selectedParentCategory ? (
-              // Exibe o título da subcategoria e o botão de voltar
               <div className="flex items-center space-x-2">
                 <Button variant="ghost" size="sm" onClick={() => setSelectedParentCategory(null)}>
                   <ArrowLeft className="h-4 w-4" />
@@ -179,7 +180,6 @@ const CategoriesPage: React.FC = () => {
                 <h2 className="text-xl font-semibold">Subcategorias de {selectedParentCategory.name}</h2>
               </div>
             ) : (
-              // Exibe as abas de Despesa/Receita
               <Tabs
                 defaultValue="expense"
                 value={categoryType}
@@ -205,42 +205,46 @@ const CategoriesPage: React.FC = () => {
             </Button>
           </div>
 
-          {/* Seção principal de conteúdo (lista de categorias) */}
           <div className="mt-4">
             {viewMode === 'mainCategories' ? (
               <ul className="space-y-4">
-                {mainCategories
-                  .filter(cat => cat.type === categoryType)
-                  .map((category) => (
-                    <li key={category.id} className="bg-card p-3 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <CategoryIcon icon={category.icon} color={category.color} />
-                        <span className="font-semibold">{category.name}</span>
-                      </div>
-                      <div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              {t('common.edit')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeleteCategory(category)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {t('common.delete')}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </li>
-                  ))}
+                {mainCategories.map((category) => (
+                  <li
+                    key={category.id}
+                    className="bg-card p-3 rounded-lg flex items-center justify-between cursor-pointer"
+                    onClick={() => {
+                      setSelectedParentCategory(category);
+                      setViewMode('subcategories');
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <CategoryIcon icon={category.icon} color={category.color} />
+                      <span className="font-semibold">{category.name}</span>
+                    </div>
+                    <div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            {t('common.edit')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeleteCategory(category)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {t('common.delete')}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </li>
+                ))}
               </ul>
             ) : (
               <div>
@@ -249,7 +253,14 @@ const CategoriesPage: React.FC = () => {
                     <h2 className="text-lg font-medium">Selecione uma categoria principal:</h2>
                     <ul className="space-y-2">
                       {mainCategories.map(category => (
-                        <li key={category.id} className="bg-card p-3 rounded-lg cursor-pointer hover:bg-accent" onClick={() => setSelectedParentCategory(category)}>
+                        <li
+                          key={category.id}
+                          className="bg-card p-3 rounded-lg cursor-pointer hover:bg-accent"
+                          onClick={() => {
+                            setSelectedParentCategory(category);
+                            setViewMode('subcategories');
+                          }}
+                        >
                           <div className="flex items-center gap-3">
                             <CategoryIcon icon={category.icon} color={category.color} />
                             <span className="font-semibold">{category.name}</span>
@@ -270,7 +281,7 @@ const CategoriesPage: React.FC = () => {
                           <div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
+                                <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -304,13 +315,11 @@ const CategoriesPage: React.FC = () => {
           onOpenChange={setCategoryFormOpen}
           initialData={initialFormData}
           onSave={handleSaveCategory}
-          // Essas props agora são determinadas diretamente pelo initialFormData ou pela navegação
           categoryType={initialFormData?.type || categoryType}
           parentId={initialFormData?.parent_id || selectedParentCategory?.id || null}
           parentName={initialFormData?.parent_id
-            ? categories.find(cat => cat.id === initialFormData.parent_id)?.name || null
+            ? nestedCategories.find(cat => cat.id === initialFormData.parent_id)?.name || null
             : selectedParentCategory?.name}
-          // Adicionamos um novo prop para passar o texto traduzido do botão
           saveButtonText={t('common.saveChanges')}
         />
 
