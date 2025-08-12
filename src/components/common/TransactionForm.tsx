@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
   Select,
   SelectContent,
@@ -38,9 +39,10 @@ const transactionSchemaPF = z.object({
 
 const transactionSchemaPJ = z.object({
   type: z.enum(['income', 'expense']),
-  originalAmount: z.number({ required_error: "O valor original é obrigatório." }).min(0, "O valor deve ser maior ou igual a zero.").optional(),
+  originalAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
   lateInterestAmount: z.number().min(0, "O valor deve ser maior ou igual a zero.").optional(),
-  paidAmount: z.number().min(0.01, "O valor pago é obrigatório e deve ser maior que zero.").optional(),
+  // Corrigido para ser obrigatório com base na mensagem de erro original
+  paidAmount: z.number({ required_error: "O valor pago é obrigatório e deve ser maior que zero." }).min(0.01, "O valor pago deve ser maior que zero."),
   categoryId: z.string({ required_error: "A categoria é obrigatória." }).min(1),
   supplier: z.string().optional(),
   description: z.string().optional(),
@@ -48,7 +50,7 @@ const transactionSchemaPJ = z.object({
   referenceDate: z.date().optional(),
   dueDate: z.date().optional(),
   paymentDate: z.date().optional(),
-  paymentStatus: z.enum(['pending', 'paid', 'overdue', 'projected']).optional(),
+  paymentStatus: z.enum(['pending', 'paid', 'overdue', 'projected']).default('pending').optional(),
 });
 
 interface TransactionFormProps {
@@ -62,6 +64,7 @@ interface TransactionFormProps {
 
 // Componente para selecionar metas (mantido para a lógica PF)
 const GoalSelector = ({ form }) => {
+  // Mock de metas, idealmente viriam de um contexto ou hook de dados
   const mockGoals = [{ id: 'goal-1', name: 'Viagem para o Caribe' }];
   return (
     <FormField
@@ -91,22 +94,15 @@ const GoalSelector = ({ form }) => {
 
 // Seletor de Categoria Hierárquico - Agora usado para PJ e PF
 const HierarchicalCategorySelector = ({ form, allCategories, initialData }) => {
-  const [parentCategoryId, setParentCategoryId] = useState('');
-  const categoryId = form.watch('categoryId');
+  const selectedCategoryId = form.watch('categoryId');
 
-  // Inicializa parentCategoryId com base no initialData, se disponível
-  useEffect(() => {
-    if (initialData?.categoryId) {
-      const initialCategory = allCategories.find(c => c.id === initialData.categoryId);
-      if (initialCategory) {
-        setParentCategoryId(initialCategory.parentId || initialCategory.id);
-      }
-    } else {
-      setParentCategoryId('');
-    }
-  }, [initialData, allCategories]);
+  // Encontra a categoria principal com base na subcategoria selecionada
+  const parentCategoryOfSelected = allCategories.find(c => c.id === selectedCategoryId)?.parentId;
+  const initialParentId = parentCategoryOfSelected || initialData?.categoryId; // if initialData is a parent category itself
 
-  // Deriva as subcategorias disponíveis com base no estado do seletor pai
+  const [parentCategoryId, setParentCategoryId] = useState(initialParentId || '');
+
+  // Deriva as subcategorias disponíveis
   const subcategories = allCategories.filter(c => c.parentId === parentCategoryId);
   const parentCategories = allCategories.filter(c => !c.parentId);
 
@@ -121,51 +117,48 @@ const HierarchicalCategorySelector = ({ form, allCategories, initialData }) => {
     <>
       <FormField
         control={form.control}
-        name="parentCategory"
-        render={() => (
-          <FormItem>
-            <FormLabel>Categoria Principal</FormLabel>
-            <Select onValueChange={handleParentChange} value={parentCategoryId}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a categoria principal" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {parentCategories.map(cat => (
-                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
         name="categoryId"
         render={({ field }) => (
-          <FormItem>
-            <FormLabel>Subcategoria (Opcional)</FormLabel>
-            <Select
-              onValueChange={(value) => field.onChange(value)}
-              value={field.value}
-              disabled={!parentCategoryId || subcategories.length === 0}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a subcategoria" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {subcategories.map(subcat => (
-                  <SelectItem key={subcat.id} value={subcat.id}>{subcat.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
+          <>
+            <FormItem>
+              <FormLabel>Categoria Principal</FormLabel>
+              <Select onValueChange={handleParentChange} value={parentCategoryId}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a categoria principal" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {parentCategories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+            {subcategories.length > 0 && (
+              <FormItem>
+                <FormLabel>Subcategoria (Opcional)</FormLabel>
+                <Select
+                  onValueChange={(value) => field.onChange(value)}
+                  value={field.value}
+                  disabled={!parentCategoryId}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a subcategoria" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {subcategories.map(subcat => (
+                      <SelectItem key={subcat.id} value={subcat.id}>{subcat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          </>
         )}
       />
     </>
@@ -204,9 +197,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
       supplier: '',
       description: '',
       paymentMethod: '',
-      referenceDate: new Date(),
-      dueDate: new Date(),
-      paymentDate: new Date(),
+      referenceDate: undefined,
+      dueDate: undefined,
+      paymentDate: undefined,
       paymentStatus: 'pending',
     },
   });
@@ -215,6 +208,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     const finalData = {
       ...initialData,
       ...data,
+      transactionDate: data.transactionDate instanceof Date ? data.transactionDate.toISOString() : data.transactionDate,
+      referenceDate: data.referenceDate instanceof Date ? data.referenceDate.toISOString() : data.referenceDate,
+      dueDate: data.dueDate instanceof Date ? data.dueDate.toISOString() : data.dueDate,
+      paymentDate: data.paymentDate instanceof Date ? data.paymentDate.toISOString() : data.paymentDate,
     };
     
     if (mode === 'create') {
@@ -262,8 +259,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     return selectedType ? c.type.includes(selectedType) : true;
   });
 
-  const dialogTitle = mode === 'create' 
-    ? `Adicionar Transação (${personType})` 
+  const dialogTitle = mode === 'create'
+    ? `Adicionar Transação (${personType})`
     : `Editar Transação (${personType})`;
 
   return (
@@ -304,7 +301,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                                   !field.value && "text-muted-foreground"
                                 )}
                               >
-                                {field.value ? format(field.value, "dd/MM/yyyy") : <span>Selecione uma data</span>}
+                                {field.value ? format(field.value, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione uma data</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
@@ -315,6 +312,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                               selected={field.value}
                               onSelect={field.onChange}
                               initialFocus
+                              locale={ptBR}
                             />
                           </PopoverContent>
                         </Popover>
@@ -416,7 +414,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                                     !field.value && "text-muted-foreground"
                                   )}
                                 >
-                                  {field.value ? format(field.value, "dd/MM/yyyy") : <span>Selecione uma data</span>}
+                                  {field.value ? format(field.value, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione uma data</span>}
                                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
                               </FormControl>
@@ -427,6 +425,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                                 selected={field.value}
                                 onSelect={field.onChange}
                                 initialFocus
+                                locale={ptBR}
                               />
                             </PopoverContent>
                           </Popover>
@@ -450,7 +449,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                                     !field.value && "text-muted-foreground"
                                   )}
                                 >
-                                  {field.value ? format(field.value, "dd/MM/yyyy") : <span>Selecione uma data</span>}
+                                  {field.value ? format(field.value, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione uma data</span>}
                                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
                               </FormControl>
@@ -461,6 +460,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                                 selected={field.value}
                                 onSelect={field.onChange}
                                 initialFocus
+                                locale={ptBR}
                               />
                             </PopoverContent>
                           </Popover>
@@ -484,7 +484,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                                     !field.value && "text-muted-foreground"
                                   )}
                                 >
-                                  {field.value ? format(field.value, "dd/MM/yyyy") : <span>Selecione uma data</span>}
+                                  {field.value ? format(field.value, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione uma data</span>}
                                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
                               </FormControl>
@@ -495,6 +495,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                                 selected={field.value}
                                 onSelect={field.onChange}
                                 initialFocus
+                                locale={ptBR}
                               />
                             </PopoverContent>
                           </Popover>
