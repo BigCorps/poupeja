@@ -1,127 +1,90 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import HtmlJsSection from './HtmlJsSection';
+import { useApp } from '@/contexts/AppContext';
 
-interface SectionConfig {
+interface SectionDefinition {
   id: string;
   title: string;
   htmlContent: string;
   jsContent?: string;
   supabaseAccess?: boolean;
-  enabled?: boolean;
-  order?: number;
 }
 
 interface HtmlJsSectionManagerProps {
-  sections: SectionConfig[];
-  onSectionMessage?: (sectionId: string, message: any) => void;
+  sections: SectionDefinition[];
   className?: string;
+  onSectionMessage?: (sectionId: string, message: any) => void;
 }
 
 const HtmlJsSectionManager: React.FC<HtmlJsSectionManagerProps> = ({
   sections,
-  onSectionMessage,
-  className = ''
+  className,
+  onSectionMessage
 }) => {
-  const [activeSections, setActiveSections] = useState<SectionConfig[]>([]);
-  const [messages, setMessages] = useState<{ [sectionId: string]: any[] }>({});
+  const [loading, setLoading] = useState(true);
+  const appContext = useApp();
 
-  // Filtrar e ordenar seções ativas
-  useEffect(() => {
-    const active = sections
-      .filter(section => section.enabled !== false)
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
-    
-    setActiveSections(active);
-  }, [sections]);
-
-  // Gerenciar mensagens das seções
-  const handleSectionMessage = useCallback((message: any) => {
-    const { sectionId, ...messageData } = message;
-    
-    // Armazenar mensagem no histórico
-    setMessages(prev => ({
-      ...prev,
-      [sectionId]: [...(prev[sectionId] || []), messageData]
-    }));
-
-    // Chamar callback externo se fornecido
+  const handleMessageFromSection = useCallback((message: any) => {
+    // Reenvia a mensagem para o componente pai (se a função onSectionMessage existir)
     if (onSectionMessage) {
-      onSectionMessage(sectionId, messageData);
+      onSectionMessage(message.sectionId, message);
     }
 
-    // Log para debug
-    console.log(`Mensagem da seção ${sectionId}:`, messageData);
-  }, [onSectionMessage]);
-
-  // Enviar mensagem para uma seção específica
-  const sendMessageToSection = useCallback((sectionId: string, message: any) => {
-    const event = new CustomEvent(`htmljs-message-to-${sectionId}`, {
-      detail: message
+    // Também encaminha a mensagem para outras seções, se necessário
+    sections.forEach(section => {
+      if (section.id !== message.sectionId) {
+        // Envia mensagem para a outra seção via evento global
+        const event = new CustomEvent(`htmljs-message-to-${section.id}`, {
+          detail: message
+        });
+        window.dispatchEvent(event);
+      }
     });
-    window.dispatchEvent(event);
-  }, []);
+  }, [onSectionMessage, sections]);
 
-  // Broadcast para todas as seções
-  const broadcastMessage = useCallback((message: any) => {
-    activeSections.forEach(section => {
-      sendMessageToSection(section.id, message);
-    });
-  }, [activeSections, sendMessageToSection]);
-
-  // Expor métodos globalmente para facilitar o uso
   useEffect(() => {
+    // Global API para que as seções HTML/JS possam enviar mensagens para o manager
     (window as any).HtmlJsSectionManager = {
-      sendMessageToSection,
-      broadcastMessage,
-      getMessages: (sectionId?: string) => {
-        return sectionId ? messages[sectionId] || [] : messages;
+      sendMessageToSection: (sectionId: string, message: any) => {
+        const event = new CustomEvent(`htmljs-message-to-${sectionId}`, {
+          detail: message
+        });
+        window.dispatchEvent(event);
       },
-      getActiveSections: () => activeSections.map(s => ({ id: s.id, title: s.title }))
+      // Este método não é estritamente necessário para o fluxo principal,
+      // mas pode ser útil para debug e testes
+      postMessage: (message: any) => {
+        handleMessageFromSection(message);
+      }
     };
+    
+    setLoading(false);
+  }, [handleMessageFromSection]);
 
-    return () => {
-      delete (window as any).HtmlJsSectionManager;
-    };
-  }, [sendMessageToSection, broadcastMessage, messages, activeSections]);
-
-  if (activeSections.length === 0) {
-    return (
-      <div className={`p-4 text-center text-gray-500 ${className}`}>
-        <p>Nenhuma seção HTML/JS ativa encontrada.</p>
-      </div>
-    );
+  if (loading || !appContext.isAuthReady) {
+    return <div className="text-center py-10 text-gray-500">Carregando dashboard...</div>;
+  }
+  
+  if (!sections || sections.length === 0) {
+    return <div className="text-center py-10 text-gray-500">Nenhuma seção para exibir.</div>;
   }
 
   return (
-    <div className={`html-js-section-manager space-y-4 ${className}`}>
-      {activeSections.map((section) => (
-        <div key={section.id} className="section-container">
-          {section.title && (
-            <h3 className="text-lg font-semibold mb-2 text-gray-800">
-              {section.title}
-            </h3>
-          )}
-          
-          <HtmlJsSection
-            sectionId={section.id}
-            htmlContent={section.htmlContent}
-            jsContent={section.jsContent}
-            supabaseAccess={section.supabaseAccess}
-            onMessage={handleSectionMessage}
-            className="border rounded-lg p-4 bg-white shadow-sm"
-          />
-          
-          {/* Debug info (apenas em desenvolvimento) */}
-          {process.env.NODE_ENV === 'development' && messages[section.id] && (
-            <details className="mt-2">
-              <summary className="text-xs text-gray-500 cursor-pointer">
-                Debug: {messages[section.id].length} mensagens
-              </summary>
-              <pre className="text-xs bg-gray-100 p-2 rounded mt-1 overflow-auto max-h-32">
-                {JSON.stringify(messages[section.id], null, 2)}
-              </pre>
-            </details>
-          )}
+    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${className}`}>
+      {sections.map(section => (
+        <div key={section.id} className="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
+          <div className="p-4 bg-gray-100 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">{section.title}</h3>
+          </div>
+          <div className="p-6 flex-grow">
+            <HtmlJsSection
+              sectionId={section.id}
+              htmlContent={section.htmlContent}
+              jsContent={section.jsContent}
+              supabaseAccess={section.supabaseAccess}
+              onMessage={handleMessageFromSection}
+            />
+          </div>
         </div>
       ))}
     </div>
