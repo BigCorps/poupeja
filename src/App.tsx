@@ -39,6 +39,7 @@ import ConnectedBanksPage from "./pages/ConnectedBanksPage";
 // ✅ NOVO: Importação das páginas de Termos e Privacidade
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import CustomDashboard from "./pages/CustomDashboard";
 
 import "./App.css";
 
@@ -85,6 +86,7 @@ function App() {
                           <Route path="/schedule" element={<SchedulePage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/categories" element={<CategoriesPage />} />
+                          <Route path="/custom-dashboard" element={<CustomDashboard />} />
                           
                           {/* ✅ Rotas para as seções com Lazy Loading (com iframe do Typebot) */}
                           <Route path="/cobranca" 
