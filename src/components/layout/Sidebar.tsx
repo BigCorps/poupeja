@@ -163,7 +163,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     {
       icon: Code,
       label: 'Dashboard HTML',
-      href: '/dashboard-html'
+      href: '/custom-dashboard'
     },
     // Removi o item "Consultas" para evitar duplicação ou confusão, já que o novo item tem funcionalidade similar
     {
