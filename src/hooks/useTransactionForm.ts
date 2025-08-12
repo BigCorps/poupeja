@@ -3,87 +3,98 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { lucideReact as icons } from 'lucide-react';
-
-// Dados mockados para simular categorias e subcategorias
-// No seu sistema, esses dados viriam do seu AppContext
-const mockCategories = [
-  { id: '1', name: 'Alimentação', parent_id: null, type: 'expense', color: '#ff6b6b' },
-  { id: '2', name: 'Transporte', parent_id: null, type: 'expense', color: '#4ecdc4' },
-  { id: '3', name: 'Moradia', parent_id: null, type: 'expense', color: '#45b7d1' },
-  { id: '4', name: 'Supermercado', parent_id: '1', type: 'expense', color: '#ff6b6b' },
-  { id: '5', name: 'Restaurante', parent_id: '1', type: 'expense', color: '#ff6b6b' },
-  { id: '6', name: 'Combustível', parent_id: '2', type: 'expense', color: '#4ecdc4' },
-  { id: '7', name: 'Seguro', parent_id: '2', type: 'expense', color: '#4ecdc4' },
-  { id: '8', name: 'Aluguel', parent_id: '3', type: 'expense', color: '#45b7d1' },
-  { id: '9', name: 'Contas', parent_id: '3', type: 'expense', color: '#45b7d1' },
-];
+import { useCategories } from '@/hooks/use-categories'; // Importa o hook real
 
 // O esquema de validação corrigido (do seu Canvas)
 export const createTransactionSchema = z.object({
   type: z.enum(['income', 'expense']),
   amount: z.coerce.number().positive(),
-  category: z.string().min(1),
+  // A categoria principal é obrigatória apenas se for uma despesa ou receita
+  category: z.string().optional(),
   subcategory: z.string().optional(),
   description: z.string().optional(),
   date: z.string().min(1),
   goalId: z.union([z.string().min(1), z.literal("none"), z.null(), z.undefined()]).optional(),
+}).refine(data => {
+  // Adiciona a validação para garantir que a categoria principal é selecionada
+  // se houver uma subcategoria, ou se for uma transação de tipo despesa/receita.
+  // A validação do seu `TransactionForm` anterior era mais robusta.
+  // Ajuste o `zod` schema conforme a necessidade exata.
+  if (data.type === 'expense' || data.type === 'income') {
+    return !!data.category;
+  }
+  return true;
+}, {
+  message: "A categoria é obrigatória para despesas e receitas.",
+  path: ['category'],
 });
 
 // Tipos do formulário
 export type TransactionFormValues = z.infer<typeof createTransactionSchema>;
 
-// Adaptando o seu hook useTransactionForm para este exemplo
 const useTransactionForm = () => {
+    // Agora usa o hook real para buscar as categorias
+    const { categories: allCategories } = useCategories();
     const [selectedType, setSelectedType] = useState<'income' | 'expense'>('expense');
     const form = useForm<TransactionFormValues>({
-        resolver: zodResolver(createTransactionSchema),
-        defaultValues: {
-            type: 'expense',
-            amount: 0,
-            category: '',
-            subcategory: '',
-            date: new Date().toISOString().split('T')[0],
-            goalId: undefined,
-        }
+      resolver: zodResolver(createTransactionSchema),
+      defaultValues: {
+          type: 'expense',
+          amount: 0,
+          category: '',
+          subcategory: '',
+          date: new Date().toISOString().split('T')[0],
+          goalId: undefined,
+      }
     });
 
     const onSubmit = (values: TransactionFormValues) => {
         console.log("Formulário enviado com sucesso!", values);
-        // Aqui a lógica para salvar a transação
     };
 
-    return { form, selectedType, onSubmit, setSelectedType };
+    const { register, handleSubmit, setValue, watch } = form;
+    
+    const selectedParentCategory = watch('category');
+
+    const parentCategories = useMemo(() => {
+      // Usa os dados reais e aninhados para filtrar as categorias
+      return allCategories.filter(cat => cat.type === selectedType);
+    }, [allCategories, selectedType]);
+
+    const subcategories = useMemo(() => {
+      if (!selectedParentCategory) return [];
+      const parent = allCategories.find(cat => cat.id === selectedParentCategory);
+      return parent?.subcategories || [];
+    }, [allCategories, selectedParentCategory]);
+
+    const handleParentCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newParentId = e.target.value;
+      setValue('category', newParentId, { shouldValidate: true });
+      setValue('subcategory', '', { shouldValidate: true });
+    };
+
+    const handleSubcategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newSubcategoryId = e.target.value;
+      setValue('subcategory', newSubcategoryId, { shouldValidate: true });
+
+      // Lógica para preencher a categoria principal automaticamente
+      const subcategory = allCategories.flatMap(c => c.subcategories || []).find(s => s.id === newSubcategoryId);
+      if (subcategory && subcategory.parent_id) {
+        setValue('category', subcategory.parent_id, { shouldValidate: true });
+      }
+    };
+    
+    useEffect(() => {
+      form.setValue('type', selectedType);
+    }, [selectedType, form]);
+
+    return { form, selectedType, onSubmit, setSelectedType, parentCategories, subcategories, handleParentCategoryChange, handleSubcategoryChange, selectedParentCategory };
 }
 
 export default function App() {
-  const { form, selectedType, onSubmit, setSelectedType } = useTransactionForm();
-  const { register, handleSubmit, setValue, watch } = form;
+  const { form, selectedType, onSubmit, setSelectedType, parentCategories, subcategories, handleParentCategoryChange, handleSubcategoryChange, selectedParentCategory } = useTransactionForm();
+  const { register, handleSubmit, formState: { errors } } = form;
   
-  // Watch the value of the 'category' field
-  const selectedParentCategory = watch('category');
-
-  const parentCategories = useMemo(() => {
-    return mockCategories.filter(cat => cat.parent_id === null && cat.type === selectedType);
-  }, [selectedType]);
-
-  const subcategories = useMemo(() => {
-    if (!selectedParentCategory) return [];
-    return mockCategories.filter(cat => cat.parent_id === selectedParentCategory);
-  }, [selectedParentCategory]);
-
-  // Handle the change for parent category and reset subcategory
-  const handleParentCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newParentId = e.target.value;
-    setValue('category', newParentId, { shouldValidate: true });
-    // Reset the subcategory when the parent category changes
-    setValue('subcategory', '', { shouldValidate: true });
-  };
-  
-  // Update the form's type when the user clicks the buttons
-  useEffect(() => {
-    form.setValue('type', selectedType);
-  }, [selectedType, form]);
-
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 antialiased">
       <div className="bg-gray-800 text-gray-200 p-8 rounded-2xl shadow-xl w-full max-w-md">
@@ -95,7 +106,6 @@ export default function App() {
         </div>
         
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Botões de tipo (Receita/Despesa) */}
           <div className="flex justify-center p-1 bg-gray-700 rounded-xl space-x-2">
             <button
               type="button"
@@ -113,7 +123,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Campo Categoria Principal */}
           <div>
             <label htmlFor="category" className="block text-sm font-medium mb-2">
               Categoria Principal
@@ -122,6 +131,7 @@ export default function App() {
               id="category"
               {...register('category')}
               onChange={handleParentCategoryChange}
+              value={selectedParentCategory || ''}
               className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="" disabled>Selecione a categoria principal</option>
@@ -129,9 +139,9 @@ export default function App() {
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
+            {errors.category && <p className="text-red-400 text-sm mt-1">{errors.category.message}</p>}
           </div>
 
-          {/* Campo Subcategoria (opcional) */}
           {selectedParentCategory && subcategories.length > 0 && (
             <div>
               <label htmlFor="subcategory" className="block text-sm font-medium mb-2">
@@ -140,6 +150,7 @@ export default function App() {
               <select
                 id="subcategory"
                 {...register('subcategory')}
+                onChange={handleSubcategoryChange}
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Selecione uma subcategoria</option>
@@ -150,7 +161,8 @@ export default function App() {
             </div>
           )}
 
-          {/* Botões de Ação */}
+          {/* ... Outros campos do formulário ... */}
+
           <div className="flex justify-end space-x-4 pt-4">
             <button
               type="button"
@@ -161,7 +173,6 @@ export default function App() {
             <button
               type="submit"
               className="px-6 py-2 bg-emerald-600 text-white rounded-lg font-semibold shadow-lg hover:bg-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!selectedParentCategory}
             >
               Salvar
             </button>
