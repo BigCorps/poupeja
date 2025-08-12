@@ -97,7 +97,7 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       icon: Code,
       label: 'Dashboard HTML',
       action: () => {
-        navigate('/dashboard-html');
+        navigate('/custom-dashboard');
         setIsQuickActionsOpen(false);
       },
       color: 'text-green-800 dark:text-green-200',
