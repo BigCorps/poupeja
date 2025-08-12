@@ -49,6 +49,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^2.29.3",
+    "dompurify": "^3.2.6",
     "embla-carousel-react": "^8.3.0",
     "framer-motion": "^12.10.5",
     "groq-sdk": "^0.29.0",
@@ -78,6 +79,7 @@
   "devDependencies": {
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
+    "@types/dompurify": "^3.2.0",
     "@types/node": "^22.5.5",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
