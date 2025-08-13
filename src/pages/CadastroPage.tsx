@@ -1,671 +1,378 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, Tag, User, CreditCard } from 'lucide-react';
-import { useAppContext } from '@/contexts/AppContext';
+import React, { useState, useMemo, useCallback } from 'react';
+import MainLayout from '@/components/layout/MainLayout';
+import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
+import { Separator } from '@/components/ui/separator';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useAppContext } from '@/contexts/AppContext';
+import CategoryForm from '@/components/categories/CategoryForm';
+import CategoryIcon from '@/components/categories/CategoryIcon';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Trash2, Edit, MoreVertical, ArrowLeft } from 'lucide-react';
+import { Category, TransactionType, PaymentMethod, Supplier } from '@/types';
 
-// Simulando dados do Supabase - você substituirá pelas chamadas reais
-const mockUser = { id: '123e4567-e89b-12d3-a456-426614174000' };
+// Tipos auxiliares para gerenciar o estado da página
+type ViewMode = 'mainCategories' | 'subcategories';
 
-const PAYMENT_METHODS_OPTIONS = [
-  'PIX', 'BOLETO', 'CARTÃO DE CRÉDITO', 'CARTÃO DE DÉBITO', 'DINHEIRO',
-  'TRANSFERÊNCIA', 'CHEQUE', 'REDE CARD', 'SITE', 'SHOPEE', 'MERCADOPAGO', 'DÉBITO EM CONTA'
-];
+const CadastrosPage: React.FC = () => {
+  const { t } = usePreferences();
+  const {
+    categories,
+    paymentMethods,
+    suppliers,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addPaymentMethod,
+    updatePaymentMethod,
+    deletePaymentMethod,
+    addSupplier,
+    updateSupplier,
+    deleteSupplier,
+    isLoading
+  } = useAppContext();
 
-const CATEGORY_COLORS = [
-  '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-  '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6B7280'
-];
+  // Estados locais para a gestão da interface
+  const [activeTab, setActiveTab] = useState<'categories' | 'paymentMethods' | 'suppliers'>('categories');
+  const [categoryFormOpen, setCategoryFormOpen] = useState(false);
+  const [initialFormData, setInitialFormData] = useState<Partial<Category> | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [selectedParentCategory, setSelectedParentCategory] = useState<Category | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('mainCategories');
+  const [categoryType, setCategoryType] = useState<'expense' | 'income'>('expense');
 
-const CATEGORY_ICONS = [
-  'circle', 'home', 'car', 'shopping-cart', 'utensils', 'gamepad-2',
-  'heart', 'briefcase', 'graduation-cap', 'plane', 'gift', 'music'
-];
+  // Mapeamento e filtragem de categorias
+  const parentCategories = useMemo(() => {
+    return categories.filter(cat => !cat.parent_id);
+  }, [categories]);
+  
+  const subCategories = useMemo(() => {
+    return categories.filter(cat => cat.parent_id);
+  }, [categories]);
 
-export default function CadastroPage() {
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('categorias');
-  const [categories, setCategories] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const mainCategories = useMemo(() => {
+    return parentCategories.filter(cat => cat.type === categoryType);
+  }, [parentCategories, categoryType]);
 
-  // Estados para formulários
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [showSupplierForm, setShowSupplierForm] = useState(false);
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
+  const subCategoriesForSelectedParent = useMemo(() => {
+    if (!selectedParentCategory) return [];
+    return subCategories.filter(subcat => subcat.parent_id === selectedParentCategory.id);
+  }, [subCategories, selectedParentCategory]);
 
-  // Estados dos formulários
-  const [categoryForm, setCategoryForm] = useState({
-    name: '', type: 'expense', color: '#3B82F6', icon: 'circle', parent_id: null
-  });
-  const [supplierForm, setSupplierForm] = useState({
-    name: '', type: 'supplier', document: '', email: '', phone: '', address: ''
-  });
-  const [paymentForm, setPaymentForm] = useState({
-    name: '', type: 'both', is_default: false
-  });
+  // Funções de CRUD para Categorias
+  const handleAddCategory = useCallback(() => {
+    setInitialFormData({
+      name: '',
+      type: categoryType,
+      color: '#000000',
+      icon: 'LayoutList',
+      is_default: false,
+      parent_id: viewMode === 'subcategories' ? selectedParentCategory?.id : null,
+    });
+    setCategoryFormOpen(true);
+  }, [categoryType, viewMode, selectedParentCategory]);
 
-  // Simular carregamento inicial
-  useEffect(() => {
-    loadInitialData();
+  const handleEditCategory = useCallback((category: Category) => {
+    setInitialFormData(category);
+    setCategoryFormOpen(true);
   }, []);
 
-  const loadInitialData = async () => {
-    setLoading(true);
-    // Simular dados - substitua pelas chamadas reais do Supabase
-    setTimeout(() => {
-      setCategories([
-        { id: '1', name: 'Alimentação', type: 'expense', color: '#10B981', icon: 'utensils', parent_id: null },
-        { id: '2', name: 'Restaurantes', type: 'expense', color: '#10B981', icon: 'utensils', parent_id: '1' },
-        { id: '3', name: 'Salário', type: 'income', color: '#3B82F6', icon: 'briefcase', parent_id: null },
-      ]);
-      setSuppliers([
-        { id: '1', name: 'Supermercado ABC', type: 'supplier', document: '12.345.678/0001-90' },
-      ]);
-      setPaymentMethods([
-        { id: '1', name: 'PIX', type: 'both', is_default: true },
-      ]);
-      setLoading(false);
-    }, 1000);
-  };
+  const handleDeleteCategory = useCallback((category: Category) => {
+    setCategoryToDelete(category);
+    setDeleteDialogOpen(true);
+  }, []);
 
-  // Funções para Categorias
-  const handleSaveCategory = async () => {
-    if (!categoryForm.name.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome da categoria é obrigatório",
-        variant: "destructive",
-      });
-      return;
+  const confirmDeleteCategory = useCallback(async () => {
+    if (categoryToDelete) {
+      await deleteCategory(categoryToDelete.id);
+      setDeleteDialogOpen(false);
+      setCategoryToDelete(null);
     }
-    
-    const newCategory = {
-      id: Date.now().toString(),
-      ...categoryForm,
-      user_id: mockUser.id,
-      created_at: new Date().toISOString()
-    };
+  }, [categoryToDelete, deleteCategory]);
 
-    if (editingItem) {
-      setCategories(prev => prev.map(cat => 
-        cat.id === editingItem.id ? { ...cat, ...categoryForm } : cat
-      ));
-      toast({
-        title: "Sucesso",
-        description: "Categoria atualizada com sucesso",
-      });
-    } else {
-      setCategories(prev => [...prev, newCategory]);
-      toast({
-        title: "Sucesso",
-        description: "Categoria criada com sucesso",
-      });
+  const handleSaveCategory = useCallback(async (categoryData: Partial<Category>) => {
+    try {
+      if (categoryData.id) {
+        await updateCategory(categoryData as Category);
+      } else {
+        const dataToSave = { ...categoryData, type: categoryData.type || categoryType };
+        await addCategory(dataToSave as Omit<Category, 'id' | 'created_at' | 'user_id'>);
+      }
+    } finally {
+      setCategoryFormOpen(false);
+      setInitialFormData(null);
     }
+  }, [addCategory, updateCategory, categoryType]);
 
-    resetCategoryForm();
+  // Adicionando um estado e formulário para Métodos de Pagamento e Fornecedores
+  // ... (Você pode implementar formulários similares aqui)
+  const handleAddPaymentMethod = () => {
+    // Implemente a lógica para abrir um formulário de método de pagamento
+    // addPaymentMethod({ name: 'Novo Método', type: 'both', is_default: false });
   };
+  const handleDeletePaymentMethod = (id: string) => deletePaymentMethod(id);
 
-  const resetCategoryForm = () => {
-    setCategoryForm({ name: '', type: 'expense', color: '#3B82F6', icon: 'circle', parent_id: null });
-    setShowCategoryForm(false);
-    setEditingItem(null);
+  const handleAddSupplier = () => {
+    // Implemente a lógica para abrir um formulário de fornecedor
+    // addSupplier({ name: 'Novo Fornecedor', type: 'supplier' });
   };
+  const handleDeleteSupplier = (id: string) => deleteSupplier(id);
 
-  const handleEditCategory = (category) => {
-    setCategoryForm(category);
-    setEditingItem(category);
-    setShowCategoryForm(true);
-  };
-
-  const handleDeleteCategory = (id) => {
-    setCategories(prev => prev.filter(cat => cat.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Categoria excluída com sucesso",
-    });
-  };
-
-  // Funções para Fornecedores/Clientes
-  const handleSaveSupplier = async () => {
-    if (!supplierForm.name.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome do fornecedor/cliente é obrigatório",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newSupplier = {
-      id: Date.now().toString(),
-      ...supplierForm,
-      user_id: mockUser.id,
-      created_at: new Date().toISOString()
-    };
-
-    if (editingItem) {
-      setSuppliers(prev => prev.map(sup => 
-        sup.id === editingItem.id ? { ...sup, ...supplierForm } : sup
-      ));
-      toast({
-        title: "Sucesso",
-        description: "Fornecedor/Cliente atualizado com sucesso",
-      });
-    } else {
-      setSuppliers(prev => [...prev, newSupplier]);
-      toast({
-        title: "Sucesso",
-        description: "Fornecedor/Cliente criado com sucesso",
-      });
-    }
-
-    resetSupplierForm();
-  };
-
-  const resetSupplierForm = () => {
-    setSupplierForm({ name: '', type: 'supplier', document: '', email: '', phone: '', address: '' });
-    setShowSupplierForm(false);
-    setEditingItem(null);
-  };
-
-  const handleEditSupplier = (supplier) => {
-    setSupplierForm(supplier);
-    setEditingItem(supplier);
-    setShowSupplierForm(true);
-  };
-
-  const handleDeleteSupplier = (id) => {
-    setSuppliers(prev => prev.filter(sup => sup.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Fornecedor/Cliente excluído com sucesso",
-    });
-  };
-
-  // Funções para Métodos de Pagamento
-  const handleSavePayment = async () => {
-    if (!paymentForm.name.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome do método de pagamento é obrigatório",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newPayment = {
-      id: Date.now().toString(),
-      ...paymentForm,
-      user_id: mockUser.id,
-      created_at: new Date().toISOString()
-    };
-
-    if (editingItem) {
-      setPaymentMethods(prev => prev.map(pay => 
-        pay.id === editingItem.id ? { ...pay, ...paymentForm } : pay
-      ));
-      toast({
-        title: "Sucesso",
-        description: "Método de pagamento atualizado com sucesso",
-      });
-    } else {
-      setPaymentMethods(prev => [...prev, newPayment]);
-      toast({
-        title: "Sucesso",
-        description: "Método de pagamento criado com sucesso",
-      });
-    }
-
-    resetPaymentForm();
-  };
-
-  const resetPaymentForm = () => {
-    setPaymentForm({ name: '', type: 'both', is_default: false });
-    setShowPaymentForm(false);
-    setEditingItem(null);
-  };
-
-  const handleEditPayment = (payment) => {
-    setPaymentForm(payment);
-    setEditingItem(payment);
-    setShowPaymentForm(true);
-  };
-
-  const handleDeletePayment = (id) => {
-    setPaymentMethods(prev => prev.filter(pay => pay.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Método de pagamento excluído com sucesso",
-    });
-  };
-
-  // Renderizar categorias com hierarquia
-  const renderCategoryTree = (parentId = null, level = 0) => {
-    return categories
-      .filter(cat => cat.parent_id === parentId)
-      .map(category => (
-        <div key={category.id} className={`ml-${level * 4}`}>
-          <Card className="mb-2">
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="flex items-center space-x-3">
-                <div 
-                  className="w-4 h-4 rounded-full" 
-                  style={{ backgroundColor: category.color }}
-                />
-                <span className="font-medium">{category.name}</span>
-                <Badge variant={category.type === 'income' ? 'default' : 'secondary'}>
-                  {category.type === 'income' ? 'Receita' : 'Despesa'}
-                </Badge>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEditCategory(category)}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteCategory(category.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          {renderCategoryTree(category.id, level + 1)}
-        </div>
-      ));
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
+      <MainLayout title={t('dashboard.menu.registers')}>
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Cadastros</h1>
-        <p className="text-muted-foreground">
-          Gerencie categorias, fornecedores e métodos de pagamento
-        </p>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="categorias" className="flex items-center space-x-2">
-            <Tag className="w-4 h-4" />
-            <span>Plano de Contas</span>
-          </TabsTrigger>
-          <TabsTrigger value="fornecedores" className="flex items-center space-x-2">
-            <User className="w-4 h-4" />
-            <span>Fornecedores/Clientes</span>
-          </TabsTrigger>
-          <TabsTrigger value="pagamentos" className="flex items-center space-x-2">
-            <CreditCard className="w-4 h-4" />
-            <span>Formas de Pagamento</span>
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Tab Categorias */}
-        <TabsContent value="categorias" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Plano de Contas</CardTitle>
-                  <CardDescription>
-                    Organize suas receitas e despesas em categorias
-                  </CardDescription>
-                </div>
-                <Button onClick={() => setShowCategoryForm(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nova Categoria
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Formulário de Categoria */}
-              {showCategoryForm && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="category-name">Nome</Label>
-                        <Input
-                          id="category-name"
-                          value={categoryForm.name}
-                          onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})}
-                          placeholder="Nome da categoria"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="category-type">Tipo</Label>
-                        <Select
-                          value={categoryForm.type}
-                          onValueChange={(value) => setCategoryForm({...categoryForm, type: value})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="expense">Despesa</SelectItem>
-                            <SelectItem value="income">Receita</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="category-parent">Categoria Pai</Label>
-                        <Select
-                          value={categoryForm.parent_id || ''}
-                          onValueChange={(value) => setCategoryForm({...categoryForm, parent_id: value || null})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Categoria Principal" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">Categoria Principal</SelectItem>
-                            {categories.filter(cat => !cat.parent_id).map(cat => (
-                              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Cor</Label>
-                        <div className="flex space-x-2">
-                          {CATEGORY_COLORS.map(color => (
-                            <button
-                              key={color}
-                              onClick={() => setCategoryForm({...categoryForm, color})}
-                              className={`w-8 h-8 rounded-full border-2 ${
-                                categoryForm.color === color ? 'border-primary' : 'border-border'
-                              }`}
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
+    <MainLayout title={t('dashboard.menu.registers')}>
+      <SubscriptionGuard feature="cadastros">
+        <div className="space-y-4">
+          <h1 className="text-2xl font-bold">{t('dashboard.menu.registers')}</h1>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'categories' | 'paymentMethods' | 'suppliers')}>
+            <div className="flex justify-between items-center">
+              <TabsList className="grid grid-cols-3">
+                <TabsTrigger value="categories">{t('common.categories')}</TabsTrigger>
+                <TabsTrigger value="paymentMethods">Métodos de Pagamento</TabsTrigger>
+                <TabsTrigger value="suppliers">Fornecedores</TabsTrigger>
+              </TabsList>
+              <Button onClick={() => {
+                if (activeTab === 'categories') handleAddCategory();
+                // Adicione a lógica para outros botões aqui
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar
+              </Button>
+            </div>
+            
+            <Separator />
+            
+            <TabsContent value="categories">
+              {/* Conteúdo da seção de Categorias, adaptado do seu código antigo */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Categorias</CardTitle>
+                  <CardDescription>Gerencie as categorias de transações.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Tabs
+                    defaultValue="expense"
+                    value={categoryType}
+                    onValueChange={(value) => setCategoryType(value as 'expense' | 'income')}
+                  >
+                    <div className="flex justify-between items-center mb-4">
+                      <TabsList className="grid grid-cols-2 w-72">
+                        <TabsTrigger value="expense" className="data-[state=active]:bg-red-500 data-[state=active]:text-white">
+                          {t('common.expense')}
+                        </TabsTrigger>
+                        <TabsTrigger value="income" className="data-[state=active]:bg-green-500 data-[state=active]:text-white">
+                          {t('common.income')}
+                        </TabsTrigger>
+                      </TabsList>
+                      {viewMode === 'subcategories' && selectedParentCategory && (
+                        <div className="flex items-center space-x-2">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedParentCategory(null)}>
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                          <h2 className="text-xl font-semibold">Subcategorias de {selectedParentCategory.name}</h2>
                         </div>
-                      </div>
+                      )}
                     </div>
-                    <div className="flex justify-end space-x-2 mt-4">
-                      <Button variant="outline" onClick={resetCategoryForm}>
-                        <X className="w-4 h-4 mr-2" />
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleSaveCategory}>
-                        <Save className="w-4 h-4 mr-2" />
-                        Salvar
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Lista de Categorias */}
-              <div className="space-y-2">
-                {renderCategoryTree()}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab Fornecedores */}
-        <TabsContent value="fornecedores" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
+                    <TabsContent value="expense">
+                      <ul className="space-y-2">
+                        {mainCategories.filter(c => c.type === 'expense').map(category => (
+                          <li
+                            key={category.id}
+                            className="bg-muted p-3 rounded-lg flex items-center justify-between hover:bg-muted/80 transition-colors cursor-pointer"
+                            onClick={() => {
+                              setSelectedParentCategory(category);
+                              setViewMode('subcategories');
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <CategoryIcon icon={category.icon} color={category.color} />
+                              <span className="font-semibold">{category.name}</span>
+                            </div>
+                            <div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                                    <Edit className="mr-2 h-4 w-4" /> {t('common.edit')}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteCategory(category)}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> {t('common.delete')}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </TabsContent>
+                    <TabsContent value="income">
+                      <ul className="space-y-2">
+                        {mainCategories.filter(c => c.type === 'income').map(category => (
+                          <li
+                            key={category.id}
+                            className="bg-muted p-3 rounded-lg flex items-center justify-between hover:bg-muted/80 transition-colors cursor-pointer"
+                            onClick={() => {
+                              setSelectedParentCategory(category);
+                              setViewMode('subcategories');
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <CategoryIcon icon={category.icon} color={category.color} />
+                              <span className="font-semibold">{category.name}</span>
+                            </div>
+                            <div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                                    <Edit className="mr-2 h-4 w-4" /> {t('common.edit')}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteCategory(category)}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> {t('common.delete')}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+              {/* O CategoryForm e AlertDialog são mantidos, pois são globais */}
+            </TabsContent>
+            
+            <TabsContent value="paymentMethods">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Métodos de Pagamento</CardTitle>
+                  <CardDescription>Gerencie as formas de pagamento disponíveis.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {paymentMethods.length > 0 ? (
+                      paymentMethods.map(method => (
+                        <li key={method.id} className="bg-muted p-3 rounded-lg flex items-center justify-between">
+                          <span className="font-semibold">{method.name}</span>
+                          <div>
+                            {/* Adicionar DropdownMenu para Editar/Deletar */}
+                            <Button variant="ghost" size="sm" onClick={() => handleDeletePaymentMethod(method.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </li>
+                      ))
+                    ) : (
+                      <p>Nenhum método de pagamento cadastrado.</p>
+                    )}
+                  </ul>
+                  <Button className="mt-4" onClick={handleAddPaymentMethod}>Adicionar Método</Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="suppliers">
+              <Card>
+                <CardHeader>
                   <CardTitle>Fornecedores e Clientes</CardTitle>
-                  <CardDescription>
-                    Gerencie seus fornecedores e clientes
-                  </CardDescription>
-                </div>
-                <Button onClick={() => setShowSupplierForm(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Novo Fornecedor/Cliente
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Formulário de Fornecedor */}
-              {showSupplierForm && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-name">Nome</Label>
-                        <Input
-                          id="supplier-name"
-                          value={supplierForm.name}
-                          onChange={(e) => setSupplierForm({...supplierForm, name: e.target.value})}
-                          placeholder="Nome do fornecedor/cliente"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-type">Tipo</Label>
-                        <Select
-                          value={supplierForm.type}
-                          onValueChange={(value) => setSupplierForm({...supplierForm, type: value})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="supplier">Fornecedor</SelectItem>
-                            <SelectItem value="client">Cliente</SelectItem>
-                            <SelectItem value="both">Ambos</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-document">Documento</Label>
-                        <Input
-                          id="supplier-document"
-                          value={supplierForm.document}
-                          onChange={(e) => setSupplierForm({...supplierForm, document: e.target.value})}
-                          placeholder="CPF/CNPJ"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-email">Email</Label>
-                        <Input
-                          id="supplier-email"
-                          type="email"
-                          value={supplierForm.email}
-                          onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
-                          placeholder="email@exemplo.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-phone">Telefone</Label>
-                        <Input
-                          id="supplier-phone"
-                          value={supplierForm.phone}
-                          onChange={(e) => setSupplierForm({...supplierForm, phone: e.target.value})}
-                          placeholder="(11) 99999-9999"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-address">Endereço</Label>
-                        <Input
-                          id="supplier-address"
-                          value={supplierForm.address}
-                          onChange={(e) => setSupplierForm({...supplierForm, address: e.target.value})}
-                          placeholder="Endereço completo"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end space-x-2 mt-4">
-                      <Button variant="outline" onClick={resetSupplierForm}>
-                        <X className="w-4 h-4 mr-2" />
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleSaveSupplier}>
-                        <Save className="w-4 h-4 mr-2" />
-                        Salvar
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                  <CardDescription>Gerencie seus fornecedores e clientes.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {suppliers.length > 0 ? (
+                      suppliers.map(supplier => (
+                        <li key={supplier.id} className="bg-muted p-3 rounded-lg flex items-center justify-between">
+                          <span className="font-semibold">{supplier.name}</span>
+                          <div>
+                            {/* Adicionar DropdownMenu para Editar/Deletar */}
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteSupplier(supplier.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </li>
+                      ))
+                    ) : (
+                      <p>Nenhum fornecedor/cliente cadastrado.</p>
+                    )}
+                  </ul>
+                  <Button className="mt-4" onClick={handleAddSupplier}>Adicionar Fornecedor</Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              {/* Lista de Fornecedores */}
-              <div className="space-y-2">
-                {suppliers.map(supplier => (
-                  <Card key={supplier.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="flex items-center space-x-3">
-                        <span className="font-medium">{supplier.name}</span>
-                        <Badge variant="outline">
-                          {supplier.type === 'supplier' ? 'Fornecedor' : 
-                           supplier.type === 'client' ? 'Cliente' : 'Ambos'}
-                        </Badge>
-                        {supplier.document && (
-                          <span className="text-sm text-muted-foreground">{supplier.document}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditSupplier(supplier)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteSupplier(supplier.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          </Tabs>
+        </div>
 
-        {/* Tab Métodos de Pagamento */}
-        <TabsContent value="pagamentos" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Formas de Pagamento</CardTitle>
-                  <CardDescription>
-                    Configure os métodos de pagamento disponíveis
-                  </CardDescription>
-                </div>
-                <Button onClick={() => setShowPaymentForm(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nova Forma de Pagamento
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Formulário de Método de Pagamento */}
-              {showPaymentForm && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="payment-name">Nome</Label>
-                        <Input
-                          id="payment-name"
-                          value={paymentForm.name}
-                          onChange={(e) => setPaymentForm({...paymentForm, name: e.target.value})}
-                          placeholder="Nome do método de pagamento"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="payment-type">Tipo</Label>
-                        <Select
-                          value={paymentForm.type}
-                          onValueChange={(value) => setPaymentForm({...paymentForm, type: value})}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="income">Apenas Receitas</SelectItem>
-                            <SelectItem value="expense">Apenas Despesas</SelectItem>
-                            <SelectItem value="both">Ambos</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="flex justify-end space-x-2 mt-4">
-                      <Button variant="outline" onClick={resetPaymentForm}>
-                        <X className="w-4 h-4 mr-2" />
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleSavePayment}>
-                        <Save className="w-4 h-4 mr-2" />
-                        Salvar
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+        {/* Formulário de Categoria (mantido) */}
+        <CategoryForm
+          open={categoryFormOpen}
+          onOpenChange={setCategoryFormOpen}
+          initialData={initialFormData}
+          onSave={handleSaveCategory}
+          categoryType={initialFormData?.type || categoryType}
+          parentId={initialFormData?.parent_id || selectedParentCategory?.id || null}
+          parentName={initialFormData?.parent_id
+            ? categories.find(cat => cat.id === initialFormData.parent_id)?.name || null
+            : selectedParentCategory?.name}
+          saveButtonText={t('common.saveChanges')}
+        />
 
-              {/* Lista de Métodos de Pagamento */}
-              <div className="space-y-2">
-                {paymentMethods.map(payment => (
-                  <Card key={payment.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="flex items-center space-x-3">
-                        <span className="font-medium">{payment.name}</span>
-                        <Badge variant={payment.is_default ? 'default' : 'secondary'}>
-                          {payment.is_default ? 'Padrão' : 'Normal'}
-                        </Badge>
-                        <Badge variant="outline">
-                          {payment.type === 'income' ? 'Receitas' : 
-                           payment.type === 'expense' ? 'Despesas' : 'Ambos'}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditPayment(payment)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeletePayment(payment.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+        {/* Modal de confirmação de exclusão (mantido) */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('categories.deleteConfirmation')}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t('categories.deleteWarning')}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeleteCategory}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {t('common.delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+      </SubscriptionGuard>
+    </MainLayout>
   );
-}
+};
 
+export default CadastrosPage;
