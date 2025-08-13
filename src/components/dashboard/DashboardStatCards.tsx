@@ -3,7 +3,13 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Wallet, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency } from '@/lib/utils';
+// Função local para formatação de moeda
+const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
+};
 
 interface DashboardStatCardsProps {
   totalIncome: number;
