@@ -1,14 +1,15 @@
-import { Toaster } from "./components/ui/toaster";
-import { Toaster as Sonner } from "./components/ui/sonner";
-import { TooltipProvider } from "./components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { PreferencesProvider } from "./contexts/PreferencesContext";
-import { SubscriptionProvider } from "./contexts/SubscriptionContext";
-import { AppProvider } from "./contexts/AppContext";
-import { SaldoProvider } from "./contexts/SaldoContext";
-import { SupabaseInitializer } from "./components/common/SupabaseInitializer";
+import { PreferencesProvider } from "@/contexts/PreferencesContext";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
+import { AppProvider } from "@/contexts/AppContext";
+import { SaldoProvider } from "@/contexts/SaldoContext"; // Importação do SaldoProvider
+import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -34,31 +35,26 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
+// Importação da nova página para a API de Bancos
 import ConnectedBanksPage from "./pages/ConnectedBanksPage";
+// ✅ NOVO: Importação das páginas de Termos e Privacidade
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 
 import "./App.css";
 
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy } from 'react'; // ✅ Importe lazy e Suspense
 
-// O componente para a página inicial do dashboard
+// ✅ Define os componentes com iframe (Typebot) para carregamento preguiçoso (lazy loading)
 const LazyAgenteIA = lazy(() => import('./pages/AgenteIA'));
 const LazyCobranca = lazy(() => import('./pages/Cobranca'));
 const LazyPagamentos = lazy(() => import('./pages/Pagamentos'));
-const LazyConsultas = lazy(() => import('./pages/Consultas'));
+const LazyConsultas = lazy(() => import('./pages/Consultas')); // ✅ Lazy loading para Consultas
+
+// Importação direta do componente PagamentosEmLote (NÃO terá lazy loading)
 import PagamentosEmLote from './pages/PagamentosEmLote';
 
 const queryClient = new QueryClient();
-
-// Este componente atua como um layout para as rotas aninhadas do dashboard
-const DashboardLayout = () => {
-  return (
-    <Index>
-      <Outlet />
-    </Index>
-  );
-};
 
 function App() {
   return (
@@ -69,79 +65,70 @@ function App() {
             <PreferencesProvider>
               <SubscriptionProvider>
                 <AppProvider>
-                  <SaldoProvider>
+                  <SaldoProvider> {/* Adicionado o SaldoProvider aqui */}
                     <SupabaseInitializer>
                       <BrowserRouter>
                         <Routes>
-                          {/* Rotas de nível superior */}
                           <Route path="/" element={<LandingPage />} />
+                          <Route path="/dashboard" element={<Index />} />
                           <Route path="/landing" element={<LandingPage />} />
                           <Route path="/login" element={<LoginPage />} />
                           <Route path="/register" element={<RegisterPage />} />
                           <Route path="/register/:planType" element={<RegisterWithPlanPage />} />
                           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                           <Route path="/reset-password" element={<ResetPasswordPage />} />
+                          <Route path="/profile" element={<ProfilePage />} />
+                          <Route path="/transactions" element={<TransactionsPage />} />
+                          <Route path="/cadastros" element={<CadastroPage />} />
+                          <Route path="/saldo" element={<SaldoDashboard />} />
+                          <Route path="/expenses" element={<ExpensesPage />} />
+                          <Route path="/goals" element={<GoalsPage />} />
+                          <Route path="/reports" element={<ReportsPage />} />
+                          <Route path="/schedule" element={<SchedulePage />} />
+                          <Route path="/settings" element={<SettingsPage />} />
+                          <Route path="/categories" element={<CategoriesPage />} />
+                          
+                          {/* ✅ Rotas para as seções com Lazy Loading (com iframe do Typebot) */}
+                          <Route path="/cobranca" 
+                            element={
+                              <Suspense fallback={<div>Carregando Cobrança...</div>}>
+                                <LazyCobranca />
+                              </Suspense>
+                            } 
+                          />
+                          <Route path="/pagamentos" 
+                            element={
+                              <Suspense fallback={<div>Carregando Pagamentos...</div>}>
+                                <LazyPagamentos />
+                              </Suspense>
+                            } 
+                          />
+                          <Route path="/pagamentos-em-lote" element={<PagamentosEmLote />} />
+                          
+                          {/* Rota para Consultas COM Lazy Loading */}
+                          <Route path="/consultas" 
+                            element={
+                              <Suspense fallback={<div>Carregando Consultas...</div>}>
+                                <LazyConsultas />
+                              </Suspense>
+                            } 
+                          />
+
+                          {/* Rota para Agente IA agora com Lazy Loading */}
+                          <Route path="/agente-ia" 
+                            element={
+                              <Suspense fallback={<div>Carregando Agente IA...</div>}>
+                                <LazyAgenteIA />
+                              </Suspense>
+                            } 
+                          />
+                          
+                          <Route path="/connected-banks" element={<ConnectedBanksPage />} />
                           <Route path="/plans" element={<PlansPage />} />
                           <Route path="/checkout/:planType" element={<CheckoutPage />} />
                           <Route path="/payment-success" element={<PaymentSuccessPage />} />
                           <Route path="/thank-you" element={<ThankYouPage />} />
-                          <Route path="/terms" element={<Terms />} />
-                          <Route path="/privacy" element={<Privacy />} />
-
-                          {/* Rota principal do Dashboard com todas as rotas aninhadas */}
-                          <Route path="/dashboard" element={<Index />}>
-                            <Route path="saldo" element={<SaldoDashboard />} />
-                            <Route path="transactions" element={<TransactionsPage />} />
-                            <Route path="expenses" element={<ExpensesPage />} />
-                            <Route path="goals" element={<GoalsPage />} />
-                            <Route path="reports" element={<ReportsPage />} />
-                            <Route path="schedule" element={<SchedulePage />} />
-                            <Route path="settings" element={<SettingsPage />} />
-                            <Route path="categories" element={<CategoriesPage />} />
-                            <Route path="connected-banks" element={<ConnectedBanksPage />} />
-                            <Route path="achievements" element={<AchievementsPage />} />
-                            <Route path="profile" element={<ProfilePage />} />
-                            
-                            {/* A ROTA DE CADASTROS FOI ANINHADA AQUI */}
-                            <Route path="cadastros" element={<CadastroPage />} />
-                            
-                            {/* Rotas com Lazy Loading também aninhadas */}
-                            <Route
-                              path="cobranca"
-                              element={
-                                <Suspense fallback={<div>Carregando Cobrança...</div>}>
-                                  <LazyCobranca />
-                                </Suspense>
-                              }
-                            />
-                            <Route
-                              path="pagamentos"
-                              element={
-                                <Suspense fallback={<div>Carregando Pagamentos...</div>}>
-                                  <LazyPagamentos />
-                                </Suspense>
-                              }
-                            />
-                            <Route path="pagamentos-em-lote" element={<PagamentosEmLote />} />
-                            <Route
-                              path="consultas"
-                              element={
-                                <Suspense fallback={<div>Carregando Consultas...</div>}>
-                                  <LazyConsultas />
-                                </Suspense>
-                              }
-                            />
-                            <Route
-                              path="agente-ia"
-                              element={
-                                <Suspense fallback={<div>Carregando Agente IA...</div>}>
-                                  <LazyAgenteIA />
-                                </Suspense>
-                              }
-                            />
-                          </Route>
-
-                          {/* Rota do Admin, se for um layout separado */}
+                          <Route path="/achievements" element={<AchievementsPage />} />
                           <Route
                             path="/admin"
                             element={
@@ -151,7 +138,10 @@ function App() {
                             }
                           />
 
-                          {/* Catch-all para rotas não encontradas */}
+                          {/* ✅ NOVO: Rotas para Termos e Privacidade */}
+                          <Route path="/terms" element={<Terms />} />
+                          <Route path="/privacy" element={<Privacy />} />
+
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </BrowserRouter>
