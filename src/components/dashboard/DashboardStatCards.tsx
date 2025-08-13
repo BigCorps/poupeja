@@ -1,7 +1,6 @@
-
+// src/components/dashboard/DashboardStatCards.tsx
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatCurrency } from '@/utils/transactionUtils';
 import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { motion } from 'framer-motion';
@@ -22,8 +21,24 @@ const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({
   onNavigateToTransactionType
 }) => {
   const { t, currency } = usePreferences();
-  
+
   const renderHiddenValue = () => '******';
+
+  const formatCurrencyBR = (value: number, currencyCode?: string) => {
+    const code = currencyCode || 'BRL';
+    try {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: code
+      }).format(value ?? 0);
+    } catch {
+      // Fallback seguro caso a currency do usuário seja inválida/desconhecida
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(value ?? 0);
+    }
+  };
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -37,7 +52,7 @@ const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6"
       variants={itemVariants}
     >
@@ -53,10 +68,12 @@ const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({
                 <div className="p-2 rounded-full bg-white/20">
                   <Wallet className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
                 </div>
-                <p className="text-xs lg:text-sm font-medium opacity-90">{t('stats.currentBalance')}</p>
+                <p className="text-xs lg:text-sm font-medium opacity-90">
+                  {t('stats.currentBalance')}
+                </p>
               </div>
               <p className="text-xl lg:text-2xl xl:text-3xl font-bold">
-                {hideValues ? renderHiddenValue() : formatCurrency(balance, currency)}
+                {hideValues ? renderHiddenValue() : formatCurrencyBR(balance, currency)}
               </p>
             </div>
             <div className="absolute -bottom-2 -right-2 w-12 h-12 lg:w-16 lg:h-16 bg-white/10 rounded-full" />
@@ -69,9 +86,11 @@ const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({
         whileHover={{ scale: 1.02, y: -4 }}
         transition={{ duration: 0.2 }}
       >
-        <Card 
-          className="relative overflow-hidden border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20" 
+        <Card
+          className="relative overflow-hidden border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20"
           onClick={() => onNavigateToTransactionType('income')}
+          role="button"
+          aria-label={t('common.income')}
         >
           <CardContent className="p-4 lg:p-6">
             <div className="text-center">
@@ -84,7 +103,7 @@ const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({
                 </p>
               </div>
               <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-green-700 dark:text-green-400">
-                {hideValues ? renderHiddenValue() : formatCurrency(totalIncome, currency)}
+                {hideValues ? renderHiddenValue() : formatCurrencyBR(totalIncome, currency)}
               </p>
             </div>
             <div className="absolute -bottom-2 -right-2 w-12 h-12 lg:w-16 lg:h-16 bg-green-200/30 dark:bg-green-800/20 rounded-full" />
@@ -98,9 +117,11 @@ const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({
         transition={{ duration: 0.2 }}
         className="sm:col-span-2 lg:col-span-1"
       >
-        <Card 
-          className="relative overflow-hidden border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/20 dark:to-rose-950/20" 
+        <Card
+          className="relative overflow-hidden border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/20 dark:to-rose-950/20"
           onClick={() => onNavigateToTransactionType('expense')}
+          role="button"
+          aria-label={t('common.expense')}
         >
           <CardContent className="p-4 lg:p-6">
             <div className="text-center">
@@ -113,7 +134,7 @@ const DashboardStatCards: React.FC<DashboardStatCardsProps> = ({
                 </p>
               </div>
               <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-red-700 dark:text-red-400">
-                {hideValues ? renderHiddenValue() : formatCurrency(totalExpenses, currency)}
+                {hideValues ? renderHiddenValue() : formatCurrencyBR(totalExpenses, currency)}
               </p>
             </div>
             <div className="absolute -bottom-2 -right-2 w-12 h-12 lg:w-16 lg:h-16 bg-red-200/30 dark:bg-red-800/20 rounded-full" />
