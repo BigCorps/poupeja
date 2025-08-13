@@ -4,23 +4,237 @@ import { motion } from 'framer-motion';
 import { Receipt } from 'lucide-react';
 import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
+import { format } from 'date-fns';
+import { pt } from 'date-fns/locale';
 
-// Substituindo os imports com aliases por implementações simples
-// Em um ambiente de desenvolvimento real, você precisaria configurar o
-// seu bundler (como Webpack ou Vite) para resolver esses aliases.
-// Para este exemplo, estamos usando placeholders para que o código seja compilado.
-const DashboardCharts = ({ currentMonth, hideValues, lancamentos, chartType }) => {
-  // Simplesmente retorna um placeholder para os gráficos
+// Simplesmente para o código compilar, pois não temos o contexto completo
+const usePreferences = () => ({ t: (key) => key });
+const useAppContext = () => ({ lancamentos: [] });
+
+// Função para formatar valores monetários
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
+};
+
+// Calcular resumos por categoria baseado em lançamentos
+const calculateCategorySummaries = (lancamentos, classificacao) => {
+  const categoryMap = new Map();
+
+  lancamentos
+    .filter(lancamento => lancamento.classificacao === classificacao)
+    .forEach(lancamento => {
+      const categoryName = lancamento.categoria?.name || 'Sem Categoria';
+      const categoryColor = lancamento.categoria?.color || '#6B7280';
+      const currentAmount = categoryMap.get(categoryName)?.amount || 0;
+
+      categoryMap.set(categoryName, {
+        category: categoryName,
+        amount: currentAmount + lancamento.valor_pago,
+        color: categoryColor
+      });
+    });
+
+  return Array.from(categoryMap.values()).sort((a, b) => b.amount - a.amount);
+};
+
+// Gerar dados do gráfico baseado nos lançamentos
+const generateChartData = (lancamentos, month) => {
+  const lancamentosByDay = new Map();
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  for (let i = 1; i <= daysInMonth; i++) {
+    lancamentosByDay.set(i, {
+      day: i,
+      receitas: 0,
+      despesas: 0,
+      dateLabel: `${i}/${month.getMonth() + 1}`
+    });
+  }
+
+  lancamentos.forEach(lancamento => {
+    const lancamentoDate = new Date(lancamento.data_referencia);
+    const day = lancamentoDate.getDate();
+
+    if (lancamentoDate.getMonth() !== month.getMonth() ||
+      lancamentoDate.getFullYear() !== month.getFullYear()) {
+      return;
+    }
+
+    const dayData = lancamentosByDay.get(day) || {
+      day,
+      receitas: 0,
+      despesas: 0,
+      dateLabel: `${day}/${month.getMonth() + 1}`
+    };
+
+    if (lancamento.classificacao === 'receita') {
+      dayData.receitas += lancamento.valor_pago;
+    } else {
+      dayData.despesas += lancamento.valor_pago;
+    }
+
+    lancamentosByDay.set(day, dayData);
+  });
+
+  const result = Array.from(lancamentosByDay.values());
+  result.forEach(item => {
+    item.saldo = item.receitas - item.despesas;
+  });
+
+  result.sort((a, b) => a.day - b.day);
+
+  if (daysInMonth > 10) {
+    const condensedData = [];
+    const step = Math.ceil(daysInMonth / 10);
+
+    for (let i = 0; i < daysInMonth; i += step) {
+      const group = result.slice(i, i + step);
+      if (group.length > 0) {
+        const groupData = {
+          day: group[0].day,
+          dateLabel: `${group[0].day}-${group[group.length - 1].day}/${month.getMonth() + 1}`,
+          receitas: group.reduce((sum, item) => sum + item.receitas, 0),
+          despesas: group.reduce((sum, item) => sum + item.despesas, 0),
+          saldo: group.reduce((sum, item) => sum + item.saldo, 0)
+        };
+        condensedData.push(groupData);
+      }
+    }
+    return condensedData;
+  }
+  return result;
+};
+
+// Componente DashboardCharts completo
+const DashboardCharts = ({ currentMonth = new Date(), hideValues = false, lancamentos }) => {
+  const { lancamentos: contextLancamentos } = useAppContext();
+  const lancamentosToUse = lancamentos || contextLancamentos || [];
+  const despesaSummaries = calculateCategorySummaries(lancamentosToUse, 'despesa');
+  const monthData = generateChartData(lancamentosToUse, currentMonth);
+  const monthName = format(currentMonth, 'MMMM', { locale: pt });
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-card p-3 border rounded-md shadow-sm">
+          <p className="text-sm font-medium">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={`item-${index}`} className="text-sm" style={{ color: entry.color }}>
+              {entry.name === 'receitas'
+                ? 'Receitas'
+                : entry.name === 'despesas'
+                  ? 'Despesas'
+                  : 'Saldo'}: {
+                hideValues
+                  ? '******'
+                  : formatCurrency(entry.value)
+              }
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="flex justify-center items-center h-[200px] text-muted-foreground">
-      <p>
-        Gráfico {chartType === 'pie' ? 'de Pizza' : 'de Linha'} Placeholder<br />
-        Adicione lançamentos para ver os gráficos
-      </p>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="transition-all hover:shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg">Receitas vs Despesas - {monthName}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                  <XAxis dataKey="dateLabel" />
+                  <YAxis tickFormatter={(value) =>
+                    hideValues
+                      ? '***'
+                      : formatCurrency(value).split(',')[0]
+                  } />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="receitas"
+                    name="Receitas"
+                    stroke="#26DE81"
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="despesas"
+                    name="Despesas"
+                    stroke="#EF4444"
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="transition-all hover:shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg">Distribuição de Despesas - {monthName}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center">
+              {despesaSummaries.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={despesaSummaries}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="amount"
+                      nameKey="category"
+                      label={({ category, percent }) =>
+                        `${category}: ${(percent * 100).toFixed(0)}%`
+                      }
+                    >
+                      {despesaSummaries.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Legend />
+                    <Tooltip
+                      formatter={(value) =>
+                        hideValues
+                          ? '******'
+                          : formatCurrency(Number(value))
+                      }
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center">
+                  <p className="text-muted-foreground mb-2">Nenhuma despesa encontrada</p>
+                  <p className="text-sm text-muted-foreground">
+                    Adicione lançamentos para ver os gráficos
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
-const usePreferences = () => ({ t: (key) => key });
+
 
 interface DashboardContentProps {
   currentMonth: Date;
