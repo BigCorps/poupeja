@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Transaction } from '@/types';
 import { formatCurrency, formatDate } from '@/utils/transactionUtils';
-import { MoreHorizontal, Target, ArrowUp, ArrowDown } from 'lucide-react';
+import { MoreHorizontal, ArrowUp, ArrowDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -25,13 +25,6 @@ import { motion } from 'framer-motion';
 import CategoryIcon from '../categories/CategoryIcon';
 import TransactionCard from './TransactionCard';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-// ATENÇÃO:
-// O tipo `Transaction` precisou ser ajustado para incluir os objetos de categoria
-// e subcategoria, que devem ser buscados com JOINs na sua query do Supabase.
-// Garanta que a sua função de busca (`useGetTransactions.ts` ou similar)
-// já retorna os dados aninhados para que esta correção funcione.
-// Exemplo: `.select('*, categories (name), subcategories (name)')`
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -46,21 +39,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
   onDelete,
   hideValues = false
 }) => {
-  const { categories, goals } = useAppContext();
+  const { goals } = useAppContext();
   const { t, currency } = usePreferences();
   const isMobile = useIsMobile();
 
-  // Helper para buscar o nome da meta pelo ID
-  const getGoalName = (goalId?: string) => {
-    if (!goalId) return null;
-    const goal = goals.find(g => g.id === goalId);
-    return goal ? goal.name : null;
-  };
-
-  // Helper to render masked values
-  const renderHiddenValue = () => {
-    return '******';
-  };
+  const renderHiddenValue = () => '******';
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -82,8 +65,15 @@ const TransactionList: React.FC<TransactionListProps> = ({
       <div className="text-center py-10">
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
-              <path d="M16 6h6"></path><path d="M21 12h1"></path><path d="M16 18h6"></path><path d="M8 6H3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h5"></path><path d="M10 18H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h7"></path><path d="m7 14 4-4"></path><path d="m7 10 4 4"></path>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" 
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" 
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
+              className="text-muted-foreground">
+              <path d="M16 6h6"></path><path d="M21 12h1"></path>
+              <path d="M16 18h6"></path>
+              <path d="M8 6H3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h5"></path>
+              <path d="M10 18H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h7"></path>
+              <path d="m7 14 4-4"></path><path d="m7 10 4 4"></path>
             </svg>
           </div>
           <div className="space-y-2">
@@ -95,14 +85,16 @@ const TransactionList: React.FC<TransactionListProps> = ({
     );
   }
 
-  // Mobile card layout
   if (isMobile) {
     return (
       <div className="space-y-3">
         {transactions.map((transaction, index) => (
           <TransactionCard
             key={transaction.id}
-            transaction={transaction}
+            transaction={{
+              ...transaction,
+              todayPayments: transaction.todayPayments // garante que passe para mobile
+            }}
             onEdit={onEdit}
             onDelete={onDelete}
             hideValues={hideValues}
@@ -126,18 +118,14 @@ const TransactionList: React.FC<TransactionListProps> = ({
             <TableHead>{t('common.dueDate')}</TableHead>
             <TableHead className="text-right">{t('common.originalAmount')}</TableHead>
             <TableHead className="text-right">{t('common.status')}</TableHead>
+            <TableHead className="text-right">{t('transactions.todayPayments')}</TableHead>
             <TableHead className="text-right">{t('common.amount')}</TableHead>
             <TableHead className="w-10"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {transactions.map((transaction, index) => {
-            // Use different icons and colors based on transaction type
             const iconColor = transaction.type === 'income' ? '#26DE81' : '#EF4444';
-            
-            // Removido a busca de categoria manual. O objeto `transaction` agora deve conter a categoria.
-            // O `?.` garante que a aplicação não quebre se o dado não vier.
-            
             return (
               <motion.tr
                 key={transaction.id}
@@ -169,7 +157,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <CategoryIcon 
-                      icon={transaction.categories?.icon || 'default-icon'} // Acessando o ícone diretamente do objeto de categoria aninhado
+                      icon={transaction.categories?.icon || 'default-icon'} 
                       color={iconColor} 
                       size={16}
                     />
@@ -179,7 +167,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         ? "bg-green-50 text-green-600 hover:bg-green-100 border-green-200"
                         : "bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
                     )}>
-                      {transaction.categories?.name || 'N/A'} // Acessando o nome da categoria diretamente do objeto
+                      {transaction.categories?.name || 'N/A'}
                     </Badge>
                   </div>
                 </TableCell>
@@ -197,6 +185,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 </TableCell>
                 <TableCell className="text-right text-xs md:text-sm">
                   {transaction.payment_status ? getStatusBadge(transaction.payment_status) : 'N/A'}
+                </TableCell>
+                <TableCell className="text-right text-xs md:text-sm">
+                  {transaction.todayPayments
+                    ? `${formatCurrency(transaction.todayPayments.amount, currency)} (${transaction.todayPayments.count})`
+                    : 'N/A'}
                 </TableCell>
                 <TableCell className={cn(
                   "text-right font-semibold text-xs md:text-sm",
