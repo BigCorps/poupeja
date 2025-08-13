@@ -64,6 +64,12 @@ interface AppContextType extends AppState {
   setAccountType: (accountType: 'PF' | 'PJ') => void;
   parentCategories: Category[];
   subcategories: Category[];
+  paymentMethods: PaymentMethod[];
+  suppliers: Supplier[];
+  addPaymentMethod: (method: Omit<PaymentMethod, 'id' | 'user_id'>) => Promise<void>;
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'user_id'>) => Promise<void>;
+  deletePaymentMethod: (id: string) => Promise<void>;
+  deleteSupplier: (id: string) => Promise<void>;  
 }
 
 type AppAction =
@@ -92,6 +98,12 @@ type AppAction =
   | { type: 'DELETE_GOAL'; payload: string }
   | { type: 'ADD_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
   | { type: 'UPDATE_SCHEDULED_TRANSACTION'; payload: ScheduledTransaction }
+  | { type: 'SET_PAYMENT_METHODS'; payload: PaymentMethod[] }
+  | { type: 'SET_SUPPLIERS'; payload: Supplier[] }
+  | { type: 'ADD_PAYMENT_METHOD'; payload: PaymentMethod }
+  | { type: 'ADD_SUPPLIER'; payload: Supplier }
+  | { type: 'DELETE_PAYMENT_METHOD'; payload: string }
+  | { type: 'DELETE_SUPPLIER'; payload: string }
   | { type: 'DELETE_SCHEDULED_TRANSACTION'; payload: string };
 
 
@@ -111,6 +123,8 @@ const initialAppState: AppState = {
   filteredTransactions: [],
   accountType: 'PF', // Default to PF
   isAuthReady: false, // Inicia como falso
+  paymentMethods: [],
+  suppliers: [],
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
