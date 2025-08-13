@@ -93,8 +93,10 @@ const Index = () => {
   };
 
   // Navegação para lançamentos
-  const handleAddLancamento = (type: 'receita' | 'despesa' = 'despesa') => {
-    navigate(`/lancamentos?type=${type}`);
+  const handleAddLancamento = (type: 'income' | 'expense' = 'expense') => {
+    // Mapear os tipos para português quando necessário
+    const typeMap = { income: 'receita', expense: 'despesa' };
+    navigate(`/lancamentos?type=${typeMap[type]}`);
   };
 
   const navigateToLancamentoType = (type: 'receita' | 'despesa') => {
