@@ -5,50 +5,25 @@ import MainLayout from '@/components/layout/MainLayout';
 import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardStatCards from '@/components/dashboard/DashboardStatCards';
-import DashboardContent from '@/components/dashboard/DashboardContent';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useSaldoContext } from '@/contexts/SaldoContext';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
 
-// ✅ REMOVIDO: Imports relacionados às seções conflitantes
-// - calculateMonthlyFinancialData, getGoalsForMonth from transactionUtils
-// - markAsPaid from scheduledTransactionService
-// - ScheduledTransaction type
-// - TransactionForm component
-
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // ✅ REMOVIDO: Estados e funções relacionadas às seções conflitantes
   const {
-    // filteredTransactions, - removido
-    // transactions, - removido
-    // setCustomDateRange, - removido
-    // goals, - removido
-    hideValues,
-    toggleHideValues,
-    // getTransactions, - removido
-    // getGoals, - removido
-    // deleteTransaction, - removido
-    // scheduledTransactions - removido
-    
-    // ✅ ADICIONADO: Funções para lançamentos (serão implementadas no AppContext)
     lancamentos,
-    getLancamentos
+    getLancamentos,
+    hideValues,
+    toggleHideValues
   } = useAppContext();
   
   const { totals } = useSaldoContext();
   const { t } = usePreferences();
-
-  // ✅ REMOVIDO: Estados relacionados às seções conflitantes
-  // - transactionDialogOpen
-  // - selectedTransaction  
-  // - formMode
-  // - transactionType
-  // - currentGoalIndex
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -57,7 +32,7 @@ const Index = () => {
     totals: totals
   });
 
-  // ✅ MODIFICADO: Cálculos baseados em lançamentos ao invés de transações
+  // Cálculos baseados em lançamentos
   const calculateMonthlyLancamentos = () => {
     if (!lancamentos || lancamentos.length === 0) {
       return {
@@ -95,7 +70,7 @@ const Index = () => {
   const totalExpenses = monthlyData.monthlyExpenses;
   const balance = totals.grandTotal;
 
-  // ✅ MODIFICADO: Carregar dados de lançamentos ao invés de transações/goals
+  // Carregar dados de lançamentos
   useEffect(() => {
     const loadInitialData = async () => {
       console.log("Dashboard: Loading initial data...");
@@ -117,7 +92,7 @@ const Index = () => {
     setCurrentMonth(date);
   };
 
-  // ✅ MODIFICADO: Navegação para lançamentos ao invés de transações
+  // Navegação para lançamentos
   const handleAddLancamento = (type: 'receita' | 'despesa' = 'despesa') => {
     navigate(`/lancamentos?type=${type}`);
   };
@@ -125,11 +100,6 @@ const Index = () => {
   const navigateToLancamentoType = (type: 'receita' | 'despesa') => {
     navigate(`/lancamentos?type=${type}`);
   };
-
-  // ✅ REMOVIDO: Todas as funções relacionadas às seções conflitantes
-  // - handleEditTransaction
-  // - handleDeleteTransaction  
-  // - handleMarkScheduledAsPaid
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -153,7 +123,11 @@ const Index = () => {
   };
 
   return (
-    <MainLayout title={t('dashboard.title')} onAddTransaction={handleAddLancamento}>
+    <MainLayout 
+      title={t('dashboard.title')} 
+      onAddTransaction={handleAddLancamento}
+      addButtonText="Adicionar Lançamento" // ✅ Novo texto do botão
+    >
       <SubscriptionGuard feature="o dashboard completo">
         <motion.div
           className="space-y-8"
@@ -181,20 +155,13 @@ const Index = () => {
             />
           </motion.div>
 
-          {/* ✅ MODIFICADO: Conteúdo simplificado sem seções conflitantes */}
-          <motion.div variants={itemVariants}>
-            <DashboardContent
-              lancamentos={monthlyData.monthLancamentos}
-              currentMonth={currentMonth}
-              hideValues={hideValues}
-              onAddLancamento={handleAddLancamento}
-            />
-          </motion.div>
+          {/* ✅ REMOVIDO: DashboardContent que continha as seções redundantes */}
+          {/* Agora o dashboard mostra apenas os 3 cards principais e os gráficos do header */}
+          
+          {/* Espaçamento final para não ficar muito próximo do rodapé */}
+          <motion.div variants={itemVariants} className="h-8"></motion.div>
         </motion.div>
       </SubscriptionGuard>
-
-      {/* ✅ REMOVIDO: Dialog do formulário de transação */}
-      {/* TransactionForm foi removido - agora redirecionamos para a página de lançamentos */}
     </MainLayout>
   );
 };
