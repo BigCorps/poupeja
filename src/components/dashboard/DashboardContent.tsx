@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { motion } from 'framer-motion';
-import { Landmark, Receipt, BarChart3 } from 'lucide-react';
+import { Receipt } from 'lucide-react';
 
 interface DashboardContentProps {
   currentMonth: Date;
@@ -36,7 +36,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
 
   return (
     <>
-      {/* Seção de gráficos */}
+      {/* ✅ MANTIDO: Seção de gráficos */}
       <motion.div variants={itemVariants}>
         <DashboardCharts 
           currentMonth={currentMonth} 
@@ -44,72 +44,14 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
           lancamentos={lancamentos} // Atualizado para usar lançamentos
         />
       </motion.div>
-      
-      {/* Link para a seção de Saldo */}
-      <motion.div variants={itemVariants}>
-        <Card className="shadow-lg border-0">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <Landmark size={24} className="mr-4 text-purple-600" />
-                <h3 className="text-xl font-semibold">Saldo</h3>
-              </div>
-              <Button asChild>
-                <Link to="/saldo">Ver Saldo</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
 
-      {/* Link para Lançamentos - NOVA SEÇÃO */}
-      <motion.div variants={itemVariants}>
-        <Card className="shadow-lg border-0">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <Receipt size={24} className="mr-4 text-green-600" />
-                <div>
-                  <h3 className="text-xl font-semibold">Lançamentos</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Gerencie suas receitas e despesas
-                  </p>
-                </div>
-              </div>
-              <Button asChild>
-                <Link to="/lancamentos">Gerenciar Lançamentos</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* ✅ REMOVIDO: Seções redundantes de Saldo, Lançamentos, e Fluxo de Caixa */}
+      {/* Essas seções foram removidas para evitar redundância com os cards principais */}
 
-      {/* Link para Fluxo de Caixa - NOVA SEÇÃO */}
-      <motion.div variants={itemVariants}>
-        <Card className="shadow-lg border-0">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <BarChart3 size={24} className="mr-4 text-blue-600" />
-                <div>
-                  <h3 className="text-xl font-semibold">Fluxo de Caixa</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Análise e demonstrativos financeiros
-                  </p>
-                </div>
-              </div>
-              <Button asChild>
-                <Link to="/fluxo-caixa">Ver Análises</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Lançamentos recentes - SUBSTITUINDO TransactionList */}
+      {/* ✅ MANTIDO: Lançamentos recentes - mas apenas se existirem */}
       {recentLancamentos.length > 0 && (
         <motion.div variants={itemVariants}>
-          <Card className="shadow-lg border-0">
+          <Card className="shadow-lg border">
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold">Lançamentos Recentes</h3>
@@ -166,10 +108,10 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         </motion.div>
       )}
 
-      {/* Mensagem quando não há lançamentos */}
+      {/* ✅ MANTIDO: Mensagem quando não há lançamentos */}
       {recentLancamentos.length === 0 && (
         <motion.div variants={itemVariants}>
-          <Card className="shadow-lg border-0">
+          <Card className="shadow-lg border">
             <CardContent className="p-6 text-center">
               <Receipt size={48} className="mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">Nenhum lançamento encontrado</h3>
