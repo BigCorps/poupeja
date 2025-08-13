@@ -5,6 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardStatCards from '@/components/dashboard/DashboardStatCards';
+import DashboardContent from '@/components/dashboard/DashboardContent';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useSaldoContext } from '@/contexts/SaldoContext';
@@ -157,11 +158,14 @@ const Index = () => {
             />
           </motion.div>
 
-          {/* ✅ REMOVIDO: DashboardContent que continha as seções redundantes */}
-          {/* Agora o dashboard mostra apenas os 3 cards principais e os gráficos do header */}
-          
-          {/* Espaçamento final para não ficar muito próximo do rodapé */}
-          <motion.div variants={itemVariants} className="h-8"></motion.div>
+          {/* ✅ MANTIDO: DashboardContent com gráficos e seções, mas sem redundâncias */}
+          <motion.div variants={itemVariants}>
+            <DashboardContent
+              lancamentos={monthlyData.monthLancamentos}
+              currentMonth={currentMonth}
+              hideValues={hideValues}
+            />
+          </motion.div>
         </motion.div>
       </SubscriptionGuard>
     </MainLayout>
