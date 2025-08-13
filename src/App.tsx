@@ -8,7 +8,7 @@ import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
 import { AppProvider } from "@/contexts/AppContext";
-import { SaldoProvider } from "@/contexts/SaldoContext"; // Importação do SaldoProvider
+import { SaldoProvider } from "@/contexts/SaldoContext";
 import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
@@ -35,23 +35,22 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
-// Importação da nova página para a API de Bancos
 import ConnectedBanksPage from "./pages/ConnectedBanksPage";
-// ✅ NOVO: Importação das páginas de Termos e Privacidade
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 
+// Importe o MainLayout para poder envolvê-lo na rota
+import MainLayout from "./layouts/MainLayout"; 
+
 import "./App.css";
 
-import React, { Suspense, lazy } from 'react'; // ✅ Importe lazy e Suspense
+import React, { Suspense, lazy } from 'react';
 
-// ✅ Define os componentes com iframe (Typebot) para carregamento preguiçoso (lazy loading)
 const LazyAgenteIA = lazy(() => import('./pages/AgenteIA'));
 const LazyCobranca = lazy(() => import('./pages/Cobranca'));
 const LazyPagamentos = lazy(() => import('./pages/Pagamentos'));
-const LazyConsultas = lazy(() => import('./pages/Consultas')); // ✅ Lazy loading para Consultas
+const LazyConsultas = lazy(() => import('./pages/Consultas'));
 
-// Importação direta do componente PagamentosEmLote (NÃO terá lazy loading)
 import PagamentosEmLote from './pages/PagamentosEmLote';
 
 const queryClient = new QueryClient();
@@ -65,7 +64,7 @@ function App() {
             <PreferencesProvider>
               <SubscriptionProvider>
                 <AppProvider>
-                  <SaldoProvider> {/* Adicionado o SaldoProvider aqui */}
+                  <SaldoProvider>
                     <SupabaseInitializer>
                       <BrowserRouter>
                         <Routes>
@@ -79,7 +78,10 @@ function App() {
                           <Route path="/reset-password" element={<ResetPasswordPage />} />
                           <Route path="/profile" element={<ProfilePage />} />
                           <Route path="/transactions" element={<TransactionsPage />} />
-                          <Route path="/cadastros" element={<CadastroPage />} />
+                          
+                          {/* ✅ AQUI ESTÁ A CORREÇÃO: Envolva a página de cadastros no MainLayout */}
+                          <Route path="/cadastros" element={<MainLayout><CadastroPage /></MainLayout>} />
+                          
                           <Route path="/saldo" element={<SaldoDashboard />} />
                           <Route path="/expenses" element={<ExpensesPage />} />
                           <Route path="/goals" element={<GoalsPage />} />
@@ -88,40 +90,29 @@ function App() {
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/categories" element={<CategoriesPage />} />
                           
-                          {/* ✅ Rotas para as seções com Lazy Loading (com iframe do Typebot) */}
-                          <Route path="/cobranca" 
-                            element={
-                              <Suspense fallback={<div>Carregando Cobrança...</div>}>
-                                <LazyCobranca />
-                              </Suspense>
-                            } 
-                          />
-                          <Route path="/pagamentos" 
-                            element={
-                              <Suspense fallback={<div>Carregando Pagamentos...</div>}>
-                                <LazyPagamentos />
-                              </Suspense>
-                            } 
-                          />
+                          <Route path="/cobranca" element={
+                            <Suspense fallback={<div>Carregando Cobrança...</div>}>
+                              <LazyCobranca />
+                            </Suspense>
+                          } />
+                          <Route path="/pagamentos" element={
+                            <Suspense fallback={<div>Carregando Pagamentos...</div>}>
+                              <LazyPagamentos />
+                            </Suspense>
+                          } />
                           <Route path="/pagamentos-em-lote" element={<PagamentosEmLote />} />
                           
-                          {/* Rota para Consultas COM Lazy Loading */}
-                          <Route path="/consultas" 
-                            element={
-                              <Suspense fallback={<div>Carregando Consultas...</div>}>
-                                <LazyConsultas />
-                              </Suspense>
-                            } 
-                          />
+                          <Route path="/consultas" element={
+                            <Suspense fallback={<div>Carregando Consultas...</div>}>
+                              <LazyConsultas />
+                            </Suspense>
+                          } />
 
-                          {/* Rota para Agente IA agora com Lazy Loading */}
-                          <Route path="/agente-ia" 
-                            element={
-                              <Suspense fallback={<div>Carregando Agente IA...</div>}>
-                                <LazyAgenteIA />
-                              </Suspense>
-                            } 
-                          />
+                          <Route path="/agente-ia" element={
+                            <Suspense fallback={<div>Carregando Agente IA...</div>}>
+                              <LazyAgenteIA />
+                            </Suspense>
+                          } />
                           
                           <Route path="/connected-banks" element={<ConnectedBanksPage />} />
                           <Route path="/plans" element={<PlansPage />} />
@@ -129,16 +120,12 @@ function App() {
                           <Route path="/payment-success" element={<PaymentSuccessPage />} />
                           <Route path="/thank-you" element={<ThankYouPage />} />
                           <Route path="/achievements" element={<AchievementsPage />} />
-                          <Route
-                            path="/admin"
-                            element={
-                              <AdminRoute>
-                                <AdminDashboard />
-                              </AdminRoute>
-                            }
-                          />
+                          <Route path="/admin" element={
+                            <AdminRoute>
+                              <AdminDashboard />
+                            </AdminRoute>
+                          } />
 
-                          {/* ✅ NOVO: Rotas para Termos e Privacidade */}
                           <Route path="/terms" element={<Terms />} />
                           <Route path="/privacy" element={<Privacy />} />
 
