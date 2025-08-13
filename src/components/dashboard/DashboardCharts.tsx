@@ -1,76 +1,101 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
-import { formatCurrency } from '@/utils/transactionUtils';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { calculateCategorySummaries } from '@/utils/transactionUtils';
 import { format } from 'date-fns';
 import { pt } from 'date-fns/locale';
 
 interface DashboardChartsProps {
   currentMonth?: Date;
   hideValues?: boolean;
-  monthTransactions?: any[]; // NEW: Accept month-specific transactions
+  lancamentos?: any[]; // Atualizado para usar lançamentos ao invés de transactions
 }
 
-// Generate chart data from the actual transaction data
-const generateChartData = (transactions: any[], month: Date) => {
-  console.log("Generating chart data for month:", month, "with transactions:", transactions.length);
+// Função para formatar valores monetários
+const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
+};
+
+// Calcular resumos por categoria baseado em lançamentos
+const calculateCategorySummaries = (lancamentos: any[], classificacao: 'receita' | 'despesa') => {
+  const categoryMap = new Map();
   
-  // Create a map to group transactions by day
-  const transactionsByDay = new Map();
+  lancamentos
+    .filter(lancamento => lancamento.classificacao === classificacao)
+    .forEach(lancamento => {
+      const categoryName = lancamento.categoria?.name || 'Sem Categoria';
+      const categoryColor = lancamento.categoria?.color || '#6B7280';
+      const currentAmount = categoryMap.get(categoryName)?.amount || 0;
+      
+      categoryMap.set(categoryName, {
+        category: categoryName,
+        amount: currentAmount + lancamento.valor_pago,
+        color: categoryColor
+      });
+    });
   
-  // Initialize with all days in the month
+  return Array.from(categoryMap.values()).sort((a, b) => b.amount - a.amount);
+};
+
+// Gerar dados do gráfico baseado nos lançamentos
+const generateChartData = (lancamentos: any[], month: Date) => {
+  console.log("Generating chart data for month:", month, "with lancamentos:", lancamentos.length);
+  
+  // Criar um mapa para agrupar lançamentos por dia
+  const lancamentosByDay = new Map();
+  
+  // Inicializar com todos os dias do mês
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   for (let i = 1; i <= daysInMonth; i++) {
-    const day = new Date(month.getFullYear(), month.getMonth(), i);
-    transactionsByDay.set(i, {
+    lancamentosByDay.set(i, {
       day: i,
-      income: 0,
-      expenses: 0,
+      receitas: 0,
+      despesas: 0,
       dateLabel: `${i}/${month.getMonth() + 1}`
     });
   }
   
-  // Fill with actual transaction data
-  transactions.forEach(transaction => {
-    const transactionDate = new Date(transaction.date);
-    const day = transactionDate.getDate();
+  // Preencher com dados reais dos lançamentos
+  lancamentos.forEach(lancamento => {
+    const lancamentoDate = new Date(lancamento.data_referencia);
+    const day = lancamentoDate.getDate();
     
-    // Skip if not from the current month
-    if (transactionDate.getMonth() !== month.getMonth() || 
-        transactionDate.getFullYear() !== month.getFullYear()) {
+    // Pular se não for do mês atual
+    if (lancamentoDate.getMonth() !== month.getMonth() || 
+        lancamentoDate.getFullYear() !== month.getFullYear()) {
       return;
     }
     
-    const dayData = transactionsByDay.get(day) || {
+    const dayData = lancamentosByDay.get(day) || {
       day,
-      income: 0, 
-      expenses: 0,
+      receitas: 0, 
+      despesas: 0,
       dateLabel: `${day}/${month.getMonth() + 1}`
     };
     
-    if (transaction.type === 'income') {
-      dayData.income += transaction.amount;
+    if (lancamento.classificacao === 'receita') {
+      dayData.receitas += lancamento.valor_pago;
     } else {
-      dayData.expenses += transaction.amount;
+      dayData.despesas += lancamento.valor_pago;
     }
     
-    transactionsByDay.set(day, dayData);
+    lancamentosByDay.set(day, dayData);
   });
   
-  // Convert map to array and calculate balance
-  const result = Array.from(transactionsByDay.values());
+  // Converter mapa para array e calcular saldo
+  const result = Array.from(lancamentosByDay.values());
   result.forEach(item => {
-    item.balance = item.income - item.expenses;
+    item.saldo = item.receitas - item.despesas;
   });
   
-  // Sort by day
+  // Ordenar por dia
   result.sort((a, b) => a.day - b.day);
   
-  // If we have too many days, reduce by grouping
+  // Se houver muitos dias, reduzir agrupando
   if (daysInMonth > 10) {
     const condensedData = [];
     const step = Math.ceil(daysInMonth / 10);
@@ -81,9 +106,9 @@ const generateChartData = (transactions: any[], month: Date) => {
         const groupData = {
           day: group[0].day,
           dateLabel: `${group[0].day}-${group[group.length - 1].day}/${month.getMonth() + 1}`,
-          income: group.reduce((sum, item) => sum + item.income, 0),
-          expenses: group.reduce((sum, item) => sum + item.expenses, 0),
-          balance: group.reduce((sum, item) => sum + item.balance, 0)
+          receitas: group.reduce((sum, item) => sum + item.receitas, 0),
+          despesas: group.reduce((sum, item) => sum + item.despesas, 0),
+          saldo: group.reduce((sum, item) => sum + item.saldo, 0)
         };
         condensedData.push(groupData);
       }
@@ -98,22 +123,22 @@ const generateChartData = (transactions: any[], month: Date) => {
 const DashboardCharts: React.FC<DashboardChartsProps> = ({ 
   currentMonth = new Date(), 
   hideValues = false,
-  monthTransactions 
+  lancamentos 
 }) => {
-  const { filteredTransactions } = useAppContext();
-  const { currency, t } = usePreferences();
+  const { lancamentos: contextLancamentos } = useAppContext();
+  const { t } = usePreferences();
   
-  // Use monthTransactions if provided, otherwise fall back to filteredTransactions
-  const transactionsToUse = monthTransactions || filteredTransactions;
-  const expenseSummaries = calculateCategorySummaries(transactionsToUse, 'expense');
+  // Usar lançamentos fornecidos via props ou do contexto
+  const lancamentosToUse = lancamentos || contextLancamentos || [];
+  const despesaSummaries = calculateCategorySummaries(lancamentosToUse, 'despesa');
   
-  console.log("Rendering charts with transactions:", transactionsToUse.length, "for month:", currentMonth.toDateString());
+  console.log("Rendering charts with lancamentos:", lancamentosToUse.length, "for month:", currentMonth.toDateString());
   
-  // Generate data for the current month using the provided transactions
-  const monthData = generateChartData(transactionsToUse, currentMonth);
+  // Gerar dados para o mês atual usando os lançamentos fornecidos
+  const monthData = generateChartData(lancamentosToUse, currentMonth);
   const monthName = format(currentMonth, 'MMMM', { locale: pt });
   
-  // Custom tooltip for charts
+  // Tooltip customizado para gráficos
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -121,14 +146,14 @@ const DashboardCharts: React.FC<DashboardChartsProps> = ({
           <p className="text-sm font-medium">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={`item-${index}`} className="text-sm" style={{ color: entry.color }}>
-              {entry.name === 'income' 
-                ? t('common.income') 
-                : entry.name === 'expenses' 
-                  ? t('common.expense')
-                  : t('common.balance')}: {
+              {entry.name === 'receitas' 
+                ? 'Receitas' 
+                : entry.name === 'despesas' 
+                  ? 'Despesas'
+                  : 'Saldo'}: {
                     hideValues 
                       ? '******' 
-                      : formatCurrency(entry.value, currency)
+                      : formatCurrency(entry.value)
                   }
             </p>
           ))}
@@ -142,10 +167,10 @@ const DashboardCharts: React.FC<DashboardChartsProps> = ({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Monthly Income/Expense Chart */}
+        {/* Gráfico Mensal de Receitas/Despesas */}
         <Card className="transition-all hover:shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg">{t('charts.incomeVsExpenses')} - {monthName}</CardTitle>
+            <CardTitle className="text-lg">Receitas vs Despesas - {monthName}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -156,14 +181,14 @@ const DashboardCharts: React.FC<DashboardChartsProps> = ({
                   <YAxis tickFormatter={(value) => 
                     hideValues 
                       ? '***' 
-                      : formatCurrency(value, currency).split('.')[0]
+                      : formatCurrency(value).split(',')[0]
                   } />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
                   <Line 
                     type="monotone" 
-                    dataKey="income" 
-                    name={t('common.income')} 
+                    dataKey="receitas" 
+                    name="Receitas" 
                     stroke="#26DE81" 
                     strokeWidth={2}
                     dot={{ r: 4 }}
@@ -171,8 +196,8 @@ const DashboardCharts: React.FC<DashboardChartsProps> = ({
                   />
                   <Line 
                     type="monotone" 
-                    dataKey="expenses" 
-                    name={t('common.expense')} 
+                    dataKey="despesas" 
+                    name="Despesas" 
                     stroke="#EF4444" 
                     strokeWidth={2}
                     dot={{ r: 4 }}
@@ -184,18 +209,18 @@ const DashboardCharts: React.FC<DashboardChartsProps> = ({
           </CardContent>
         </Card>
 
-        {/* Expense Categories Pie Chart */}
+        {/* Gráfico de Pizza das Categorias de Despesas */}
         <Card className="transition-all hover:shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg">{t('charts.expenseBreakdown')} - {monthName}</CardTitle>
+            <CardTitle className="text-lg">Distribuição de Despesas - {monthName}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64 flex items-center justify-center">
-              {expenseSummaries.length > 0 ? (
+              {despesaSummaries.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={expenseSummaries}
+                      data={despesaSummaries}
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
@@ -207,7 +232,7 @@ const DashboardCharts: React.FC<DashboardChartsProps> = ({
                         `${category}: ${(percent * 100).toFixed(0)}%`
                       }
                     >
-                      {expenseSummaries.map((entry, index) => (
+                      {despesaSummaries.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -216,13 +241,18 @@ const DashboardCharts: React.FC<DashboardChartsProps> = ({
                       formatter={(value) => 
                         hideValues 
                           ? '******' 
-                          : formatCurrency(Number(value), currency)
+                          : formatCurrency(Number(value))
                       } 
                     />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-metacash-gray">{t('common.noData')}</p>
+                <div className="text-center">
+                  <p className="text-muted-foreground mb-2">Nenhuma despesa encontrada</p>
+                  <p className="text-sm text-muted-foreground">
+                    Adicione lançamentos para ver os gráficos
+                  </p>
+                </div>
               )}
             </div>
           </CardContent>
