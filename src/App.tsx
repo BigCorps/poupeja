@@ -1,19 +1,19 @@
-import { Toaster } from "./components/ui/toaster";
-import { Toaster as Sonner } from "./components/ui/sonner";
-import { TooltipProvider } from "./components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { PreferencesProvider } from "./contexts/PreferencesContext";
-import { SubscriptionProvider } from "./contexts/SubscriptionContext";
-import { BrandingProvider } from "./contexts/BrandingContext";
-import { AppProvider } from "./contexts/AppContext";
-import { SaldoProvider } from "./contexts/SaldoContext";
-import { SupabaseInitializer } from "./components/common/SupabaseInitializer";
-import CadastroPage from "./pages/CadastroPage";
+import { PreferencesProvider } from "@/contexts/PreferencesContext";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
+import { AppProvider } from "@/contexts/AppContext";
+import { SaldoProvider } from "@/contexts/SaldoContext"; // Importação do SaldoProvider
+import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
+import CadastroPage from "./pages/CadastroPage";
 import RegisterPage from "./pages/RegisterPage";
 import RegisterWithPlanPage from "./pages/RegisterWithPlanPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -35,20 +35,23 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AchievementsPage from "./pages/AchievementsPage";
 import NotFound from "./pages/NotFound";
 import AdminRoute from "./components/admin/AdminRoute";
+// Importação da nova página para a API de Bancos
 import ConnectedBanksPage from "./pages/ConnectedBanksPage";
+// ✅ NOVO: Importação das páginas de Termos e Privacidade
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
-import CustomDashboard from "./pages/CustomDashboard";
 
 import "./App.css";
 
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy } from 'react'; // ✅ Importe lazy e Suspense
 
+// ✅ Define os componentes com iframe (Typebot) para carregamento preguiçoso (lazy loading)
 const LazyAgenteIA = lazy(() => import('./pages/AgenteIA'));
 const LazyCobranca = lazy(() => import('./pages/Cobranca'));
 const LazyPagamentos = lazy(() => import('./pages/Pagamentos'));
-const LazyConsultas = lazy(() => import('./pages/Consultas'));
+const LazyConsultas = lazy(() => import('./pages/Consultas')); // ✅ Lazy loading para Consultas
 
+// Importação direta do componente PagamentosEmLote (NÃO terá lazy loading)
 import PagamentosEmLote from './pages/PagamentosEmLote';
 
 const queryClient = new QueryClient();
@@ -62,7 +65,7 @@ function App() {
             <PreferencesProvider>
               <SubscriptionProvider>
                 <AppProvider>
-                  <SaldoProvider>
+                  <SaldoProvider> {/* Adicionado o SaldoProvider aqui */}
                     <SupabaseInitializer>
                       <BrowserRouter>
                         <Routes>
@@ -84,8 +87,8 @@ function App() {
                           <Route path="/schedule" element={<SchedulePage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/categories" element={<CategoriesPage />} />
-                          <Route path="/custom-dashboard" element={<CustomDashboard />} />
                           
+                          {/* ✅ Rotas para as seções com Lazy Loading (com iframe do Typebot) */}
                           <Route path="/cobranca" 
                             element={
                               <Suspense fallback={<div>Carregando Cobrança...</div>}>
@@ -102,6 +105,7 @@ function App() {
                           />
                           <Route path="/pagamentos-em-lote" element={<PagamentosEmLote />} />
                           
+                          {/* Rota para Consultas COM Lazy Loading */}
                           <Route path="/consultas" 
                             element={
                               <Suspense fallback={<div>Carregando Consultas...</div>}>
@@ -110,6 +114,7 @@ function App() {
                             } 
                           />
 
+                          {/* Rota para Agente IA agora com Lazy Loading */}
                           <Route path="/agente-ia" 
                             element={
                               <Suspense fallback={<div>Carregando Agente IA...</div>}>
@@ -133,6 +138,7 @@ function App() {
                             }
                           />
 
+                          {/* ✅ NOVO: Rotas para Termos e Privacidade */}
                           <Route path="/terms" element={<Terms />} />
                           <Route path="/privacy" element={<Privacy />} />
 
