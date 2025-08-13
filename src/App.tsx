@@ -39,8 +39,8 @@ import ConnectedBanksPage from "./pages/ConnectedBanksPage";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 
-// Importe o MainLayout para poder envolvê-lo na rota
-import MainLayout from "./layouts/MainLayout"; 
+// ✅ CORREÇÃO: O caminho de importação correto para MainLayout
+import MainLayout from "./components/layout/MainLayout"; 
 
 import "./App.css";
 
@@ -79,7 +79,6 @@ function App() {
                           <Route path="/profile" element={<ProfilePage />} />
                           <Route path="/transactions" element={<TransactionsPage />} />
                           
-                          {/* ✅ AQUI ESTÁ A CORREÇÃO: Envolva a página de cadastros no MainLayout */}
                           <Route path="/cadastros" element={<MainLayout><CadastroPage /></MainLayout>} />
                           
                           <Route path="/saldo" element={<SaldoDashboard />} />
