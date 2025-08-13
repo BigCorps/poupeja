@@ -266,39 +266,13 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   return (
     <div className="flex-1 space-y-4 p-4 md:p-6 pt-6">
       {/* Seção de gráficos */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <motion.div variants={itemVariants} className="md:col-span-1">
-          <Card className="shadow-lg border h-full">
-            <CardHeader>
-              <CardTitle className="text-lg">Receitas vs Despesas - {currentMonth.toLocaleString('pt-BR', { month: 'long' })}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DashboardCharts
-                currentMonth={currentMonth}
-                hideValues={hideValues}
-                lancamentos={lancamentos}
-              />
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Distribuição de Despesas */}
-        <motion.div variants={itemVariants} className="md:col-span-1">
-          <Card className="shadow-lg border h-full">
-            <CardHeader>
-              <CardTitle className="text-lg">Distribuição de Despesas - {currentMonth.toLocaleString('pt-BR', { month: 'long' })}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DashboardCharts
-                currentMonth={currentMonth}
-                hideValues={hideValues}
-                lancamentos={lancamentos}
-                chartType="pie"
-              />
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+      <motion.div variants={itemVariants}>
+        <DashboardCharts
+          currentMonth={currentMonth}
+          hideValues={hideValues}
+          lancamentos={lancamentos}
+        />
+      </motion.div>
 
       {recentLancamentos.length > 0 && (
         <motion.div variants={itemVariants}>
