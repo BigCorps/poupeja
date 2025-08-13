@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard, Layers, FileSearch, Code } from 'lucide-react'; // Added Code for HTML section
+import { LayoutDashboard, Receipt, BarChart3, Target, User, DatabaseIcon, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard, Layers, FileSearch, Code } from 'lucide-react'; // Added Code for HTML section
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -116,6 +116,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: 'Saldo',
       href: '/saldo'
     },
+    {
+      name: 'Cadastros',
+      href: '/cadastros',
+      icon: DatabaseIcon
+    }
     {
       icon: Receipt,
       label: t('nav.transactions'),
