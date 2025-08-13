@@ -80,9 +80,9 @@ function App() {
                           
                           <Route path="/cadastros" element={<MainLayout><CadastroPage /></MainLayout>} />
                           
-                          {/* ✅ ADIÇÃO: Novas rotas para as páginas reestruturadas */}
-                          <Route path="/lancamentos" element={<LancamentosPage />} />
-                          <Route path="/fluxo-caixa" element={<FluxoCaixaPage />} />
+                          {/* ✅ CORREÇÃO: Novas rotas envolvidas com MainLayout */}
+                          <Route path="/lancamentos" element={<MainLayout><LancamentosPage /></MainLayout>} />
+                          <Route path="/fluxo-caixa" element={<MainLayout><FluxoCaixaPage /></MainLayout>} />
                           
                           <Route path="/saldo" element={<SaldoDashboard />} />
                           <Route path="/expenses" element={<ExpensesPage />} />
