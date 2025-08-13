@@ -264,8 +264,9 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   const recentLancamentos = lancamentos.slice(0, 5);
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-6 pt-6">
-      {/* Seção de gráficos */}
+    <div className="flex-1 space-y-4 p-4 md:p-6 pt-6"> {/* Adicionado padding para corresponder ao Header */}
+      {/* Cards de Resumo - Agora são gerenciados pelo DashboardHeader */}
+      {/* Gráficos */}
       <motion.div variants={itemVariants}>
         <DashboardCharts
           currentMonth={currentMonth}
