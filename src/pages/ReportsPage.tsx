@@ -4,11 +4,10 @@ import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAppContext } from '@/contexts/AppContext';
 import { ReportFormat } from '@/types';
-import { calculateTotalIncome, calculateTotalExpenses } from '@/utils/lancamentoUtils';
 import { generateReportData, downloadCSV, downloadPDF } from '@/utils/reportUtils';
 import ReportFilters from '@/components/reports/ReportFilters';
 import ReportSummary from '@/components/reports/ReportSummary';
-import LancamentosTable from '@/components/reports/LancamentosTable';
+import TransactionsTable from '@/components/reports/TransactionsTable';
 
 const ReportsPage = () => {
   const { t } = usePreferences();
@@ -34,6 +33,18 @@ const ReportsPage = () => {
   const filteredLancamentos = generateReportData(lancamentos, reportType, startDate, endDate);
   
   // Calculate summary statistics based on lançamentos
+  const calculateTotalIncome = (data: any[]) => {
+    return data
+      .filter(item => item.classificacao === 'receita')
+      .reduce((sum, item) => sum + (item.valor_pago || 0), 0);
+  };
+
+  const calculateTotalExpenses = (data: any[]) => {
+    return data
+      .filter(item => item.classificacao === 'despesa')
+      .reduce((sum, item) => sum + (item.valor_pago || 0), 0);
+  };
+
   const totalIncome = calculateTotalIncome(filteredLancamentos);
   const totalExpenses = calculateTotalExpenses(filteredLancamentos);
   const balance = totalIncome - totalExpenses;
@@ -60,7 +71,7 @@ const ReportsPage = () => {
             balance={balance}
           />
           
-          <LancamentosTable lancamentos={filteredLancamentos} />
+          <TransactionsTable transactions={filteredLancamentos} />
         </div>
       </SubscriptionGuard>
     </MainLayout>
