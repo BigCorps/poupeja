@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, ChevronDown, ChevronRight, Building, CreditCard, User, Tag } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Tag, User, CreditCard } from 'lucide-react';
+import { useAppContext } from '@/contexts/AppContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
 
 // Simulando dados do Supabase - você substituirá pelas chamadas reais
 const mockUser = { id: '123e4567-e89b-12d3-a456-426614174000' };
@@ -19,7 +28,8 @@ const CATEGORY_ICONS = [
   'heart', 'briefcase', 'graduation-cap', 'plane', 'gift', 'music'
 ];
 
-export default function CadastrosSection() {
+export default function CadastroPage() {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('categorias');
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -69,7 +79,14 @@ export default function CadastrosSection() {
 
   // Funções para Categorias
   const handleSaveCategory = async () => {
-    if (!categoryForm.name.trim()) return;
+    if (!categoryForm.name.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome da categoria é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const newCategory = {
       id: Date.now().toString(),
@@ -82,8 +99,16 @@ export default function CadastrosSection() {
       setCategories(prev => prev.map(cat => 
         cat.id === editingItem.id ? { ...cat, ...categoryForm } : cat
       ));
+      toast({
+        title: "Sucesso",
+        description: "Categoria atualizada com sucesso",
+      });
     } else {
       setCategories(prev => [...prev, newCategory]);
+      toast({
+        title: "Sucesso",
+        description: "Categoria criada com sucesso",
+      });
     }
 
     resetCategoryForm();
@@ -103,11 +128,22 @@ export default function CadastrosSection() {
 
   const handleDeleteCategory = (id) => {
     setCategories(prev => prev.filter(cat => cat.id !== id));
+    toast({
+      title: "Sucesso",
+      description: "Categoria excluída com sucesso",
+    });
   };
 
   // Funções para Fornecedores/Clientes
   const handleSaveSupplier = async () => {
-    if (!supplierForm.name.trim()) return;
+    if (!supplierForm.name.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome do fornecedor/cliente é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const newSupplier = {
       id: Date.now().toString(),
@@ -120,8 +156,16 @@ export default function CadastrosSection() {
       setSuppliers(prev => prev.map(sup => 
         sup.id === editingItem.id ? { ...sup, ...supplierForm } : sup
       ));
+      toast({
+        title: "Sucesso",
+        description: "Fornecedor/Cliente atualizado com sucesso",
+      });
     } else {
       setSuppliers(prev => [...prev, newSupplier]);
+      toast({
+        title: "Sucesso",
+        description: "Fornecedor/Cliente criado com sucesso",
+      });
     }
 
     resetSupplierForm();
@@ -141,11 +185,22 @@ export default function CadastrosSection() {
 
   const handleDeleteSupplier = (id) => {
     setSuppliers(prev => prev.filter(sup => sup.id !== id));
+    toast({
+      title: "Sucesso",
+      description: "Fornecedor/Cliente excluído com sucesso",
+    });
   };
 
   // Funções para Métodos de Pagamento
   const handleSavePayment = async () => {
-    if (!paymentForm.name.trim()) return;
+    if (!paymentForm.name.trim()) {
+      toast({
+        title: "Erro",
+        description: "Nome do método de pagamento é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const newPayment = {
       id: Date.now().toString(),
@@ -158,8 +213,16 @@ export default function CadastrosSection() {
       setPaymentMethods(prev => prev.map(pay => 
         pay.id === editingItem.id ? { ...pay, ...paymentForm } : pay
       ));
+      toast({
+        title: "Sucesso",
+        description: "Método de pagamento atualizado com sucesso",
+      });
     } else {
       setPaymentMethods(prev => [...prev, newPayment]);
+      toast({
+        title: "Sucesso",
+        description: "Método de pagamento criado com sucesso",
+      });
     }
 
     resetPaymentForm();
@@ -179,6 +242,10 @@ export default function CadastrosSection() {
 
   const handleDeletePayment = (id) => {
     setPaymentMethods(prev => prev.filter(pay => pay.id !== id));
+    toast({
+      title: "Sucesso",
+      description: "Método de pagamento excluído com sucesso",
+    });
   };
 
   // Renderizar categorias com hierarquia
@@ -187,34 +254,36 @@ export default function CadastrosSection() {
       .filter(cat => cat.parent_id === parentId)
       .map(category => (
         <div key={category.id} className={`ml-${level * 4}`}>
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2 hover:bg-gray-100">
-            <div className="flex items-center space-x-3">
-              <div 
-                className="w-4 h-4 rounded-full" 
-                style={{ backgroundColor: category.color }}
-              />
-              <span className="font-medium text-gray-900">{category.name}</span>
-              <span className={`px-2 py-1 text-xs rounded-full ${
-                category.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-              }`}>
-                {category.type === 'income' ? 'Receita' : 'Despesa'}
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handleEditCategory(category)}
-                className="p-1 text-blue-600 hover:bg-blue-100 rounded"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleDeleteCategory(category.id)}
-                className="p-1 text-red-600 hover:bg-red-100 rounded"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+          <Card className="mb-2">
+            <CardContent className="flex items-center justify-between p-4">
+              <div className="flex items-center space-x-3">
+                <div 
+                  className="w-4 h-4 rounded-full" 
+                  style={{ backgroundColor: category.color }}
+                />
+                <span className="font-medium">{category.name}</span>
+                <Badge variant={category.type === 'income' ? 'default' : 'secondary'}>
+                  {category.type === 'income' ? 'Receita' : 'Despesa'}
+                </Badge>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleEditCategory(category)}
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteCategory(category.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
           {renderCategoryTree(category.id, level + 1)}
         </div>
       ));
@@ -223,111 +292,109 @@ export default function CadastrosSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-lg shadow-sm">
-          {/* Header */}
-          <div className="border-b border-gray-200">
-            <div className="px-6 py-4">
-              <h1 className="text-2xl font-semibold text-gray-900">Cadastros</h1>
-              <p className="text-gray-600 mt-1">Gerencie categorias, fornecedores e métodos de pagamento</p>
-            </div>
-            
-            {/* Tabs */}
-            <div className="flex space-x-8 px-6">
-              {[
-                { id: 'categorias', label: 'Plano de Contas', icon: Tag },
-                { id: 'fornecedores', label: 'Fornecedores/Clientes', icon: User },
-                { id: 'pagamentos', label: 'Formas de Pagamento', icon: CreditCard }
-              ].map(tab => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === tab.id
-                        ? 'border-green-500 text-green-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Cadastros</h1>
+        <p className="text-muted-foreground">
+          Gerencie categorias, fornecedores e métodos de pagamento
+        </p>
+      </div>
 
-          {/* Content */}
-          <div className="p-6">
-            {/* Tab Categorias */}
-            {activeTab === 'categorias' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium text-gray-900">Plano de Contas</h2>
-                  <button
-                    onClick={() => setShowCategoryForm(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Nova Categoria</span>
-                  </button>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="categorias" className="flex items-center space-x-2">
+            <Tag className="w-4 h-4" />
+            <span>Plano de Contas</span>
+          </TabsTrigger>
+          <TabsTrigger value="fornecedores" className="flex items-center space-x-2">
+            <User className="w-4 h-4" />
+            <span>Fornecedores/Clientes</span>
+          </TabsTrigger>
+          <TabsTrigger value="pagamentos" className="flex items-center space-x-2">
+            <CreditCard className="w-4 h-4" />
+            <span>Formas de Pagamento</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Tab Categorias */}
+        <TabsContent value="categorias" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Plano de Contas</CardTitle>
+                  <CardDescription>
+                    Organize suas receitas e despesas em categorias
+                  </CardDescription>
                 </div>
-
-                {/* Formulário de Categoria */}
-                {showCategoryForm && (
-                  <div className="bg-gray-50 p-4 rounded-lg border">
+                <Button onClick={() => setShowCategoryForm(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nova Categoria
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Formulário de Categoria */}
+              {showCategoryForm && (
+                <Card>
+                  <CardContent className="pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
-                        <input
-                          type="text"
+                      <div className="space-y-2">
+                        <Label htmlFor="category-name">Nome</Label>
+                        <Input
+                          id="category-name"
                           value={categoryForm.name}
                           onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                           placeholder="Nome da categoria"
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
-                        <select
+                      <div className="space-y-2">
+                        <Label htmlFor="category-type">Tipo</Label>
+                        <Select
                           value={categoryForm.type}
-                          onChange={(e) => setCategoryForm({...categoryForm, type: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          onValueChange={(value) => setCategoryForm({...categoryForm, type: value})}
                         >
-                          <option value="expense">Despesa</option>
-                          <option value="income">Receita</option>
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="expense">Despesa</SelectItem>
+                            <SelectItem value="income">Receita</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Categoria Pai</label>
-                        <select
+                      <div className="space-y-2">
+                        <Label htmlFor="category-parent">Categoria Pai</Label>
+                        <Select
                           value={categoryForm.parent_id || ''}
-                          onChange={(e) => setCategoryForm({...categoryForm, parent_id: e.target.value || null})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          onValueChange={(value) => setCategoryForm({...categoryForm, parent_id: value || null})}
                         >
-                          <option value="">Categoria Principal</option>
-                          {categories.filter(cat => !cat.parent_id).map(cat => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                          ))}
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Categoria Principal" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Categoria Principal</SelectItem>
+                            {categories.filter(cat => !cat.parent_id).map(cat => (
+                              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Cor</label>
+                      <div className="space-y-2">
+                        <Label>Cor</Label>
                         <div className="flex space-x-2">
                           {CATEGORY_COLORS.map(color => (
                             <button
                               key={color}
                               onClick={() => setCategoryForm({...categoryForm, color})}
                               className={`w-8 h-8 rounded-full border-2 ${
-                                categoryForm.color === color ? 'border-gray-900' : 'border-gray-300'
+                                categoryForm.color === color ? 'border-primary' : 'border-border'
                               }`}
                               style={{ backgroundColor: color }}
                             />
@@ -336,266 +403,269 @@ export default function CadastrosSection() {
                       </div>
                     </div>
                     <div className="flex justify-end space-x-2 mt-4">
-                      <button
-                        onClick={resetCategoryForm}
-                        className="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
-                      >
-                        <X className="w-4 h-4 mr-2 inline" />
+                      <Button variant="outline" onClick={resetCategoryForm}>
+                        <X className="w-4 h-4 mr-2" />
                         Cancelar
-                      </button>
-                      <button
-                        onClick={handleSaveCategory}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                      >
-                        <Save className="w-4 h-4 mr-2 inline" />
+                      </Button>
+                      <Button onClick={handleSaveCategory}>
+                        <Save className="w-4 h-4 mr-2" />
                         Salvar
-                      </button>
+                      </Button>
                     </div>
-                  </div>
-                )}
+                  </CardContent>
+                </Card>
+              )}
 
-                {/* Lista de Categorias */}
-                <div className="space-y-2">
-                  {renderCategoryTree()}
-                </div>
+              {/* Lista de Categorias */}
+              <div className="space-y-2">
+                {renderCategoryTree()}
               </div>
-            )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            {/* Tab Fornecedores */}
-            {activeTab === 'fornecedores' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium text-gray-900">Fornecedores e Clientes</h2>
-                  <button
-                    onClick={() => setShowSupplierForm(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Novo Fornecedor/Cliente</span>
-                  </button>
+        {/* Tab Fornecedores */}
+        <TabsContent value="fornecedores" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Fornecedores e Clientes</CardTitle>
+                  <CardDescription>
+                    Gerencie seus fornecedores e clientes
+                  </CardDescription>
                 </div>
-
-                {/* Formulário de Fornecedor */}
-                {showSupplierForm && (
-                  <div className="bg-gray-50 p-4 rounded-lg border">
+                <Button onClick={() => setShowSupplierForm(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Fornecedor/Cliente
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Formulário de Fornecedor */}
+              {showSupplierForm && (
+                <Card>
+                  <CardContent className="pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
-                        <input
-                          type="text"
+                      <div className="space-y-2">
+                        <Label htmlFor="supplier-name">Nome</Label>
+                        <Input
+                          id="supplier-name"
                           value={supplierForm.name}
                           onChange={(e) => setSupplierForm({...supplierForm, name: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                           placeholder="Nome do fornecedor/cliente"
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
-                        <select
+                      <div className="space-y-2">
+                        <Label htmlFor="supplier-type">Tipo</Label>
+                        <Select
                           value={supplierForm.type}
-                          onChange={(e) => setSupplierForm({...supplierForm, type: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          onValueChange={(value) => setSupplierForm({...supplierForm, type: value})}
                         >
-                          <option value="supplier">Fornecedor</option>
-                          <option value="client">Cliente</option>
-                          <option value="both">Ambos</option>
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="supplier">Fornecedor</SelectItem>
+                            <SelectItem value="client">Cliente</SelectItem>
+                            <SelectItem value="both">Ambos</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Documento</label>
-                        <input
-                          type="text"
+                      <div className="space-y-2">
+                        <Label htmlFor="supplier-document">Documento</Label>
+                        <Input
+                          id="supplier-document"
                           value={supplierForm.document}
                           onChange={(e) => setSupplierForm({...supplierForm, document: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                           placeholder="CPF/CNPJ"
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                        <input
+                      <div className="space-y-2">
+                        <Label htmlFor="supplier-email">Email</Label>
+                        <Input
+                          id="supplier-email"
                           type="email"
                           value={supplierForm.email}
                           onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                           placeholder="email@exemplo.com"
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="supplier-phone">Telefone</Label>
+                        <Input
+                          id="supplier-phone"
+                          value={supplierForm.phone}
+                          onChange={(e) => setSupplierForm({...supplierForm, phone: e.target.value})}
+                          placeholder="(11) 99999-9999"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="supplier-address">Endereço</Label>
+                        <Input
+                          id="supplier-address"
+                          value={supplierForm.address}
+                          onChange={(e) => setSupplierForm({...supplierForm, address: e.target.value})}
+                          placeholder="Endereço completo"
+                        />
+                      </div>
                     </div>
                     <div className="flex justify-end space-x-2 mt-4">
-                      <button
-                        onClick={resetSupplierForm}
-                        className="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
-                      >
-                        <X className="w-4 h-4 mr-2 inline" />
+                      <Button variant="outline" onClick={resetSupplierForm}>
+                        <X className="w-4 h-4 mr-2" />
                         Cancelar
-                      </button>
-                      <button
-                        onClick={handleSaveSupplier}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                      >
-                        <Save className="w-4 h-4 mr-2 inline" />
+                      </Button>
+                      <Button onClick={handleSaveSupplier}>
+                        <Save className="w-4 h-4 mr-2" />
                         Salvar
-                      </button>
+                      </Button>
                     </div>
-                  </div>
-                )}
+                  </CardContent>
+                </Card>
+              )}
 
-                {/* Lista de Fornecedores */}
-                <div className="grid gap-4">
-                  {suppliers.map(supplier => (
-                    <div key={supplier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div>
-                        <h3 className="font-medium text-gray-900">{supplier.name}</h3>
-                        <p className="text-sm text-gray-500">{supplier.document}</p>
-                        <span className={`inline-block px-2 py-1 text-xs rounded-full mt-2 ${
-                          supplier.type === 'supplier' ? 'bg-blue-100 text-blue-800' :
-                          supplier.type === 'client' ? 'bg-green-100 text-green-800' :
-                          'bg-purple-100 text-purple-800'
-                        }`}>
+              {/* Lista de Fornecedores */}
+              <div className="space-y-2">
+                {suppliers.map(supplier => (
+                  <Card key={supplier.id}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div className="flex items-center space-x-3">
+                        <span className="font-medium">{supplier.name}</span>
+                        <Badge variant="outline">
                           {supplier.type === 'supplier' ? 'Fornecedor' : 
                            supplier.type === 'client' ? 'Cliente' : 'Ambos'}
-                        </span>
+                        </Badge>
+                        {supplier.document && (
+                          <span className="text-sm text-muted-foreground">{supplier.document}</span>
+                        )}
                       </div>
-                      <div className="flex space-x-2">
-                        <button
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleEditSupplier(supplier)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded"
                         >
                           <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleDeleteSupplier(supplier.id)}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            {/* Tab Pagamentos */}
-            {activeTab === 'pagamentos' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium text-gray-900">Formas de Pagamento</h2>
-                  <button
-                    onClick={() => setShowPaymentForm(true)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Nova Forma de Pagamento</span>
-                  </button>
+        {/* Tab Métodos de Pagamento */}
+        <TabsContent value="pagamentos" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Formas de Pagamento</CardTitle>
+                  <CardDescription>
+                    Configure os métodos de pagamento disponíveis
+                  </CardDescription>
                 </div>
-
-                {/* Formulário de Pagamento */}
-                {showPaymentForm && (
-                  <div className="bg-gray-50 p-4 rounded-lg border">
+                <Button onClick={() => setShowPaymentForm(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nova Forma de Pagamento
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Formulário de Método de Pagamento */}
+              {showPaymentForm && (
+                <Card>
+                  <CardContent className="pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
-                        <select
+                      <div className="space-y-2">
+                        <Label htmlFor="payment-name">Nome</Label>
+                        <Input
+                          id="payment-name"
                           value={paymentForm.name}
                           onChange={(e) => setPaymentForm({...paymentForm, name: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                          <option value="">Selecione uma opção</option>
-                          {PAYMENT_METHODS_OPTIONS.map(option => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
-                        <select
-                          value={paymentForm.type}
-                          onChange={(e) => setPaymentForm({...paymentForm, type: e.target.value})}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        >
-                          <option value="payment">Apenas Pagamento</option>
-                          <option value="receipt">Apenas Recebimento</option>
-                          <option value="both">Ambos</option>
-                        </select>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={paymentForm.is_default}
-                          onChange={(e) => setPaymentForm({...paymentForm, is_default: e.target.checked})}
-                          className="mr-2"
+                          placeholder="Nome do método de pagamento"
                         />
-                        <label className="text-sm font-medium text-gray-700">Forma de pagamento padrão</label>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="payment-type">Tipo</Label>
+                        <Select
+                          value={paymentForm.type}
+                          onValueChange={(value) => setPaymentForm({...paymentForm, type: value})}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="income">Apenas Receitas</SelectItem>
+                            <SelectItem value="expense">Apenas Despesas</SelectItem>
+                            <SelectItem value="both">Ambos</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <div className="flex justify-end space-x-2 mt-4">
-                      <button
-                        onClick={resetPaymentForm}
-                        className="px-4 py-2 text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300"
-                      >
-                        <X className="w-4 h-4 mr-2 inline" />
+                      <Button variant="outline" onClick={resetPaymentForm}>
+                        <X className="w-4 h-4 mr-2" />
                         Cancelar
-                      </button>
-                      <button
-                        onClick={handleSavePayment}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                      >
-                        <Save className="w-4 h-4 mr-2 inline" />
+                      </Button>
+                      <Button onClick={handleSavePayment}>
+                        <Save className="w-4 h-4 mr-2" />
                         Salvar
-                      </button>
+                      </Button>
                     </div>
-                  </div>
-                )}
+                  </CardContent>
+                </Card>
+              )}
 
-                {/* Lista de Métodos de Pagamento */}
-                <div className="grid gap-4">
-                  {paymentMethods.map(method => (
-                    <div key={method.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              {/* Lista de Métodos de Pagamento */}
+              <div className="space-y-2">
+                {paymentMethods.map(payment => (
+                  <Card key={payment.id}>
+                    <CardContent className="flex items-center justify-between p-4">
                       <div className="flex items-center space-x-3">
-                        <CreditCard className="w-5 h-5 text-gray-400" />
-                        <div>
-                          <h3 className="font-medium text-gray-900">{method.name}</h3>
-                          <div className="flex space-x-2 mt-1">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              method.type === 'payment' ? 'bg-red-100 text-red-800' :
-                              method.type === 'receipt' ? 'bg-green-100 text-green-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {method.type === 'payment' ? 'Pagamento' : 
-                               method.type === 'receipt' ? 'Recebimento' : 'Ambos'}
-                            </span>
-                            {method.is_default && (
-                              <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                                Padrão
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                        <span className="font-medium">{payment.name}</span>
+                        <Badge variant={payment.is_default ? 'default' : 'secondary'}>
+                          {payment.is_default ? 'Padrão' : 'Normal'}
+                        </Badge>
+                        <Badge variant="outline">
+                          {payment.type === 'income' ? 'Receitas' : 
+                           payment.type === 'expense' ? 'Despesas' : 'Ambos'}
+                        </Badge>
                       </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEditPayment(method)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded"
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditPayment(payment)}
                         >
                           <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeletePayment(method.id)}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded"
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeletePayment(payment.id)}
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            )}
-          </div>
-        </div>
-      </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
+
