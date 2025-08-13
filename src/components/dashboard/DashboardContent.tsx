@@ -1,29 +1,26 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {
-  DollarSign,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Receipt,
-} from 'lucide-react';
+import { Receipt } from 'lucide-react';
+import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
-// Substituindo os imports com aliases por placeholders
+// Substituindo os imports com aliases por implementações simples
 // Em um ambiente de desenvolvimento real, você precisaria configurar o
 // seu bundler (como Webpack ou Vite) para resolver esses aliases.
-// Para este exemplo, estamos usando placeholders.
-const Button = ({ children, variant, asChild }) => <button>{children}</button>;
-const Card = ({ children, className }) => <div className={`border rounded-lg ${className}`}>{children}</div>;
-const CardContent = ({ children, className }) => <div className={`p-6 ${className}`}>{children}</div>;
-const DashboardCharts = ({ currentMonth, hideValues, lancamentos }) => {
+// Para este exemplo, estamos usando placeholders para que o código seja compilado.
+const DashboardCharts = ({ currentMonth, hideValues, lancamentos, chartType }) => {
+  // Simplesmente retorna um placeholder para os gráficos
   return (
     <div className="flex justify-center items-center h-[200px] text-muted-foreground">
-      <p>Gráfico Placeholder</p>
+      <p>
+        Gráfico {chartType === 'pie' ? 'de Pizza' : 'de Linha'} Placeholder<br />
+        Adicione lançamentos para ver os gráficos
+      </p>
     </div>
   );
 };
 const usePreferences = () => ({ t: (key) => key });
-
 
 interface DashboardContentProps {
   currentMonth: Date;
@@ -52,125 +49,16 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   // Filtrar lançamentos recentes (últimos 5)
   const recentLancamentos = lancamentos.slice(0, 5);
 
-  const totalReceita = lancamentos
-    .filter(l => l.classificacao === 'receita')
-    .reduce((sum, l) => sum + l.valor_pago, 0);
-
-  const totalDespesa = lancamentos
-    .filter(l => l.classificacao === 'despesa')
-    .reduce((sum, l) => sum + l.valor_pago, 0);
-
-  const saldoTotal = totalReceita - totalDespesa;
-
   return (
     <div className="flex-1 space-y-4 p-4 md:p-6 pt-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Card Saldo Total */}
-        <motion.div variants={itemVariants} className="lg:col-span-1">
-          <Card className="shadow-lg border h-full">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    Saldo Total
-                  </h3>
-                  <div className={`text-3xl font-bold ${saldoTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {hideValues ? '***' :
-                      new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      }).format(saldoTotal)
-                    }
-                  </div>
-                </div>
-                <div className={`p-3 rounded-full ${saldoTotal >= 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                  <DollarSign size={24} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Card Receita */}
-        <motion.div variants={itemVariants} className="lg:col-span-1">
-          <Card className="shadow-lg border h-full">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    Receita
-                  </h3>
-                  <div className="text-3xl font-bold text-green-600">
-                    {hideValues ? '***' :
-                      new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      }).format(totalReceita)
-                    }
-                  </div>
-                </div>
-                <div className="p-3 rounded-full bg-green-100 text-green-600">
-                  <ArrowUpCircle size={24} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Card Despesa */}
-        <motion.div variants={itemVariants} className="lg:col-span-1">
-          <Card className="shadow-lg border h-full">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    Despesa
-                  </h3>
-                  <div className="text-3xl font-bold text-red-600">
-                    {hideValues ? '***' :
-                      new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      }).format(totalDespesa)
-                    }
-                  </div>
-                </div>
-                <div className="p-3 rounded-full bg-red-100 text-red-600">
-                  <ArrowDownCircle size={24} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Card Fluxo de Caixa */}
-        <motion.div variants={itemVariants} className="lg:col-span-1">
-          <Card className="shadow-lg border h-full">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    Fluxo de Caixa
-                  </h3>
-                  <div className="text-3xl font-bold">
-                    {hideValues ? '***' : 'R$ 11.500,00'}
-                  </div>
-                </div>
-                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                  <DollarSign size={24} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
+      {/* Seção de gráficos */}
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Seção de gráficos */}
         <motion.div variants={itemVariants} className="md:col-span-1">
           <Card className="shadow-lg border h-full">
-            <CardContent className="p-6">
-              <h3 className="text-xl font-semibold mb-4">Receitas vs Despesas - agosto</h3>
+            <CardHeader>
+              <CardTitle className="text-lg">Receitas vs Despesas - {currentMonth.toLocaleString('pt-BR', { month: 'long' })}</CardTitle>
+            </CardHeader>
+            <CardContent>
               <DashboardCharts
                 currentMonth={currentMonth}
                 hideValues={hideValues}
@@ -183,11 +71,16 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         {/* Distribuição de Despesas */}
         <motion.div variants={itemVariants} className="md:col-span-1">
           <Card className="shadow-lg border h-full">
-            <CardContent className="p-6">
-              <h3 className="text-xl font-semibold mb-4">Distribuição de Despesas - agosto</h3>
-              <div className="flex justify-center items-center h-[200px] text-muted-foreground">
-                <p>Nenhuma despesa encontrada<br />Adicione lançamentos para ver os gráficos</p>
-              </div>
+            <CardHeader>
+              <CardTitle className="text-lg">Distribuição de Despesas - {currentMonth.toLocaleString('pt-BR', { month: 'long' })}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DashboardCharts
+                currentMonth={currentMonth}
+                hideValues={hideValues}
+                lancamentos={lancamentos}
+                chartType="pie"
+              />
             </CardContent>
           </Card>
         </motion.div>
