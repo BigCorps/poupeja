@@ -43,7 +43,6 @@ import "./App.css";
 import React, { Suspense, lazy } from 'react';
 
 // O componente para a página inicial do dashboard
-const DashboardHomePage = lazy(() => import('./pages/DashboardHomePage'));
 const LazyAgenteIA = lazy(() => import('./pages/AgenteIA'));
 const LazyCobranca = lazy(() => import('./pages/Cobranca'));
 const LazyPagamentos = lazy(() => import('./pages/Pagamentos'));
