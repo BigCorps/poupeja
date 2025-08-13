@@ -10,6 +10,7 @@ import { BrandingProvider } from "@/contexts/BrandingContext";
 import { AppProvider } from "@/contexts/AppContext";
 import { SaldoProvider } from "@/contexts/SaldoContext"; // Importação do SaldoProvider
 import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
+import { CadastroPage } from './pages/CadastroPage';
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -79,6 +80,7 @@ function App() {
                           <Route path="/reset-password" element={<ResetPasswordPage />} />
                           <Route path="/profile" element={<ProfilePage />} />
                           <Route path="/transactions" element={<TransactionsPage />} />
+                          <Route path="/cadastros" element={<CadastroPage />} />
                           <Route path="/saldo" element={<SaldoDashboard />} />
                           <Route path="/expenses" element={<ExpensesPage />} />
                           <Route path="/goals" element={<GoalsPage />} />
