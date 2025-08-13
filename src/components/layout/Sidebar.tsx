@@ -159,13 +159,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: 'Contas',
       href: '/pagamentos-em-lote'
     },
-    // ✅ NOVO: Seção HTML/JS
-    {
-      icon: Code,
-      label: 'Dashboard HTML',
-      href: '/custom-dashboard'
-    },
-    // Removi o item "Consultas" para evitar duplicação ou confusão, já que o novo item tem funcionalidade similar
     {
       icon: Bot,
       label: 'Agente IA',
