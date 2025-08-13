@@ -15,16 +15,36 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Transaction } from '@/types';
-import { formatCurrency, formatDate } from '@/utils/transactionUtils';
 import { MoreHorizontal, ArrowUp, ArrowDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import CategoryIcon from '../categories/CategoryIcon';
 import TransactionCard from './TransactionCard';
 import { useIsMobile } from '@/hooks/use-mobile';
+
+// Helpers locais (substituem utils removidos)
+const formatCurrencyLocal = (value: number, currency: string) => {
+  const cur = currency || 'BRL';
+  try {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: cur }).format(
+      Number.isFinite(value as number) ? Number(value) : 0
+    );
+  } catch {
+    // fallback seguro
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+      Number.isFinite(value as number) ? Number(value) : 0
+    );
+  }
+};
+
+const formatDateLocal = (dateInput?: string | Date | null) => {
+  if (!dateInput) return 'N/A';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return 'N/A';
+  return d.toLocaleDateString('pt-BR');
+};
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -39,10 +59,10 @@ const TransactionList: React.FC<TransactionListProps> = ({
   onDelete,
   hideValues = false
 }) => {
-  const { goals } = useAppContext();
   const { t, currency } = usePreferences();
   const isMobile = useIsMobile();
 
+  // Helper to render masked values
   const renderHiddenValue = () => '******';
 
   const getStatusBadge = (status: string) => {
@@ -65,15 +85,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
       <div className="text-center py-10">
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" 
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" 
-              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
-              className="text-muted-foreground">
-              <path d="M16 6h6"></path><path d="M21 12h1"></path>
-              <path d="M16 18h6"></path>
-              <path d="M8 6H3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h5"></path>
-              <path d="M10 18H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h7"></path>
-              <path d="m7 14 4-4"></path><path d="m7 10 4 4"></path>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+              <path d="M16 6h6"></path><path d="M21 12h1"></path><path d="M16 18h6"></path><path d="M8 6H3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h5"></path><path d="M10 18H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h7"></path><path d="m7 14 4-4"></path><path d="m7 10 4 4"></path>
             </svg>
           </div>
           <div className="space-y-2">
@@ -85,16 +98,14 @@ const TransactionList: React.FC<TransactionListProps> = ({
     );
   }
 
+  // Mobile card layout
   if (isMobile) {
     return (
       <div className="space-y-3">
         {transactions.map((transaction, index) => (
           <TransactionCard
             key={transaction.id}
-            transaction={{
-              ...transaction,
-              todayPayments: transaction.todayPayments // garante que passe para mobile
-            }}
+            transaction={transaction}
             onEdit={onEdit}
             onDelete={onDelete}
             hideValues={hideValues}
@@ -118,14 +129,15 @@ const TransactionList: React.FC<TransactionListProps> = ({
             <TableHead>{t('common.dueDate')}</TableHead>
             <TableHead className="text-right">{t('common.originalAmount')}</TableHead>
             <TableHead className="text-right">{t('common.status')}</TableHead>
-            <TableHead className="text-right">{t('transactions.todayPayments')}</TableHead>
             <TableHead className="text-right">{t('common.amount')}</TableHead>
             <TableHead className="w-10"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {transactions.map((transaction, index) => {
+            // Use different icons and colors based on transaction type
             const iconColor = transaction.type === 'income' ? '#26DE81' : '#EF4444';
+
             return (
               <motion.tr
                 key={transaction.id}
@@ -152,20 +164,20 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   )}
                 </TableCell>
                 <TableCell className="font-medium text-xs md:text-sm">
-                  {formatDate(transaction.date)}
+                  {formatDateLocal(transaction.date as any)}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <CategoryIcon 
-                      icon={transaction.categories?.icon || 'default-icon'} 
+                      icon={transaction.categories?.icon || 'default-icon'}
                       color={iconColor} 
                       size={16}
                     />
                     <Badge variant="outline" className={cn(
-                      "text-xs",
+                      'text-xs',
                       transaction.type === 'income' 
-                        ? "bg-green-50 text-green-600 hover:bg-green-100 border-green-200"
-                        : "bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
+                        ? 'bg-green-50 text-green-600 hover:bg-green-100 border-green-200'
+                        : 'bg-red-50 text-red-600 hover:bg-red-100 border-red-200'
                     )}>
                       {transaction.categories?.name || 'N/A'}
                     </Badge>
@@ -178,25 +190,26 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   {transaction.supplier || 'N/A'}
                 </TableCell>
                 <TableCell className="text-xs md:text-sm">
-                  {transaction.due_date ? formatDate(transaction.due_date) : 'N/A'}
+                  {transaction.due_date ? formatDateLocal(transaction.due_date as any) : 'N/A'}
                 </TableCell>
                 <TableCell className="text-right font-medium text-xs md:text-sm">
-                  {transaction.original_amount ? formatCurrency(transaction.original_amount, currency) : 'N/A'}
+                  {transaction.original_amount != null
+                    ? formatCurrencyLocal(Number(transaction.original_amount), currency)
+                    : 'N/A'}
                 </TableCell>
                 <TableCell className="text-right text-xs md:text-sm">
                   {transaction.payment_status ? getStatusBadge(transaction.payment_status) : 'N/A'}
                 </TableCell>
-                <TableCell className="text-right text-xs md:text-sm">
-                  {transaction.todayPayments
-                    ? `${formatCurrency(transaction.todayPayments.amount, currency)} (${transaction.todayPayments.count})`
-                    : 'N/A'}
-                </TableCell>
-                <TableCell className={cn(
-                  "text-right font-semibold text-xs md:text-sm",
-                  transaction.type === 'income' ? 'text-metacash-success' : 'text-metacash-error'
-                )}>
+                <TableCell
+                  className={cn(
+                    'text-right font-semibold text-xs md:text-sm',
+                    transaction.type === 'income' ? 'text-metacash-success' : 'text-metacash-error'
+                  )}
+                >
                   {transaction.type === 'income' ? '+' : '-'}
-                  {hideValues ? renderHiddenValue() : formatCurrency(transaction.amount, currency)}
+                  {hideValues
+                    ? renderHiddenValue()
+                    : formatCurrencyLocal(Number(transaction.amount), currency)}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -213,7 +226,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         </DropdownMenuItem>
                       )}
                       {onDelete && (
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => onDelete(transaction.id)}
                           className="text-metacash-error"
                         >
