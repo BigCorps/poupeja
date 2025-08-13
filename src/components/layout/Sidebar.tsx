@@ -159,12 +159,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       icon: FileSearch,
       label: 'Consultas',
       href: '/consultas'
-    }
+    },
     {
       icon: Bot,
       label: 'Agente IA',
       href: '/agente-ia'
-    },
+    }
   ];
 
   // Adicionar item admin apenas se o usuário for admin e não estiver na página admin
