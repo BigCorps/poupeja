@@ -141,8 +141,8 @@ const DashboardCharts = ({ currentMonth = new Date(), hideValues = false, lancam
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="space-y-1"> {/* Espaçamento vertical ajustado para 1 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-1"> {/* Espaçamento horizontal ajustado para 1 */}
         <Card className="transition-all hover:shadow-lg">
           <CardHeader>
             <CardTitle className="text-lg">Receitas vs Despesas - {monthName}</CardTitle>
@@ -264,7 +264,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   const recentLancamentos = lancamentos.slice(0, 5);
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-6 pt-6"> {/* Adicionado padding para corresponder ao Header */}
+    <div className="flex-1 space-y-1 p-4 md:p-6 pt-6"> {/* Adicionado padding para corresponder ao Header e espaçamento vertical ajustado para 1 */}
       {/* Cards de Resumo - Agora são gerenciados pelo DashboardHeader */}
       {/* Gráficos */}
       <motion.div variants={itemVariants}>
