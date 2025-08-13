@@ -1,0 +1,37 @@
+export interface PaymentMethod {
+  id?: string;
+  user_id?: string;
+  name: string;
+  type: 'payment' | 'receipt' | 'both';
+  is_default?: boolean;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Supplier {
+  id?: string;
+  user_id?: string;
+  name: string;
+  type: 'supplier' | 'client' | 'both';
+  document?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Category {
+  id?: string;
+  user_id?: string;
+  name: string;
+  type: 'income' | 'expense';
+  color: string;
+  icon?: string;
+  parent_id?: string | null;
+  sort_order?: number;
+  is_default?: boolean;
+  created_at?: string;
+}
