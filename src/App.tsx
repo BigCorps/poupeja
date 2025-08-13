@@ -10,7 +10,7 @@ import { BrandingProvider } from "./contexts/BrandingContext";
 import { AppProvider } from "./contexts/AppContext";
 import { SaldoProvider } from "./contexts/SaldoContext";
 import { SupabaseInitializer } from "./components/common/SupabaseInitializer";
-import { CadastroPage } from './pages/CadastroPage';
+import CadastroPage from "./pages/CadastroPage";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
