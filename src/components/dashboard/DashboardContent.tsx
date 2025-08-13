@@ -161,9 +161,9 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
                   </Button>
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
 
       {/* Mensagem quando não há lançamentos */}
