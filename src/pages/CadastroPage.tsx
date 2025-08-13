@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Save, X, Tag, User, CreditCard } from 'lucide-react';
 import { useAppContext } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/supabase/supabase';
+
+// A importação do supabase não é mais necessária aqui, pois os dados vêm do AppContext.
 
 const CATEGORY_COLORS = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
@@ -18,13 +19,10 @@ const CATEGORY_COLORS = [
 
 export default function CadastroPage() {
   const { toast } = useToast();
-  const { user } = useAppContext();
-  const [activeTab, setActiveTab] = useState('categorias');
-  const [categories, setCategories] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // Obtém dados e funções do AppContext
+  const { categories, suppliers, paymentMethods, addCategory, updateCategory, deleteCategory, addSupplier, updateSupplier, deleteSupplier, addPaymentMethod, updatePaymentMethod, deletePaymentMethod } = useAppContext();
 
+  const [activeTab, setActiveTab] = useState('categorias');
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -40,53 +38,8 @@ export default function CadastroPage() {
     name: '', type: 'both', is_default: false
   });
 
-  useEffect(() => {
-    loadInitialData();
-  }, [user]); // Adicionado `user` como dependência para recarregar ao mudar de usuário
-
-  const loadInitialData = async () => {
-    if (!user) return; // Não carrega dados se o usuário não estiver logado
-
-    setLoading(true);
-    try {
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-      
-      const { data: suppliersData, error: suppliersError } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-
-      const { data: paymentMethodsData, error: paymentMethodsError } = await supabase
-        .from('payment_methods')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-
-      if (categoriesError || suppliersError || paymentMethodsError) {
-        throw new Error("Erro ao carregar dados.");
-      }
-
-      setCategories(categoriesData);
-      setSuppliers(suppliersData);
-      setPaymentMethods(paymentMethodsData);
-    } catch (error) {
-      toast({
-        title: "Erro ao carregar dados",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Funções para Categorias
-  const handleSaveCategory = async () => {
+  const handleSaveCategory = useCallback(async () => {
     if (!categoryForm.name.trim()) {
       toast({ title: "Erro", description: "Nome da categoria é obrigatório", variant: "destructive" });
       return;
@@ -94,45 +47,29 @@ export default function CadastroPage() {
     
     try {
       if (editingItem) {
-        const { error } = await supabase
-          .from('categories')
-          .update(categoryForm)
-          .eq('id', editingItem.id);
-
-        if (error) throw error;
+        await updateCategory({ ...categoryForm, id: editingItem.id });
         toast({ title: "Sucesso", description: "Categoria atualizada com sucesso" });
       } else {
-        const { error } = await supabase
-          .from('categories')
-          .insert({ ...categoryForm, user_id: user?.id });
-
-        if (error) throw error;
+        await addCategory(categoryForm);
         toast({ title: "Sucesso", description: "Categoria criada com sucesso" });
       }
       resetCategoryForm();
-      await loadInitialData();
     } catch (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
-  };
+  }, [categoryForm, editingItem, updateCategory, addCategory, toast]);
 
-  const handleDeleteCategory = async (id) => {
+  const handleDeleteCategory = useCallback(async (id) => {
     try {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await deleteCategory(id);
       toast({ title: "Sucesso", description: "Categoria excluída com sucesso" });
-      await loadInitialData();
     } catch (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
-  };
+  }, [deleteCategory, toast]);
   
   // Funções para Fornecedores/Clientes
-  const handleSaveSupplier = async () => {
+  const handleSaveSupplier = useCallback(async () => {
     if (!supplierForm.name.trim()) {
       toast({ title: "Erro", description: "Nome do fornecedor/cliente é obrigatório", variant: "destructive" });
       return;
@@ -140,45 +77,29 @@ export default function CadastroPage() {
     
     try {
       if (editingItem) {
-        const { error } = await supabase
-          .from('suppliers')
-          .update(supplierForm)
-          .eq('id', editingItem.id);
-
-        if (error) throw error;
+        await updateSupplier({ ...supplierForm, id: editingItem.id });
         toast({ title: "Sucesso", description: "Fornecedor/Cliente atualizado com sucesso" });
       } else {
-        const { error } = await supabase
-          .from('suppliers')
-          .insert({ ...supplierForm, user_id: user?.id });
-
-        if (error) throw error;
+        await addSupplier(supplierForm);
         toast({ title: "Sucesso", description: "Fornecedor/Cliente criado com sucesso" });
       }
       resetSupplierForm();
-      await loadInitialData();
     } catch (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
-  };
+  }, [supplierForm, editingItem, updateSupplier, addSupplier, toast]);
 
-  const handleDeleteSupplier = async (id) => {
+  const handleDeleteSupplier = useCallback(async (id) => {
     try {
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await deleteSupplier(id);
       toast({ title: "Sucesso", description: "Fornecedor/Cliente excluído com sucesso" });
-      await loadInitialData();
     } catch (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
-  };
+  }, [deleteSupplier, toast]);
   
   // Funções para Métodos de Pagamento
-  const handleSavePayment = async () => {
+  const handleSavePayment = useCallback(async () => {
     if (!paymentForm.name.trim()) {
       toast({ title: "Erro", description: "Nome do método de pagamento é obrigatório", variant: "destructive" });
       return;
@@ -186,76 +107,65 @@ export default function CadastroPage() {
     
     try {
       if (editingItem) {
-        const { error } = await supabase
-          .from('payment_methods')
-          .update(paymentForm)
-          .eq('id', editingItem.id);
-
-        if (error) throw error;
+        await updatePaymentMethod({ ...paymentForm, id: editingItem.id });
         toast({ title: "Sucesso", description: "Método de pagamento atualizado com sucesso" });
       } else {
-        const { error } = await supabase
-          .from('payment_methods')
-          .insert({ ...paymentForm, user_id: user?.id });
-
-        if (error) throw error;
+        await addPaymentMethod(paymentForm);
         toast({ title: "Sucesso", description: "Método de pagamento criado com sucesso" });
       }
       resetPaymentForm();
-      await loadInitialData();
     } catch (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
-  };
+  }, [paymentForm, editingItem, updatePaymentMethod, addPaymentMethod, toast]);
 
-  const handleDeletePayment = async (id) => {
+  const handleDeletePayment = useCallback(async (id) => {
     try {
-      const { error } = await supabase
-        .from('payment_methods')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await deletePaymentMethod(id);
       toast({ title: "Sucesso", description: "Método de pagamento excluído com sucesso" });
-      await loadInitialData();
     } catch (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
-  };
+  }, [deletePaymentMethod, toast]);
 
-  // Funções de reset e edição (não alteradas)
-  const resetCategoryForm = () => {
+  // Funções de reset e edição (não alteradas, apenas convertidas para useCallback)
+  const resetCategoryForm = useCallback(() => {
     setCategoryForm({ name: '', type: 'expense', color: '#3B82F6', parent_id: null });
     setShowCategoryForm(false);
     setEditingItem(null);
-  };
-  const handleEditCategory = (category) => {
+  }, []);
+
+  const handleEditCategory = useCallback((category) => {
     setCategoryForm(category);
     setEditingItem(category);
     setShowCategoryForm(true);
-  };
-  const resetSupplierForm = () => {
+  }, []);
+
+  const resetSupplierForm = useCallback(() => {
     setSupplierForm({ name: '', type: 'supplier', document: '', email: '', phone: '', address: '' });
     setShowSupplierForm(false);
     setEditingItem(null);
-  };
-  const handleEditSupplier = (supplier) => {
+  }, []);
+
+  const handleEditSupplier = useCallback((supplier) => {
     setSupplierForm(supplier);
     setEditingItem(supplier);
     setShowSupplierForm(true);
-  };
-  const resetPaymentForm = () => {
+  }, []);
+
+  const resetPaymentForm = useCallback(() => {
     setPaymentForm({ name: '', type: 'both', is_default: false });
     setShowPaymentForm(false);
     setEditingItem(null);
-  };
-  const handleEditPayment = (payment) => {
+  }, []);
+
+  const handleEditPayment = useCallback((payment) => {
     setPaymentForm(payment);
     setEditingItem(payment);
     setShowPaymentForm(true);
-  };
+  }, []);
 
-  // Renderizar categorias com hierarquia (não alterado)
+  // Renderizar categorias com hierarquia
   const renderCategoryTree = (parentId = null, level = 0) => {
     return categories
       .filter(cat => cat.parent_id === parentId)
@@ -296,13 +206,7 @@ export default function CadastroPage() {
       ));
   };
   
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // Note: Não há mais necessidade de um estado de loading local, pois o AppContext gerencia o carregamento de dados.
 
   return (
     <div className="space-y-6">
