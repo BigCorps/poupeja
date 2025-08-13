@@ -19,14 +19,10 @@ import RegisterWithPlanPage from "./pages/RegisterWithPlanPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
-import TransactionsPage from "./pages/TransactionsPage";
 import SaldoDashboard from "./pages/SaldoDashboard";
 import ExpensesPage from "./pages/ExpensesPage";
-import GoalsPage from "./pages/GoalsPage";
 import ReportsPage from "./pages/ReportsPage";
-import SchedulePage from "./pages/SchedulePage";
 import SettingsPage from "./pages/SettingsPage";
-import CategoriesPage from "./pages/CategoriesPage";
 import PlansPage from "./pages/PlansPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
@@ -41,6 +37,10 @@ import Privacy from "./pages/Privacy";
 
 // ✅ CORREÇÃO: O caminho de importação correto para MainLayout
 import MainLayout from "./components/layout/MainLayout"; 
+
+// ✅ ADIÇÃO: Novos imports para as páginas reestruturadas
+import LancamentosPage from "./pages/LancamentosPage";
+import FluxoCaixaPage from "./pages/FluxoCaixaPage";
 
 import "./App.css";
 
@@ -77,17 +77,17 @@ function App() {
                           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                           <Route path="/reset-password" element={<ResetPasswordPage />} />
                           <Route path="/profile" element={<ProfilePage />} />
-                          <Route path="/transactions" element={<TransactionsPage />} />
                           
                           <Route path="/cadastros" element={<MainLayout><CadastroPage /></MainLayout>} />
                           
+                          {/* ✅ ADIÇÃO: Novas rotas para as páginas reestruturadas */}
+                          <Route path="/lancamentos" element={<LancamentosPage />} />
+                          <Route path="/fluxo-caixa" element={<FluxoCaixaPage />} />
+                          
                           <Route path="/saldo" element={<SaldoDashboard />} />
                           <Route path="/expenses" element={<ExpensesPage />} />
-                          <Route path="/goals" element={<GoalsPage />} />
                           <Route path="/reports" element={<ReportsPage />} />
-                          <Route path="/schedule" element={<SchedulePage />} />
                           <Route path="/settings" element={<SettingsPage />} />
-                          <Route path="/categories" element={<CategoriesPage />} />
                           
                           <Route path="/cobranca" element={
                             <Suspense fallback={<div>Carregando Cobrança...</div>}>
