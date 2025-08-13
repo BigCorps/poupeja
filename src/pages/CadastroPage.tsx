@@ -9,42 +9,29 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-
-// Simulando dados do Supabase - você substituirá pelas chamadas reais
-const mockUser = { id: '123e4567-e89b-12d3-a456-426614174000' };
-
-const PAYMENT_METHODS_OPTIONS = [
-  'PIX', 'BOLETO', 'CARTÃO DE CRÉDITO', 'CARTÃO DE DÉBITO', 'DINHEIRO',
-  'TRANSFERÊNCIA', 'CHEQUE', 'REDE CARD', 'SITE', 'SHOPEE', 'MERCADOPAGO', 'DÉBITO EM CONTA'
-];
+import { supabase } from '@/utils/supabase'; // Importe seu cliente Supabase
 
 const CATEGORY_COLORS = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
   '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6B7280'
 ];
 
-const CATEGORY_ICONS = [
-  'circle', 'home', 'car', 'shopping-cart', 'utensils', 'gamepad-2',
-  'heart', 'briefcase', 'graduation-cap', 'plane', 'gift', 'music'
-];
-
 export default function CadastroPage() {
   const { toast } = useToast();
+  const { user } = useAppContext(); // Assumindo que o contexto fornece o usuário
   const [activeTab, setActiveTab] = useState('categorias');
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Estados para formulários
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
-  // Estados dos formulários
   const [categoryForm, setCategoryForm] = useState({
-    name: '', type: 'expense', color: '#3B82F6', icon: 'circle', parent_id: null
+    name: '', type: 'expense', color: '#3B82F6', parent_id: null
   });
   const [supplierForm, setSupplierForm] = useState({
     name: '', type: 'supplier', document: '', email: '', phone: '', address: ''
@@ -53,202 +40,220 @@ export default function CadastroPage() {
     name: '', type: 'both', is_default: false
   });
 
-  // Simular carregamento inicial
   useEffect(() => {
     loadInitialData();
   }, []);
 
   const loadInitialData = async () => {
     setLoading(true);
-    // Simular dados - substitua pelas chamadas reais do Supabase
-    setTimeout(() => {
-      setCategories([
-        { id: '1', name: 'Alimentação', type: 'expense', color: '#10B981', icon: 'utensils', parent_id: null },
-        { id: '2', name: 'Restaurantes', type: 'expense', color: '#10B981', icon: 'utensils', parent_id: '1' },
-        { id: '3', name: 'Salário', type: 'income', color: '#3B82F6', icon: 'briefcase', parent_id: null },
-      ]);
-      setSuppliers([
-        { id: '1', name: 'Supermercado ABC', type: 'supplier', document: '12.345.678/0001-90' },
-      ]);
-      setPaymentMethods([
-        { id: '1', name: 'PIX', type: 'both', is_default: true },
-      ]);
+    try {
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('user_id', user?.id) // Filtra por usuário logado
+        .order('name');
+      
+      const { data: suppliersData, error: suppliersError } = await supabase
+        .from('suppliers')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('name');
+
+      const { data: paymentMethodsData, error: paymentMethodsError } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('name');
+
+      if (categoriesError || suppliersError || paymentMethodsError) {
+        throw new Error("Erro ao carregar dados.");
+      }
+
+      setCategories(categoriesData);
+      setSuppliers(suppliersData);
+      setPaymentMethods(paymentMethodsData);
+    } catch (error) {
+      toast({
+        title: "Erro ao carregar dados",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   // Funções para Categorias
   const handleSaveCategory = async () => {
     if (!categoryForm.name.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome da categoria é obrigatório",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Nome da categoria é obrigatório", variant: "destructive" });
       return;
     }
     
-    const newCategory = {
-      id: Date.now().toString(),
-      ...categoryForm,
-      user_id: mockUser.id,
-      created_at: new Date().toISOString()
-    };
+    try {
+      if (editingItem) {
+        const { error } = await supabase
+          .from('categories')
+          .update(categoryForm)
+          .eq('id', editingItem.id);
 
-    if (editingItem) {
-      setCategories(prev => prev.map(cat => 
-        cat.id === editingItem.id ? { ...cat, ...categoryForm } : cat
-      ));
-      toast({
-        title: "Sucesso",
-        description: "Categoria atualizada com sucesso",
-      });
-    } else {
-      setCategories(prev => [...prev, newCategory]);
-      toast({
-        title: "Sucesso",
-        description: "Categoria criada com sucesso",
-      });
+        if (error) throw error;
+        toast({ title: "Sucesso", description: "Categoria atualizada com sucesso" });
+      } else {
+        const { error } = await supabase
+          .from('categories')
+          .insert({ ...categoryForm, user_id: user?.id });
+
+        if (error) throw error;
+        toast({ title: "Sucesso", description: "Categoria criada com sucesso" });
+      }
+      resetCategoryForm();
+      await loadInitialData(); // Recarrega os dados para atualizar a lista
+    } catch (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
-
-    resetCategoryForm();
   };
 
+  const handleDeleteCategory = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast({ title: "Sucesso", description: "Categoria excluída com sucesso" });
+      await loadInitialData();
+    } catch (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+  
+  // Funções para Fornecedores/Clientes
+  const handleSaveSupplier = async () => {
+    if (!supplierForm.name.trim()) {
+      toast({ title: "Erro", description: "Nome do fornecedor/cliente é obrigatório", variant: "destructive" });
+      return;
+    }
+    
+    try {
+      if (editingItem) {
+        const { error } = await supabase
+          .from('suppliers')
+          .update(supplierForm)
+          .eq('id', editingItem.id);
+
+        if (error) throw error;
+        toast({ title: "Sucesso", description: "Fornecedor/Cliente atualizado com sucesso" });
+      } else {
+        const { error } = await supabase
+          .from('suppliers')
+          .insert({ ...supplierForm, user_id: user?.id });
+
+        if (error) throw error;
+        toast({ title: "Sucesso", description: "Fornecedor/Cliente criado com sucesso" });
+      }
+      resetSupplierForm();
+      await loadInitialData();
+    } catch (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteSupplier = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('suppliers')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast({ title: "Sucesso", description: "Fornecedor/Cliente excluído com sucesso" });
+      await loadInitialData();
+    } catch (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+  
+  // Funções para Métodos de Pagamento
+  const handleSavePayment = async () => {
+    if (!paymentForm.name.trim()) {
+      toast({ title: "Erro", description: "Nome do método de pagamento é obrigatório", variant: "destructive" });
+      return;
+    }
+    
+    try {
+      if (editingItem) {
+        const { error } = await supabase
+          .from('payment_methods')
+          .update(paymentForm)
+          .eq('id', editingItem.id);
+
+        if (error) throw error;
+        toast({ title: "Sucesso", description: "Método de pagamento atualizado com sucesso" });
+      } else {
+        const { error } = await supabase
+          .from('payment_methods')
+          .insert({ ...paymentForm, user_id: user?.id });
+
+        if (error) throw error;
+        toast({ title: "Sucesso", description: "Método de pagamento criado com sucesso" });
+      }
+      resetPaymentForm();
+      await loadInitialData();
+    } catch (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeletePayment = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('payment_methods')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast({ title: "Sucesso", description: "Método de pagamento excluído com sucesso" });
+      await loadInitialData();
+    } catch (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Funções de reset e edição (não alteradas)
   const resetCategoryForm = () => {
-    setCategoryForm({ name: '', type: 'expense', color: '#3B82F6', icon: 'circle', parent_id: null });
+    setCategoryForm({ name: '', type: 'expense', color: '#3B82F6', parent_id: null });
     setShowCategoryForm(false);
     setEditingItem(null);
   };
-
   const handleEditCategory = (category) => {
     setCategoryForm(category);
     setEditingItem(category);
     setShowCategoryForm(true);
   };
-
-  const handleDeleteCategory = (id) => {
-    setCategories(prev => prev.filter(cat => cat.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Categoria excluída com sucesso",
-    });
-  };
-
-  // Funções para Fornecedores/Clientes
-  const handleSaveSupplier = async () => {
-    if (!supplierForm.name.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome do fornecedor/cliente é obrigatório",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newSupplier = {
-      id: Date.now().toString(),
-      ...supplierForm,
-      user_id: mockUser.id,
-      created_at: new Date().toISOString()
-    };
-
-    if (editingItem) {
-      setSuppliers(prev => prev.map(sup => 
-        sup.id === editingItem.id ? { ...sup, ...supplierForm } : sup
-      ));
-      toast({
-        title: "Sucesso",
-        description: "Fornecedor/Cliente atualizado com sucesso",
-      });
-    } else {
-      setSuppliers(prev => [...prev, newSupplier]);
-      toast({
-        title: "Sucesso",
-        description: "Fornecedor/Cliente criado com sucesso",
-      });
-    }
-
-    resetSupplierForm();
-  };
-
   const resetSupplierForm = () => {
     setSupplierForm({ name: '', type: 'supplier', document: '', email: '', phone: '', address: '' });
     setShowSupplierForm(false);
     setEditingItem(null);
   };
-
   const handleEditSupplier = (supplier) => {
     setSupplierForm(supplier);
     setEditingItem(supplier);
     setShowSupplierForm(true);
   };
-
-  const handleDeleteSupplier = (id) => {
-    setSuppliers(prev => prev.filter(sup => sup.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Fornecedor/Cliente excluído com sucesso",
-    });
-  };
-
-  // Funções para Métodos de Pagamento
-  const handleSavePayment = async () => {
-    if (!paymentForm.name.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome do método de pagamento é obrigatório",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newPayment = {
-      id: Date.now().toString(),
-      ...paymentForm,
-      user_id: mockUser.id,
-      created_at: new Date().toISOString()
-    };
-
-    if (editingItem) {
-      setPaymentMethods(prev => prev.map(pay => 
-        pay.id === editingItem.id ? { ...pay, ...paymentForm } : pay
-      ));
-      toast({
-        title: "Sucesso",
-        description: "Método de pagamento atualizado com sucesso",
-      });
-    } else {
-      setPaymentMethods(prev => [...prev, newPayment]);
-      toast({
-        title: "Sucesso",
-        description: "Método de pagamento criado com sucesso",
-      });
-    }
-
-    resetPaymentForm();
-  };
-
   const resetPaymentForm = () => {
     setPaymentForm({ name: '', type: 'both', is_default: false });
     setShowPaymentForm(false);
     setEditingItem(null);
   };
-
   const handleEditPayment = (payment) => {
     setPaymentForm(payment);
     setEditingItem(payment);
     setShowPaymentForm(true);
   };
 
-  const handleDeletePayment = (id) => {
-    setPaymentMethods(prev => prev.filter(pay => pay.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Método de pagamento excluído com sucesso",
-    });
-  };
-
-  // Renderizar categorias com hierarquia
+  // Renderizar categorias com hierarquia (não alterado)
   const renderCategoryTree = (parentId = null, level = 0) => {
     return categories
       .filter(cat => cat.parent_id === parentId)
@@ -257,8 +262,8 @@ export default function CadastroPage() {
           <Card>
             <CardContent className="flex items-center justify-between p-4">
               <div className="flex items-center space-x-3">
-                <div 
-                  className="w-4 h-4 rounded-full" 
+                <div
+                  className="w-4 h-4 rounded-full"
                   style={{ backgroundColor: category.color }}
                 />
                 <span className="font-medium">{category.name}</span>
@@ -288,7 +293,7 @@ export default function CadastroPage() {
         </div>
       ));
   };
-
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -335,7 +340,7 @@ export default function CadastroPage() {
                 </div>
                 <Button onClick={() => {
                   setEditingItem(null);
-                  setCategoryForm({ name: '', type: 'expense', color: '#3B82F6', icon: 'circle', parent_id: null });
+                  setCategoryForm({ name: '', type: 'expense', color: '#3B82F6', parent_id: null });
                   setShowCategoryForm(true);
                 }}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -344,7 +349,6 @@ export default function CadastroPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Formulário de Categoria */}
               {showCategoryForm && (
                 <Card>
                   <CardContent className="pt-6">
@@ -420,7 +424,6 @@ export default function CadastroPage() {
                 </Card>
               )}
 
-              {/* Lista de Categorias */}
               <div className="space-y-2">
                 {renderCategoryTree()}
               </div>
@@ -450,7 +453,6 @@ export default function CadastroPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Formulário de Fornecedor */}
               {showSupplierForm && (
                 <Card>
                   <CardContent className="pt-6">
@@ -532,7 +534,6 @@ export default function CadastroPage() {
                 </Card>
               )}
 
-              {/* Lista de Fornecedores */}
               <div className="space-y-2">
                 {suppliers.map(supplier => (
                   <Card key={supplier.id}>
@@ -540,8 +541,8 @@ export default function CadastroPage() {
                       <div className="flex items-center space-x-3">
                         <span className="font-medium">{supplier.name}</span>
                         <Badge variant="outline">
-                          {supplier.type === 'supplier' ? 'Fornecedor' : 
-                           supplier.type === 'client' ? 'Cliente' : 'Ambos'}
+                          {supplier.type === 'supplier' ? 'Fornecedor' :
+                            supplier.type === 'client' ? 'Cliente' : 'Ambos'}
                         </Badge>
                         {supplier.document && (
                           <span className="text-sm text-muted-foreground">{supplier.document}</span>
@@ -593,7 +594,6 @@ export default function CadastroPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Formulário de Método de Pagamento */}
               {showPaymentForm && (
                 <Card>
                   <CardContent className="pt-6">
@@ -638,7 +638,6 @@ export default function CadastroPage() {
                 </Card>
               )}
 
-              {/* Lista de Métodos de Pagamento */}
               <div className="space-y-2">
                 {paymentMethods.map(payment => (
                   <Card key={payment.id}>
@@ -649,8 +648,8 @@ export default function CadastroPage() {
                           {payment.is_default ? 'Padrão' : 'Normal'}
                         </Badge>
                         <Badge variant="outline">
-                          {payment.type === 'income' ? 'Receitas' : 
-                           payment.type === 'expense' ? 'Despesas' : 'Ambos'}
+                          {payment.type === 'income' ? 'Receitas' :
+                            payment.type === 'expense' ? 'Despesas' : 'Ambos'}
                         </Badge>
                       </div>
                       <div className="flex items-center space-x-2">
