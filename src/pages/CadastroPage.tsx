@@ -1,6 +1,10 @@
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useEffect, useState } from 'react';
-import { Card, Tabs, TabsContent, TabsList, TabsTrigger, Input, Select, Button } from '../components/ui';
+import { Card } from '../components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
+import { Button } from '../components/ui/button';
 import { useCadastros } from '../hooks/useCadastros';
 import { PaymentMethod, Supplier, Category } from '../types/cadastros';
 
@@ -69,7 +73,13 @@ export function CadastroPage() {
   );
 }
 
-function PaymentMethodsSection({ methods, onAdd, onDelete }) {
+interface PaymentMethodsSectionProps {
+  methods: PaymentMethod[];
+  onAdd: (method: PaymentMethod) => void;
+  onDelete: (id: string) => void;
+}
+
+function PaymentMethodsSection({ methods, onAdd, onDelete }: PaymentMethodsSectionProps) {
   const [newMethod, setNewMethod] = useState<PaymentMethod>({
     name: '',
     type: 'both'
@@ -86,20 +96,18 @@ function PaymentMethodsSection({ methods, onAdd, onDelete }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Nome"
+            placeholder="Nome"
             value={newMethod.name}
             onChange={(e) => setNewMethod({ ...newMethod, name: e.target.value })}
           />
           <Select
-            label="Tipo"
             value={newMethod.type}
             onValueChange={(value) => setNewMethod({ ...newMethod, type: value })}
-            options={[
-              { value: 'payment', label: 'Pagamento' },
-              { value: 'receipt', label: 'Recebimento' },
-              { value: 'both', label: 'Ambos' }
-            ]}
-          />
+          >
+            <option value="payment">Pagamento</option>
+            <option value="receipt">Recebimento</option>
+            <option value="both">Ambos</option>
+          </Select>
         </div>
         <Button type="submit">Adicionar</Button>
       </form>
@@ -133,7 +141,13 @@ function PaymentMethodsSection({ methods, onAdd, onDelete }) {
   );
 }
 
-function SuppliersSection({ suppliers, onAdd, onDelete }) {
+interface SuppliersSectionProps {
+  suppliers: Supplier[];
+  onAdd: (supplier: Supplier) => void;
+  onDelete: (id: string) => void;
+}
+
+function SuppliersSection({ suppliers, onAdd, onDelete }: SuppliersSectionProps) {
   const [newSupplier, setNewSupplier] = useState<Supplier>({
     name: '',
     type: 'both',
@@ -159,33 +173,31 @@ function SuppliersSection({ suppliers, onAdd, onDelete }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Nome"
+            placeholder="Nome"
             value={newSupplier.name}
             onChange={(e) => setNewSupplier({ ...newSupplier, name: e.target.value })}
           />
           <Select
-            label="Tipo"
             value={newSupplier.type}
             onValueChange={(value) => setNewSupplier({ ...newSupplier, type: value })}
-            options={[
-              { value: 'supplier', label: 'Fornecedor' },
-              { value: 'client', label: 'Cliente' },
-              { value: 'both', label: 'Ambos' }
-            ]}
-          />
+          >
+            <option value="supplier">Fornecedor</option>
+            <option value="client">Cliente</option>
+            <option value="both">Ambos</option>
+          </Select>
           <Input
-            label="Documento (CPF/CNPJ)"
+            placeholder="Documento (CPF/CNPJ)"
             value={newSupplier.document}
             onChange={(e) => setNewSupplier({ ...newSupplier, document: e.target.value })}
           />
           <Input
-            label="Email"
             type="email"
+            placeholder="Email"
             value={newSupplier.email}
             onChange={(e) => setNewSupplier({ ...newSupplier, email: e.target.value })}
           />
           <Input
-            label="Telefone"
+            placeholder="Telefone"
             value={newSupplier.phone}
             onChange={(e) => setNewSupplier({ ...newSupplier, phone: e.target.value })}
           />
@@ -228,7 +240,13 @@ function SuppliersSection({ suppliers, onAdd, onDelete }) {
   );
 }
 
-function CategoriesSection({ categories, onAdd, onDelete }) {
+interface CategoriesSectionProps {
+  categories: Category[];
+  onAdd: (category: Category) => void;
+  onDelete: (id: string) => void;
+}
+
+function CategoriesSection({ categories, onAdd, onDelete }: CategoriesSectionProps) {
   const [newCategory, setNewCategory] = useState<Category>({
     name: '',
     type: 'expense',
@@ -254,37 +272,31 @@ function CategoriesSection({ categories, onAdd, onDelete }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Nome"
+            placeholder="Nome"
             value={newCategory.name}
             onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
           />
           <Select
-            label="Tipo"
             value={newCategory.type}
             onValueChange={(value) => setNewCategory({ ...newCategory, type: value })}
-            options={[
-              { value: 'income', label: 'Receita' },
-              { value: 'expense', label: 'Despesa' }
-            ]}
-          />
+          >
+            <option value="income">Receita</option>
+            <option value="expense">Despesa</option>
+          </Select>
           <Input
-            label="Cor"
             type="color"
             value={newCategory.color}
             onChange={(e) => setNewCategory({ ...newCategory, color: e.target.value })}
           />
           <Select
-            label="Categoria Pai"
             value={newCategory.parent_id || ''}
             onValueChange={(value) => setNewCategory({ ...newCategory, parent_id: value || null })}
-            options={[
-              { value: '', label: 'Nenhuma' },
-              ...parentCategories.map(cat => ({
-                value: cat.id,
-                label: cat.name
-              }))
-            ]}
-          />
+          >
+            <option value="">Nenhuma</option>
+            {parentCategories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </Select>
         </div>
         <Button type="submit">Adicionar</Button>
       </form>
