@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { PreferencesProvider } from "./contexts/PreferencesContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
-import { BrandingProvider } from "./contexts/BrandingProvider";
 import { AppProvider } from "./contexts/AppContext";
 import { SaldoProvider } from "./contexts/SaldoContext";
 import { SupabaseInitializer } from "./components/common/SupabaseInitializer";
