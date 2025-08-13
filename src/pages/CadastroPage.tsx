@@ -9,8 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-// Por favor, ajuste o caminho abaixo para o local correto do seu cliente Supabase
-import { supabase } from '@/supabaseClient'; // Caminho de exemplo: 'src/supabaseClient.js'
 
 const CATEGORY_COLORS = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
