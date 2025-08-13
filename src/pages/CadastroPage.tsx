@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/supabase'; // Importe seu cliente Supabase
+// Por favor, ajuste o caminho abaixo para o local correto do seu cliente Supabase
+import { supabase } from '@/supabaseClient'; // Caminho de exemplo: 'src/supabaseClient.js'
 
 const CATEGORY_COLORS = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
@@ -18,7 +19,7 @@ const CATEGORY_COLORS = [
 
 export default function CadastroPage() {
   const { toast } = useToast();
-  const { user } = useAppContext(); // Assumindo que o contexto fornece o usuário
+  const { user } = useAppContext();
   const [activeTab, setActiveTab] = useState('categorias');
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -42,27 +43,29 @@ export default function CadastroPage() {
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [user]); // Adicionado `user` como dependência para recarregar ao mudar de usuário
 
   const loadInitialData = async () => {
+    if (!user) return; // Não carrega dados se o usuário não estiver logado
+
     setLoading(true);
     try {
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
-        .eq('user_id', user?.id) // Filtra por usuário logado
+        .eq('user_id', user.id)
         .order('name');
       
       const { data: suppliersData, error: suppliersError } = await supabase
         .from('suppliers')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('name');
 
       const { data: paymentMethodsData, error: paymentMethodsError } = await supabase
         .from('payment_methods')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('name');
 
       if (categoriesError || suppliersError || paymentMethodsError) {
@@ -108,7 +111,7 @@ export default function CadastroPage() {
         toast({ title: "Sucesso", description: "Categoria criada com sucesso" });
       }
       resetCategoryForm();
-      await loadInitialData(); // Recarrega os dados para atualizar a lista
+      await loadInitialData();
     } catch (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
