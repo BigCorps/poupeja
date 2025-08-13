@@ -127,11 +127,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       href: '/transactions'
     },
     {
-      icon: FolderOpen,
-      label: t('nav.categories'),
-      href: '/categories'
-    },
-    {
       icon: Target,
       label: t('nav.goals'),
       href: '/goals'
