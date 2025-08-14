@@ -569,11 +569,11 @@ export const DemonstrativoPage = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">Demonstrativo de Resultados</h1>
+          <h1 className="text-2xl font-bold text-foreground">Demonstrativo de Resultados (DRE)</h1>
           
           {/* Seletor de Ano */}
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-500" />
+            <Calendar className="h-4 w-4 text-muted-foreground" />
             <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
               <SelectTrigger className="w-24">
                 <SelectValue />
@@ -591,12 +591,15 @@ export const DemonstrativoPage = () => {
 
         <div className="flex items-center gap-2">
           {/* Toggle View Mode */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex bg-muted rounded-lg p-1">
             <Button
               variant={viewMode === 'table' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('table')}
-              className="text-xs"
+              className={cn(
+                "text-xs",
+                viewMode === 'table' ? "" : "text-muted-foreground hover:bg-muted"
+              )}
             >
               Tabela
             </Button>
@@ -604,7 +607,10 @@ export const DemonstrativoPage = () => {
               variant={viewMode === 'chart' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('chart')}
-              className="text-xs"
+              className={cn(
+                "text-xs",
+                viewMode === 'chart' ? "" : "text-muted-foreground hover:bg-muted"
+              )}
             >
               Ver Gráficos
             </Button>
@@ -622,8 +628,8 @@ export const DemonstrativoPage = () => {
         <CardContent className="p-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">Carregando dados...</span>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-2 text-muted-foreground">Carregando dados...</span>
             </div>
           ) : viewMode === 'table' ? (
             renderDRETable()
