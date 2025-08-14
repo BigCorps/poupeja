@@ -23,7 +23,7 @@ interface PaymentMethod {
   id: string;
   user_id: string;
   name: string;
-  type: 'cash' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'pix' | 'other' | 'both';
+  type: 'cash' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'pix' | 'other' | 'both' | 'receipt' | 'payment';
   is_default: boolean;
 }
 
@@ -38,7 +38,7 @@ interface Supplier {
   id: string;
   user_id: string;
   name: string;
-  type: 'supplier' | 'customer';
+  type: 'supplier' | 'customer' | 'client' | 'both';
   contact_person: string | null;
   email: string | null;
   phone: string | null;
@@ -328,6 +328,9 @@ export const useAppContext = () => {
   }
   return context;
 };
+
+// ✅ CORREÇÃO: Exportar também como useApp para compatibilidade
+export const useApp = useAppContext;
 
 // ===================================================
 // ✅ PROVIDER COMPLETO
