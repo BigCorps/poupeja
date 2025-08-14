@@ -41,7 +41,7 @@ import MainLayout from "./components/layout/MainLayout";
 // ✅ ADIÇÃO: Novos imports para as páginas reestruturadas
 import LancamentosPage from "./pages/LancamentosPage";
 import FluxoCaixaPage from "./pages/FluxoCaixaPage";
-import Demonstrativo from "./pages/DemonstrativoPage";
+import DemonstrativoPage from '@/pages/DemonstrativoPage';
 
 import "./App.css";
 
