@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, DatabaseIcon, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard, Layers, FileSearch, Code, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Receipt, BarChart3, Target, User, FileText, DatabaseIcon, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard, Layers, FileSearch, Code, TrendingUp } from 'lucide-react';
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -131,6 +131,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       icon: TrendingUp,
       label: 'Fluxo de Caixa',
       href: '/fluxo-caixa'
+    },
+    {
+      icon: FileText,
+      label: 'Demonstrativo',
+      href: '/demonstrativo'
     },
     {
       icon: BarChart3,
