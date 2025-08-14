@@ -144,8 +144,8 @@ const DashboardCharts = ({ currentMonth = new Date(), hideValues = false, lancam
   };
 
   return (
-    <div className="space-y-1"> {/* Espaçamento vertical ajustado para 1 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-1"> {/* Espaçamento horizontal ajustado para 1 */}
+    <div className="space-y-6"> {/* Espaçamento vertical ajustado para 1 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Espaçamento horizontal ajustado para 1 */}
         <Card className="transition-all hover:shadow-lg">
           <CardHeader>
             <CardTitle className="text-lg">Receitas vs Despesas - {monthName}</CardTitle>
@@ -373,18 +373,18 @@ const Index = () => {
   return (
     <MainLayout title="Painel">
       <SubscriptionGuard feature="o dashboard completo">
-        <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8">
-          <motion.div
-            className={cn(isMobile ? "space-y-4" : "space-y-6")}
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
+        <div className="w-full p-6 md:p-8">
+            <motion.div
+              className="space-y-6"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
             {/* Header Unificado */}
             <motion.div variants={itemVariants}>
               {isMobile ? (
                 <div className="flex items-center justify-between mb-4">
-                  <h1 className="text-xl font-semibold">Painel</h1>
+                  <h1 className="text-xl font-semibold">Painel Principal</h1>
                   <Button
                     variant="default"
                     size="sm"
@@ -396,8 +396,11 @@ const Index = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                  <h2 className="text-2xl font-bold text-foreground">Painel</h2>
+                <div className="flex items-center justify-between gap-4 mb-6">
+                  <h2 className="text-2xl font-bold text-foreground">Painel Principal</h2>
+                  <div className="flex-1 flex justify-center">
+                    <MonthNavigation currentMonth={currentMonth} onMonthChange={handleMonthChange} />
+                  </div>
                   <div className="flex items-center gap-4">
                     <Button
                       variant="outline"
@@ -423,9 +426,7 @@ const Index = () => {
             </motion.div>
 
             {/* Navegação de Mês */}
-            <motion.div variants={itemVariants}>
-              <MonthNavigation currentMonth={currentMonth} onMonthChange={handleMonthChange} />
-            </motion.div>
+
 
             {/* Cards de Estatísticas */}
             <motion.div variants={itemVariants}>
@@ -487,7 +488,7 @@ const Index = () => {
 
             {/* Conteúdo do Dashboard - Agora diretamente aqui */}
             <motion.div variants={itemVariants}>
-              <div className="flex-1 space-y-1 p-4 md:p-6 pt-6"> {/* Adicionado padding para corresponder ao Header e espaçamento vertical ajustado para 1 */}
+              <div className="space-y-6"> {/* Adicionado padding para corresponder ao Header e espaçamento vertical ajustado para 1 */}
                 {/* Gráficos */}
                 <motion.div variants={itemVariants}>
                   <DashboardCharts
@@ -579,5 +580,3 @@ const Index = () => {
 };
 
 export default Index;
-
-
