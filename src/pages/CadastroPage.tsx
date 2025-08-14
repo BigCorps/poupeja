@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Save, X, Tag, User, CreditCard } from 'lucide-react';
 import { useAppContext } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ export default function CadastroPage() {
   const {
     categories,
     suppliers,
-    paymentMethods,
+    allPaymentMethods,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -128,13 +128,20 @@ export default function CadastroPage() {
   }, [paymentForm, editingItem, updatePaymentMethod, addPaymentMethod, toast]);
 
   const handleDeletePayment = useCallback(async (id) => {
+    // Não permitir deletar métodos padrão
+    const method = allPaymentMethods.find(pm => pm.id === id);
+    if (method && method.user_id === 'default') {
+      toast({ title: "Erro", description: "Não é possível deletar métodos de pagamento padrão", variant: "destructive" });
+      return;
+    }
+
     try {
       await deletePaymentMethod(id);
       toast({ title: "Sucesso", description: "Método de pagamento excluído com sucesso" });
     } catch (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
-  }, [deletePaymentMethod, toast]);
+  }, [deletePaymentMethod, toast, allPaymentMethods]);
 
   const resetCategoryForm = useCallback(() => {
     setCategoryForm({ name: '', type: 'expense', color: '#3B82F6', parent_id: null });
@@ -167,10 +174,16 @@ export default function CadastroPage() {
   }, []);
 
   const handleEditPayment = useCallback((payment) => {
+    // Não permitir editar métodos padrão
+    if (payment.user_id === 'default') {
+      toast({ title: "Aviso", description: "Métodos de pagamento padrão não podem ser editados", variant: "default" });
+      return;
+    }
+    
     setPaymentForm(payment);
     setEditingItem(payment);
     setShowPaymentForm(true);
-  }, []);
+  }, [toast]);
 
   const renderCategoryTree = (parentId = null, level = 0) => {
     if (!categories || !Array.isArray(categories) || categories.length === 0) {
@@ -192,22 +205,29 @@ export default function CadastroPage() {
               <Badge variant={category.type === 'income' ? 'default' : 'secondary'}>
                 {category.type === 'income' ? 'Receita' : 'Despesa'}
               </Badge>
+              {category.is_default && (
+                <Badge variant="outline" className="text-xs">Padrão</Badge>
+              )}
             </div>
             <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleEditCategory(category)}
-              >
-                <Edit2 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDeleteCategory(category.id)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              {!category.is_default && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditCategory(category)}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteCategory(category.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -257,7 +277,7 @@ export default function CadastroPage() {
                 <div>
                   <CardTitle>Plano de Contas</CardTitle>
                   <CardDescription>
-                    Organize suas receitas e despesas em categorias
+                    Organize suas receitas e despesas em categorias. As categorias padrão não podem ser editadas.
                   </CardDescription>
                 </div>
                 <Button onClick={() => {
@@ -288,7 +308,7 @@ export default function CadastroPage() {
                         <Label htmlFor="category-type">Tipo</Label>
                         <Select
                           value={categoryForm.type}
-                          onValueChange={(value) => setCategoryForm({ ...categoryForm, type: value as 'income' | 'expense' })}
+                          onValueChange={(value) => setCategoryForm({ ...categoryForm, type: value })}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione o tipo" />
@@ -399,7 +419,7 @@ export default function CadastroPage() {
                         <Label htmlFor="supplier-type">Tipo</Label>
                         <Select
                           value={supplierForm.type}
-                          onValueChange={(value) => setSupplierForm({ ...supplierForm, type: value as 'supplier' | 'customer' | 'client' | 'both' })}
+                          onValueChange={(value) => setSupplierForm({ ...supplierForm, type: value })}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione o tipo" />
@@ -407,7 +427,7 @@ export default function CadastroPage() {
                           <SelectContent>
                             <SelectItem value="supplier">Fornecedor</SelectItem>
                             <SelectItem value="customer">Cliente</SelectItem>
-                            <SelectItem value="client">Ambos</SelectItem>
+                            <SelectItem value="both">Ambos</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -424,6 +444,7 @@ export default function CadastroPage() {
                         <Label htmlFor="supplier-email">Email</Label>
                         <Input
                           id="supplier-email"
+                          type="email"
                           value={supplierForm.email}
                           onChange={(e) => setSupplierForm({ ...supplierForm, email: e.target.value })}
                           placeholder="email@exemplo.com"
@@ -473,8 +494,17 @@ export default function CadastroPage() {
                       <CardContent className="flex items-center justify-between p-4">
                         <div className="flex items-center space-x-3">
                           <User className="w-5 h-5 text-muted-foreground" />
-                          <span className="font-medium">{supplier.name}</span>
-                          <Badge variant="outline">{supplier.type}</Badge>
+                          <div>
+                            <span className="font-medium">{supplier.name}</span>
+                            {supplier.document && (
+                              <p className="text-sm text-muted-foreground">{supplier.document}</p>
+                            )}
+                          </div>
+                          <Badge variant="outline">
+                            {supplier.type === 'supplier' && 'Fornecedor'}
+                            {supplier.type === 'customer' && 'Cliente'}
+                            {supplier.type === 'both' && 'Ambos'}
+                          </Badge>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button
@@ -509,7 +539,7 @@ export default function CadastroPage() {
                 <div>
                   <CardTitle>Formas de Pagamento</CardTitle>
                   <CardDescription>
-                    Gerencie suas formas de pagamento
+                    Gerencie suas formas de pagamento. Métodos padrão não podem ser editados ou removidos.
                   </CardDescription>
                 </div>
                 <Button onClick={() => {
@@ -526,7 +556,7 @@ export default function CadastroPage() {
               {showPaymentForm && (
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="payment-name">Nome</Label>
                         <Input
@@ -552,36 +582,38 @@ export default function CadastroPage() {
               )}
 
               <div className="space-y-2">
-                {paymentMethods.length === 0 && !showPaymentForm ? (
+                {allPaymentMethods.length === 0 && !showPaymentForm ? (
                   <div className="text-center py-8 text-muted-foreground">
                     Nenhuma forma de pagamento cadastrada. Clique em "Nova Forma de Pagamento" para começar.
                   </div>
                 ) : (
-                  paymentMethods.map(payment => (
+                  allPaymentMethods.map(payment => (
                     <Card key={payment.id}>
                       <CardContent className="flex items-center justify-between p-4">
                         <div className="flex items-center space-x-3">
                           <CreditCard className="w-5 h-5 text-muted-foreground" />
                           <span className="font-medium">{payment.name}</span>
-                          {payment.is_default && <Badge variant="outline">Padrão</Badge>}
+                          {(payment.is_default || payment.user_id === 'default') && (
+                            <Badge variant="outline">Padrão</Badge>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEditPayment(payment)}
+                            disabled={payment.user_id === 'default'}
                           >
                             <Edit2 className="w-4 h-4" />
                           </Button>
-                          {!payment.is_default && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeletePayment(payment.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeletePayment(payment.id)}
+                            disabled={payment.user_id === 'default'}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
