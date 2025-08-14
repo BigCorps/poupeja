@@ -34,6 +34,7 @@ import AdminRoute from "./components/admin/AdminRoute";
 import ConnectedBanksPage from "./pages/ConnectedBanksPage";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import DemonstrativoPage from "./pages/DemonstrativoPage';
 
 // ✅ CORREÇÃO: O caminho de importação correto para MainLayout
 import MainLayout from "./components/layout/MainLayout"; 
@@ -83,7 +84,7 @@ function App() {
                           {/* ✅ CORREÇÃO: Novas rotas envolvidas com MainLayout */}
                           <Route path="/lancamentos" element={<MainLayout><LancamentosPage /></MainLayout>} />
                           <Route path="/fluxo-caixa" element={<MainLayout><FluxoCaixaPage /></MainLayout>} />
-                          
+                          <Route path="/demonstrativo" element={<DemonstrativoPage />} />
                           <Route path="/saldo" element={<SaldoDashboard />} />
                           <Route path="/expenses" element={<ExpensesPage />} />
                           <Route path="/reports" element={<ReportsPage />} />
