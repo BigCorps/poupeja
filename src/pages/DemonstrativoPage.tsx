@@ -535,7 +535,7 @@ export const DemonstrativoPage = () => {
   };
 
   return (
-    <MainLayout title="Demonstrativo de Resultados">
+    <MainLayout title="Demonstrativo de Resultados (DRE)">
       <SubscriptionGuard feature="o demonstrativo de resultados">
         <div className="w-full p-6 md:p-8">
           <motion.div
