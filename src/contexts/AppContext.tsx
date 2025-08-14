@@ -533,7 +533,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar método de pagamento.' });
       throw err;
     }
-  }, [state.user]  const updatePaymentMethod = useCallback(async (paymentMethod: PaymentMethod) => {
+  }, [state.user]);
+
+  const updatePaymentMethod = useCallback(async (paymentMethod: PaymentMethod) => {
     if (!state.user) throw new Error("Usuário não autenticado");
     
     try {
@@ -555,7 +557,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: "SET_ERROR", payload: "Erro ao atualizar método de pagamento." });
       throw err;
     }
-  }, [state.user]); useCallback(async (id: string) => {
+  }, [state.user]);
+
+  const deletePaymentMethod = useCallback(async (id: string) => {
     if (!state.user) throw new Error('Usuário não autenticado');
     
     try {
