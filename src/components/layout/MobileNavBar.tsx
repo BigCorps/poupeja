@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { LayoutDashboard, Receipt, Settings, DatabaseIcon, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot, ScanLine, CreditCard, Layers, FileSearch, Code, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Receipt, Settings, FileText, DatabaseIcon, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot, ScanLine, CreditCard, Layers, FileSearch, Code, TrendingUp } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,6 +45,16 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       label: 'Fluxo de Caixa',
       action: () => {
         navigate('/fluxo-caixa');
+        setIsQuickActionsOpen(false);
+      },
+      color: 'text-green-800 dark:text-green-200',
+      bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+    },
+    {
+      icon: FileText,
+      label: 'Demonstrativo',
+      action: () => {
+        navigate('/demonstrativo');
         setIsQuickActionsOpen(false);
       },
       color: 'text-green-800 dark:text-green-200',
