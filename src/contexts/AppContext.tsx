@@ -512,7 +512,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state.user]);
 
-  const addPaymentM  const addPaymentMethod = useCallback(async (paymentMethod: Omit<PaymentMethod, 'id' | 'user_id'>) => {
+  const addPaymentMethod = useCallback(async (paymentMethod: Omit<PaymentMethod, 'id' | 'user_id'>) => {
     if (!state.user) throw new Error('Usuário não autenticado');
     
     try {
