@@ -433,17 +433,17 @@ export const DemonstrativoPage = () => {
 
     return (
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse bg-white rounded-lg shadow-sm">
+        <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-gray-50 border-b-2 border-gray-200">
-              <th className="text-left p-3 font-semibold text-gray-700">Descrição</th>
+            <tr className="border-b-2 border-border">
+              <th className="text-left p-3 font-semibold">Descrição</th>
               {MONTHS.map(month => (
-                <th key={month.value} className="text-right p-3 font-semibold text-gray-700 min-w-[80px]">
+                <th key={month.value} className="text-right p-3 font-semibold min-w-[100px]">
                   {month.short}
                 </th>
               ))}
-              <th className="text-right p-3 font-semibold text-gray-700 min-w-[100px]">Total</th>
-              <th className="text-right p-3 font-semibold text-gray-700 min-w-[60px]">Av%</th>
+              <th className="text-right p-3 font-semibold min-w-[120px]">Total</th>
+              <th className="text-right p-3 font-semibold min-w-[80px]">%</th>
             </tr>
           </thead>
           <tbody>
@@ -451,22 +451,23 @@ export const DemonstrativoPage = () => {
               <tr 
                 key={line.id} 
                 className={cn(
-                  "border-b border-gray-100 hover:bg-gray-50 transition-colors",
-                  line.isSubtotal && "bg-blue-50 border-blue-200",
+                  "border-b border-border hover:bg-muted/50",
+                  line.isSubtotal && "bg-muted/30",
                   line.isBold && "font-semibold"
                 )}
               >
                 <td 
                   className={cn(
-                    "p-3 text-gray-800",
+                    "p-3",
                     line.level === 0 ? "font-bold" : `pl-${3 + line.level * 4}`,
-                    line.isSubtotal && "text-blue-800"
+                    line.color && "border-l-4"
                   )}
+                  style={line.color ? { borderLeftColor: line.color } : {}}
                 >
                   {line.label}
                 </td>
                 {MONTHS.map(month => (
-                  <td key={month.value} className="text-right p-3 font-mono text-sm text-gray-600">
+                  <td key={month.value} className="text-right p-3 font-mono text-sm">
                     {line.isPercentageLine 
                       ? formatPercentage(line.values[month.value] || 0)
                       : formatCurrency(line.values[month.value] || 0)
@@ -475,15 +476,14 @@ export const DemonstrativoPage = () => {
                 ))}
                 <td className={cn(
                   "text-right p-3 font-mono text-sm font-semibold",
-                  line.total >= 0 ? "text-green-600" : "text-red-600",
-                  line.isSubtotal && "text-blue-600"
+                  line.total >= 0 ? "text-green-600" : "text-red-600"
                 )}>
                   {line.isPercentageLine 
                     ? formatPercentage(line.total || 0)
                     : formatCurrency(line.total || 0)
                   }
                 </td>
-                <td className="text-right p-3 font-mono text-sm text-gray-600">
+                <td className="text-right p-3 font-mono text-sm">
                   {line.isPercentageLine 
                     ? '-' 
                     : (line.percentage ? formatPercentage(line.percentage) : '0,00%')
