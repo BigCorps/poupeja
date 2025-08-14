@@ -77,7 +77,7 @@ const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#0
 // ✅ COMPONENTE PRINCIPAL
 // ===================================================
 
-const DemonstrativoPage = () => {
+export const DemonstrativoPage = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const {
@@ -535,9 +535,9 @@ const DemonstrativoPage = () => {
   };
 
   return (
-    <MainLayout title="Demonstrativo">
-      <SubscriptionGuard feature="demonstrativo de resultado (DRE)">
-        <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8">
+    <MainLayout title="Demonstrativo de Resultados">
+      <SubscriptionGuard feature="o demonstrativo de resultados">
+        <div className="w-full p-6 md:p-8">
           <motion.div
             className={cn(isMobile ? "space-y-4" : "space-y-6")}
             variants={containerVariants}
@@ -546,152 +546,56 @@ const DemonstrativoPage = () => {
           >
             {/* Header */}
             <motion.div variants={itemVariants}>
-              {isMobile ? (
-                <div className="flex flex-col gap-4">
-                  <h1 className="text-xl font-semibold">Demonstrativo</h1>
-                  <div className="flex items-center gap-2">
-                    <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getYearOptions().map(year => (
-                          <SelectItem key={year} value={year.toString()}>
-                            {year}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="sm" onClick={exportToPDF}>
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h2 className="text-2xl font-bold text-foreground">Demonstrativo de Resultados</h2>
+                <div className="flex items-center gap-4">
+                  <Select
+                    onValueChange={(value) => setSelectedYear(Number(value))}
+                    value={selectedYear.toString()}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      <SelectValue placeholder="Selecione o Ano" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getYearOptions().map(year => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewMode(viewMode === 'table' ? 'chart' : 'table')}
+                    className="flex items-center gap-2"
+                  >
+                    {viewMode === 'table' ? <BarChart className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                    {viewMode === 'table' ? 'Ver Gráficos' : 'Ver Tabela'}
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={exportToPDF}
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Exportar PDF
+                  </Button>
                 </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-foreground">Demonstrativo de Resultado</h2>
-                    <p className="text-muted-foreground">
-                      DRE - Análise detalhada dos resultados financeiros
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-                      <SelectTrigger className="w-32">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getYearOptions().map(year => (
-                          <SelectItem key={year} value={year.toString()}>
-                            {year}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex items-center border rounded-lg">
-                      <Button
-                        variant={viewMode === 'table' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setViewMode('table')}
-                        className="rounded-r-none"
-                      >
-                        <FileText className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant={viewMode === 'chart' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setViewMode('chart')}
-                        className="rounded-l-none"
-                      >
-                        <TrendingUp className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <Button onClick={exportToPDF}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Exportar PDF
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-
-            {/* Resumo Cards */}
-            <motion.div variants={itemVariants}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Receita Total</p>
-                        <p className="text-xl font-bold text-green-600">
-                          {formatCurrency(processedDREData.dreLines.find(line => line.id === 'receitas_brutas')?.total || 0)}
-                        </p>
-                      </div>
-                      <TrendingUp className="h-8 w-8 text-green-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Custos Total</p>
-                        <p className="text-xl font-bold text-red-600">
-                          {formatCurrency(processedDREData.dreLines.find(line => line.id === 'custos_variaveis')?.total || 0)}
-                        </p>
-                      </div>
-                      <TrendingDown className="h-8 w-8 text-red-600" />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Resultado Líquido</p>
-                        <p className={cn(
-                          "text-xl font-bold",
-                          (processedDREData.dreLines.find(line => line.id === 'resultado_liquido')?.total || 0) >= 0 
-                            ? "text-green-600" 
-                            : "text-red-600"
-                        )}>
-                          {formatCurrency(processedDREData.dreLines.find(line => line.id === 'resultado_liquido')?.total || 0)}
-                        </p>
-                      </div>
-                      <Calculator className="h-8 w-8 text-blue-600" />
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             </motion.div>
 
             {/* Conteúdo Principal */}
             <motion.div variants={itemVariants}>
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    {viewMode === 'table' ? 'Demonstrativo Detalhado' : 'Análise Gráfica'}
-                  </CardTitle>
-                  <CardDescription>
-                    {viewMode === 'table' 
-                      ? `Demonstrativo de Resultado do Exercício - ${selectedYear}`
-                      : `Visualização gráfica dos resultados - ${selectedYear}`
-                    }
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                    </div>
-                  ) : (
-                    viewMode === 'table' ? renderDRETable() : renderCharts()
-                  )}
-                </CardContent>
-              </Card>
+              {isLoading ? (
+                <div className="flex justify-center items-center h-64">
+                  <p>Carregando dados...</p>
+                </div>
+              ) : (
+                viewMode === 'table' ? renderDRETable() : renderCharts()
+              )}
             </motion.div>
           </motion.div>
         </div>
