@@ -84,7 +84,7 @@ function App() {
                           {/* ✅ CORREÇÃO: Novas rotas envolvidas com MainLayout */}
                           <Route path="/lancamentos" element={<MainLayout><LancamentosPage /></MainLayout>} />
                           <Route path="/fluxo-caixa" element={<MainLayout><FluxoCaixaPage /></MainLayout>} />
-                          
+                          <Route path="/demonstrativo" element={<DemonstrativoPage />} />
                           <Route path="/saldo" element={<SaldoDashboard />} />
                           <Route path="/expenses" element={<ExpensesPage />} />
                           <Route path="/reports" element={<ReportsPage />} />
