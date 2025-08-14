@@ -17,20 +17,20 @@ const CATEGORY_COLORS = [
 
 export default function CadastroPage() {
   const { toast } = useToast();
-  const { 
-    categories, 
-    suppliers, 
-    paymentMethods, 
-    addCategory, 
-    updateCategory, 
-    deleteCategory, 
-    addSupplier, 
-    updateSupplier, 
-    deleteSupplier, 
-    addPaymentMethod, 
-    updatePaymentMethod, 
+  const {
+    categories,
+    suppliers,
+    paymentMethods,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addSupplier,
+    updateSupplier,
+    deleteSupplier,
+    addPaymentMethod,
+    updatePaymentMethod,
     deletePaymentMethod,
-    isLoading // ✅ Estado de carregamento para melhor UX
+    isLoading
   } = useAppContext();
 
   const [activeTab, setActiveTab] = useState('categorias');
@@ -46,10 +46,9 @@ export default function CadastroPage() {
     name: '', type: 'supplier', document: '', email: '', phone: '', address: ''
   });
   const [paymentForm, setPaymentForm] = useState({
-    name: '', type: 'both', is_default: false
+    name: '', is_default: false
   });
 
-  // ✅ Funções para Categorias com useCallback para otimização
   const handleSaveCategory = useCallback(async () => {
     if (!categoryForm.name.trim()) {
       toast({ title: "Erro", description: "Nome da categoria é obrigatório", variant: "destructive" });
@@ -79,7 +78,6 @@ export default function CadastroPage() {
     }
   }, [deleteCategory, toast]);
   
-  // ✅ Funções para Fornecedores/Clientes com useCallback
   const handleSaveSupplier = useCallback(async () => {
     if (!supplierForm.name.trim()) {
       toast({ title: "Erro", description: "Nome do fornecedor/cliente é obrigatório", variant: "destructive" });
@@ -109,7 +107,6 @@ export default function CadastroPage() {
     }
   }, [deleteSupplier, toast]);
   
-  // ✅ CORREÇÃO PRINCIPAL: Funções para Métodos de Pagamento com mapeamento correto de tipos
   const handleSavePayment = useCallback(async () => {
     if (!paymentForm.name.trim()) {
       toast({ title: "Erro", description: "Nome do método de pagamento é obrigatório", variant: "destructive" });
@@ -117,19 +114,11 @@ export default function CadastroPage() {
     }
     
     try {
-      // ✅ Mapeamento de tipos para compatibilidade com banco de dados
-      const typeMap = {
-        'income': 'receipt',    // Interface usa 'income', BD usa 'receipt'
-        'expense': 'payment',   // Interface usa 'expense', BD usa 'payment'
-        'both': 'both',         // Mantém 'both' para ambos os contextos
-      };
-      const dbType = typeMap[paymentForm.type] || 'both';
-
       if (editingItem) {
-        await updatePaymentMethod({ ...paymentForm, type: dbType, id: editingItem.id });
+        await updatePaymentMethod({ ...paymentForm, id: editingItem.id });
         toast({ title: "Sucesso", description: "Método de pagamento atualizado com sucesso" });
       } else {
-        await addPaymentMethod({ ...paymentForm, type: dbType });
+        await addPaymentMethod(paymentForm);
         toast({ title: "Sucesso", description: "Método de pagamento criado com sucesso" });
       }
       resetPaymentForm();
@@ -147,7 +136,6 @@ export default function CadastroPage() {
     }
   }, [deletePaymentMethod, toast]);
 
-  // ✅ Funções de reset e edição otimizadas com useCallback
   const resetCategoryForm = useCallback(() => {
     setCategoryForm({ name: '', type: 'expense', color: '#3B82F6', parent_id: null });
     setShowCategoryForm(false);
@@ -173,76 +161,61 @@ export default function CadastroPage() {
   }, []);
 
   const resetPaymentForm = useCallback(() => {
-    setPaymentForm({ name: '', type: 'both', is_default: false });
+    setPaymentForm({ name: '', is_default: false });
     setShowPaymentForm(false);
     setEditingItem(null);
   }, []);
 
   const handleEditPayment = useCallback((payment) => {
-    // ✅ Mapeamento reverso para exibição correta na interface
-    const displayTypeMap = {
-      'receipt': 'income',   // BD usa 'receipt', interface exibe 'income'
-      'payment': 'expense',  // BD usa 'payment', interface exibe 'expense'
-      'both': 'both'         // Mantém 'both'
-    };
-    
-    const displayPayment = {
-      ...payment,
-      type: displayTypeMap[payment.type] || payment.type
-    };
-    
-    setPaymentForm(displayPayment);
+    setPaymentForm(payment);
     setEditingItem(payment);
     setShowPaymentForm(true);
   }, []);
 
-  // ✅ CORREÇÃO: Renderizar categorias com verificação de segurança
   const renderCategoryTree = (parentId = null, level = 0) => {
-    // ✅ Verificação para evitar erros com arrays nulos/vazios
     if (!categories || !Array.isArray(categories) || categories.length === 0) {
       return null;
     }
 
-    return categories
-      .filter(cat => cat.parent_id === parentId)
-      .map(category => (
-        <div key={category.id} className={`pl-${level * 6} space-y-2`}>
-          <Card>
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="flex items-center space-x-3">
-                <div
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: category.color }}
-                />
-                <span className="font-medium">{category.name}</span>
-                <Badge variant={category.type === 'income' ? 'default' : 'secondary'}>
-                  {category.type === 'income' ? 'Receita' : 'Despesa'}
-                </Badge>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEditCategory(category)}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteCategory(category.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          {renderCategoryTree(category.id, level + 1)}
-        </div>
-      ));
+    const filteredCategories = categories.filter(cat => cat.parent_id === parentId);
+
+    return filteredCategories.map(category => (
+      <div key={category.id} className={`pl-${level * 6} space-y-2`}>
+        <Card>
+          <CardContent className="flex items-center justify-between p-4">
+            <div className="flex items-center space-x-3">
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: category.color }}
+              />
+              <span className="font-medium">{category.name}</span>
+              <Badge variant={category.type === 'income' ? 'default' : 'secondary'}>
+                {category.type === 'income' ? 'Receita' : 'Despesa'}
+              </Badge>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleEditCategory(category)}
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDeleteCategory(category.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        {renderCategoryTree(category.id, level + 1)}
+      </div>
+    ));
   };
   
-  // ✅ CORREÇÃO: Componente de loading para melhor UX
   if (isLoading && (!categories || categories.length === 0)) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -315,7 +288,7 @@ export default function CadastroPage() {
                         <Label htmlFor="category-type">Tipo</Label>
                         <Select
                           value={categoryForm.type}
-                          onValueChange={(value) => setCategoryForm({ ...categoryForm, type: value })}
+                          onValueChange={(value) => setCategoryForm({ ...categoryForm, type: value as 'income' | 'expense' })}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione o tipo" />
@@ -337,7 +310,6 @@ export default function CadastroPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="">Nenhuma (Principal)</SelectItem>
-                            {/* ✅ CORREÇÃO: Verificação de segurança antes de mapear */}
                             {categories && Array.isArray(categories) && categories
                               .filter(cat => !cat.parent_id && cat.type === categoryForm.type)
                               .map(cat => (
@@ -378,7 +350,6 @@ export default function CadastroPage() {
 
               <div className="space-y-2">
                 {renderCategoryTree()}
-                {/* ✅ Mensagem quando não há categorias */}
                 {(!categories || categories.length === 0) && !showCategoryForm && (
                   <div className="text-center py-8 text-muted-foreground">
                     Nenhuma categoria cadastrada. Clique em "Nova Categoria" para começar.
@@ -395,7 +366,7 @@ export default function CadastroPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Fornecedores e Clientes</CardTitle>
+                  <CardTitle>Fornecedores / Clientes</CardTitle>
                   <CardDescription>
                     Gerencie seus fornecedores e clientes
                   </CardDescription>
@@ -428,15 +399,15 @@ export default function CadastroPage() {
                         <Label htmlFor="supplier-type">Tipo</Label>
                         <Select
                           value={supplierForm.type}
-                          onValueChange={(value) => setSupplierForm({ ...supplierForm, type: value })}
+                          onValueChange={(value) => setSupplierForm({ ...supplierForm, type: value as 'supplier' | 'customer' | 'client' | 'both' })}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione o tipo" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="supplier">Fornecedor</SelectItem>
-                            <SelectItem value="client">Cliente</SelectItem>
-                            <SelectItem value="both">Ambos</SelectItem>
+                            <SelectItem value="customer">Cliente</SelectItem>
+                            <SelectItem value="client">Ambos</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -453,7 +424,6 @@ export default function CadastroPage() {
                         <Label htmlFor="supplier-email">Email</Label>
                         <Input
                           id="supplier-email"
-                          type="email"
                           value={supplierForm.email}
                           onChange={(e) => setSupplierForm({ ...supplierForm, email: e.target.value })}
                           placeholder="email@exemplo.com"
@@ -465,7 +435,7 @@ export default function CadastroPage() {
                           id="supplier-phone"
                           value={supplierForm.phone}
                           onChange={(e) => setSupplierForm({ ...supplierForm, phone: e.target.value })}
-                          placeholder="(11) 99999-9999"
+                          placeholder="(XX) XXXXX-XXXX"
                         />
                       </div>
                       <div className="space-y-2">
@@ -493,48 +463,45 @@ export default function CadastroPage() {
               )}
 
               <div className="space-y-2">
-                {suppliers && Array.isArray(suppliers) ? suppliers.map(supplier => (
-                  <Card key={supplier.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="flex items-center space-x-3">
-                        <span className="font-medium">{supplier.name}</span>
-                        <Badge variant="outline">
-                          {supplier.type === 'supplier' ? 'Fornecedor' :
-                            supplier.type === 'client' ? 'Cliente' : 'Ambos'}
-                        </Badge>
-                        {supplier.document && (
-                          <span className="text-sm text-muted-foreground">{supplier.document}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditSupplier(supplier)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteSupplier(supplier.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )) : (
+                {suppliers.length === 0 && !showSupplierForm ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    Nenhum fornecedor ou cliente cadastrado.
+                    Nenhum fornecedor/cliente cadastrado. Clique em "Novo Fornecedor/Cliente" para começar.
                   </div>
+                ) : (
+                  suppliers.map(supplier => (
+                    <Card key={supplier.id}>
+                      <CardContent className="flex items-center justify-between p-4">
+                        <div className="flex items-center space-x-3">
+                          <User className="w-5 h-5 text-muted-foreground" />
+                          <span className="font-medium">{supplier.name}</span>
+                          <Badge variant="outline">{supplier.type}</Badge>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditSupplier(supplier)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteSupplier(supplier.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
                 )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Tab Métodos de Pagamento */}
+        {/* Tab Formas de Pagamento */}
         <TabsContent value="pagamentos" className="space-y-4">
           <Card>
             <CardHeader>
@@ -542,12 +509,12 @@ export default function CadastroPage() {
                 <div>
                   <CardTitle>Formas de Pagamento</CardTitle>
                   <CardDescription>
-                    Configure os métodos de pagamento disponíveis
+                    Gerencie suas formas de pagamento
                   </CardDescription>
                 </div>
                 <Button onClick={() => {
                   setEditingItem(null);
-                  setPaymentForm({ name: '', type: 'both', is_default: false });
+                  setPaymentForm({ name: '', is_default: false });
                   setShowPaymentForm(true);
                 }}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -566,24 +533,8 @@ export default function CadastroPage() {
                           id="payment-name"
                           value={paymentForm.name}
                           onChange={(e) => setPaymentForm({ ...paymentForm, name: e.target.value })}
-                          placeholder="Nome do método de pagamento"
+                          placeholder="Nome da forma de pagamento"
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="payment-type">Tipo</Label>
-                        <Select
-                          value={paymentForm.type}
-                          onValueChange={(value) => setPaymentForm({ ...paymentForm, type: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="income">Apenas Receitas</SelectItem>
-                            <SelectItem value="expense">Apenas Despesas</SelectItem>
-                            <SelectItem value="both">Ambos</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
                     </div>
                     <div className="flex justify-end space-x-2 mt-4">
@@ -601,41 +552,40 @@ export default function CadastroPage() {
               )}
 
               <div className="space-y-2">
-                {paymentMethods && Array.isArray(paymentMethods) ? paymentMethods.map(payment => (
-                  <Card key={payment.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="flex items-center space-x-3">
-                        <span className="font-medium">{payment.name}</span>
-                        {payment.is_default && (
-                          <Badge variant="default">Padrão</Badge>
-                        )}
-                        <Badge variant="outline">
-                          {payment.type === 'receipt' ? 'Receitas' :
-                            payment.type === 'payment' ? 'Despesas' : 'Ambos'}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditPayment(payment)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeletePayment(payment.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )) : (
+                {paymentMethods.length === 0 && !showPaymentForm ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    Nenhum método de pagamento cadastrado.
+                    Nenhuma forma de pagamento cadastrada. Clique em "Nova Forma de Pagamento" para começar.
                   </div>
+                ) : (
+                  paymentMethods.map(payment => (
+                    <Card key={payment.id}>
+                      <CardContent className="flex items-center justify-between p-4">
+                        <div className="flex items-center space-x-3">
+                          <CreditCard className="w-5 h-5 text-muted-foreground" />
+                          <span className="font-medium">{payment.name}</span>
+                          {payment.is_default && <Badge variant="outline">Padrão</Badge>}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditPayment(payment)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          {!payment.is_default && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeletePayment(payment.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
                 )}
               </div>
             </CardContent>
