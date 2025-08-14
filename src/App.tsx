@@ -41,18 +41,18 @@ import MainLayout from "./components/layout/MainLayout";
 // ✅ ADIÇÃO: Novos imports para as páginas reestruturadas
 import LancamentosPage from "./pages/LancamentosPage";
 import FluxoCaixaPage from "./pages/FluxoCaixaPage";
-import Demonstrativo from "./pages/DemonstrativoPage";
+import { DemonstrativoPage } from "./pages/DemonstrativoPage";
 
 import "./App.css";
 
 import React, { Suspense, lazy } from 'react';
 
-const LazyAgenteIA = lazy(() => import('./pages/AgenteIA'));
-const LazyCobranca = lazy(() => import('./pages/Cobranca'));
-const LazyPagamentos = lazy(() => import('./pages/Pagamentos'));
-const LazyConsultas = lazy(() => import('./pages/Consultas'));
+const LazyAgenteIA = lazy(() => import(\'./pages/AgenteIA\'));
+const LazyCobranca = lazy(() => import(\'./pages/Cobranca\'));
+const LazyPagamentos = lazy(() => import(\'./pages/Pagamentos\'));
+const LazyConsultas = lazy(() => import(\'./pages/Consultas\'));
 
-import PagamentosEmLote from './pages/PagamentosEmLote';
+import PagamentosEmLote from \'./pages/PagamentosEmLote\';
 
 const queryClient = new QueryClient();
 
@@ -147,3 +147,4 @@ function App() {
 }
 
 export default App;
+
