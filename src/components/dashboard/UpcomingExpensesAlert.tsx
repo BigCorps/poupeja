@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Clock, Calendar, ChevronRight } from 'lucide-react';
 import { ScheduledTransaction } from '@/types';
-import { formatCurrency } from '@/utils/transactionUtils';
+import { formatCurrency } from '@/lib/utils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -23,13 +22,11 @@ const UpcomingExpensesAlert: React.FC<UpcomingExpensesAlertProps> = ({
 }) => {
   const { t, currency } = usePreferences();
 
-  // Filtrar apenas despesas pendentes
   const pendingExpenses = scheduledTransactions.filter(
     transaction => transaction.type === 'expense' && 
     (!transaction.status || transaction.status === 'pending')
   );
 
-  // Categorizar por urgência
   const today = new Date();
   const categorizedExpenses = pendingExpenses.reduce((acc, transaction) => {
     const transactionDate = new Date(transaction.nextExecutionDate || transaction.scheduledDate);
@@ -54,7 +51,6 @@ const UpcomingExpensesAlert: React.FC<UpcomingExpensesAlertProps> = ({
                              categorizedExpenses.dueToday.length + 
                              categorizedExpenses.dueSoon.length;
 
-  // Não mostrar se não há despesas urgentes
   if (totalUrgentExpenses === 0) {
     return null;
   }
@@ -103,18 +99,18 @@ const UpcomingExpensesAlert: React.FC<UpcomingExpensesAlertProps> = ({
 
   return (
     <Card className={cn(
-      "border-l-4 transition-all animate-fade-in",
+      'border-l-4 transition-all animate-fade-in',
       urgencyData.borderColor,
       urgencyData.bgColor
     )}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-full text-white", urgencyData.color)}>
+            <div className={cn('p-2 rounded-full text-white', urgencyData.color)}>
               {urgencyData.icon}
             </div>
             <div>
-              <p className={cn("font-semibold text-sm", urgencyData.textColor)}>
+              <p className={cn('font-semibold text-sm', urgencyData.textColor)}>
                 {totalUrgentExpenses} {totalUrgentExpenses === 1 ? 'despesa' : 'despesas'} {urgencyData.label.toLowerCase()}
               </p>
               <p className="text-xs text-muted-foreground">
@@ -124,12 +120,10 @@ const UpcomingExpensesAlert: React.FC<UpcomingExpensesAlertProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Badge com contagem */}
             <Badge variant="secondary" className={urgencyData.textColor}>
               {totalUrgentExpenses}
             </Badge>
 
-            {/* Ação rápida para despesas vencidas */}
             {categorizedExpenses.overdue.length > 0 && onMarkAsPaid && (
               <Button
                 size="sm"
@@ -141,7 +135,6 @@ const UpcomingExpensesAlert: React.FC<UpcomingExpensesAlertProps> = ({
               </Button>
             )}
 
-            {/* Link para página de agendamentos */}
             <Button size="sm" variant="ghost" asChild className="h-8 px-2">
               <Link to="/schedule">
                 <ChevronRight className="h-3 w-3" />
@@ -150,7 +143,6 @@ const UpcomingExpensesAlert: React.FC<UpcomingExpensesAlertProps> = ({
           </div>
         </div>
 
-        {/* Detalhes expandidos para casos mais urgentes */}
         {(categorizedExpenses.overdue.length > 0 || categorizedExpenses.dueToday.length > 0) && (
           <div className="mt-3 pt-3 border-t border-current opacity-20">
             <div className="space-y-1">

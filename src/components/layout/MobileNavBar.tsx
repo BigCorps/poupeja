@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { LayoutDashboard, Receipt, Settings, DatabaseIcon, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot, ScanLine, CreditCard, Layers, FileSearch, Code } from 'lucide-react'; // Added Code for HTML section
+import { LayoutDashboard, Receipt, Settings, DatabaseIcon, Crown, Plus, Target, Calendar, Shield, User, FileText, Wallet, Bot, ScanLine, CreditCard, Layers, FileSearch, Code, TrendingUp } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,19 +24,11 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
   // Verificar se estamos na página de administração
   const isAdminPage = location.pathname === '/admin';
 
-  // 1. Ações rápidas restantes no botão "+"
+  // ✅ AÇÕES RÁPIDAS REESTRUTURADAS - Ações rápidas no botão "+"
   const quickActionItems = [
-    {
-      icon: Target,
-      label: t('nav.goals') || 'Metas',
-      action: () => {
-        navigate('/goals');
-        setIsQuickActionsOpen(false);
-      },
-      // Estilos atualizados para ter fundo branco e letras verdes
-      color: 'text-green-800 dark:text-green-200', 
-      bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
-    },
+    // ❌ REMOVIDO: Metas (Goals) - era uma das seções conflitantes
+    // ❌ REMOVIDO: Agendamentos (Schedule) - era uma das seções conflitantes
+    
     {
       icon: DatabaseIcon,
       label: 'Cadastros',
@@ -47,14 +39,14 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
       color: 'text-green-800 dark:text-green-200',
       bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
     },
+    // ✅ ADICIONADO: Fluxo de Caixa no botão +
     {
-      icon: Calendar,
-      label: 'Agendamentos',
+      icon: TrendingUp,
+      label: 'Fluxo de Caixa',
       action: () => {
-        navigate('/schedule');
+        navigate('/fluxo-caixa');
         setIsQuickActionsOpen(false);
       },
-      // Estilos atualizados
       color: 'text-green-800 dark:text-green-200',
       bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
     },
@@ -65,7 +57,17 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
         navigate('/reports');
         setIsQuickActionsOpen(false);
       },
-      // Estilos atualizados
+      color: 'text-green-800 dark:text-green-200',
+      bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+    },
+    // ✅ ADICIONADO: Consultas no botão +
+    {
+      icon: FileSearch,
+      label: 'Consultas',
+      action: () => {
+        navigate('/consultas');
+        setIsQuickActionsOpen(false);
+      },
       color: 'text-green-800 dark:text-green-200',
       bgColor: 'bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700'
     },
@@ -153,17 +155,18 @@ const MobileNavBar: React.FC<MobileNavBarProps> = ({
     );
   }
 
-  // 2. Menu padrão atualizado para usuários normais
+  // ✅ MENU INFERIOR REESTRUTURADO - Menu padrão atualizado para usuários normais
   const defaultMenuItems = [
     {
       icon: LayoutDashboard,
       label: t('nav.dashboard'),
       href: '/dashboard'
     },
+    // ✅ ALTERADO: Transações substituído por Lançamentos na barra inferior
     {
       icon: Receipt,
-      label: t('nav.transactions'),
-      href: '/transactions'
+      label: 'Lançamentos',
+      href: '/lancamentos'
     },
     {
       type: 'quick-actions',

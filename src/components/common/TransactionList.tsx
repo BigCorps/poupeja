@@ -15,10 +15,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Transaction } from '@/types';
-import { formatCurrency, formatDate } from '@/utils/transactionUtils';
-import { MoreHorizontal, Target, ArrowUp, ArrowDown } from 'lucide-react';
+import { MoreHorizontal, ArrowUp, ArrowDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useAppContext } from '@/contexts/AppContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -26,12 +24,27 @@ import CategoryIcon from '../categories/CategoryIcon';
 import TransactionCard from './TransactionCard';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-// ATENÇÃO:
-// O tipo `Transaction` precisou ser ajustado para incluir os objetos de categoria
-// e subcategoria, que devem ser buscados com JOINs na sua query do Supabase.
-// Garanta que a sua função de busca (`useGetTransactions.ts` ou similar)
-// já retorna os dados aninhados para que esta correção funcione.
-// Exemplo: `.select('*, categories (name), subcategories (name)')`
+// Helpers locais (substituem utils removidos)
+const formatCurrencyLocal = (value: number, currency: string) => {
+  const cur = currency || 'BRL';
+  try {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: cur }).format(
+      Number.isFinite(value as number) ? Number(value) : 0
+    );
+  } catch {
+    // fallback seguro
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+      Number.isFinite(value as number) ? Number(value) : 0
+    );
+  }
+};
+
+const formatDateLocal = (dateInput?: string | Date | null) => {
+  if (!dateInput) return 'N/A';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return 'N/A';
+  return d.toLocaleDateString('pt-BR');
+};
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -46,21 +59,11 @@ const TransactionList: React.FC<TransactionListProps> = ({
   onDelete,
   hideValues = false
 }) => {
-  const { categories, goals } = useAppContext();
   const { t, currency } = usePreferences();
   const isMobile = useIsMobile();
 
-  // Helper para buscar o nome da meta pelo ID
-  const getGoalName = (goalId?: string) => {
-    if (!goalId) return null;
-    const goal = goals.find(g => g.id === goalId);
-    return goal ? goal.name : null;
-  };
-
   // Helper to render masked values
-  const renderHiddenValue = () => {
-    return '******';
-  };
+  const renderHiddenValue = () => '******';
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -134,10 +137,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
           {transactions.map((transaction, index) => {
             // Use different icons and colors based on transaction type
             const iconColor = transaction.type === 'income' ? '#26DE81' : '#EF4444';
-            
-            // Removido a busca de categoria manual. O objeto `transaction` agora deve conter a categoria.
-            // O `?.` garante que a aplicação não quebre se o dado não vier.
-            
+
             return (
               <motion.tr
                 key={transaction.id}
@@ -164,22 +164,22 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   )}
                 </TableCell>
                 <TableCell className="font-medium text-xs md:text-sm">
-                  {formatDate(transaction.date)}
+                  {formatDateLocal(transaction.date as any)}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <CategoryIcon 
-                      icon={transaction.categories?.icon || 'default-icon'} // Acessando o ícone diretamente do objeto de categoria aninhado
+                      icon={transaction.categories?.icon || 'default-icon'}
                       color={iconColor} 
                       size={16}
                     />
                     <Badge variant="outline" className={cn(
-                      "text-xs",
+                      'text-xs',
                       transaction.type === 'income' 
-                        ? "bg-green-50 text-green-600 hover:bg-green-100 border-green-200"
-                        : "bg-red-50 text-red-600 hover:bg-red-100 border-red-200"
+                        ? 'bg-green-50 text-green-600 hover:bg-green-100 border-green-200'
+                        : 'bg-red-50 text-red-600 hover:bg-red-100 border-red-200'
                     )}>
-                      {transaction.categories?.name || 'N/A'} // Acessando o nome da categoria diretamente do objeto
+                      {transaction.categories?.name || 'N/A'}
                     </Badge>
                   </div>
                 </TableCell>
@@ -190,20 +190,26 @@ const TransactionList: React.FC<TransactionListProps> = ({
                   {transaction.supplier || 'N/A'}
                 </TableCell>
                 <TableCell className="text-xs md:text-sm">
-                  {transaction.due_date ? formatDate(transaction.due_date) : 'N/A'}
+                  {transaction.due_date ? formatDateLocal(transaction.due_date as any) : 'N/A'}
                 </TableCell>
                 <TableCell className="text-right font-medium text-xs md:text-sm">
-                  {transaction.original_amount ? formatCurrency(transaction.original_amount, currency) : 'N/A'}
+                  {transaction.original_amount != null
+                    ? formatCurrencyLocal(Number(transaction.original_amount), currency)
+                    : 'N/A'}
                 </TableCell>
                 <TableCell className="text-right text-xs md:text-sm">
                   {transaction.payment_status ? getStatusBadge(transaction.payment_status) : 'N/A'}
                 </TableCell>
-                <TableCell className={cn(
-                  "text-right font-semibold text-xs md:text-sm",
-                  transaction.type === 'income' ? 'text-metacash-success' : 'text-metacash-error'
-                )}>
+                <TableCell
+                  className={cn(
+                    'text-right font-semibold text-xs md:text-sm',
+                    transaction.type === 'income' ? 'text-metacash-success' : 'text-metacash-error'
+                  )}
+                >
                   {transaction.type === 'income' ? '+' : '-'}
-                  {hideValues ? renderHiddenValue() : formatCurrency(transaction.amount, currency)}
+                  {hideValues
+                    ? renderHiddenValue()
+                    : formatCurrencyLocal(Number(transaction.amount), currency)}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -220,7 +226,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                         </DropdownMenuItem>
                       )}
                       {onDelete && (
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => onDelete(transaction.id)}
                           className="text-metacash-error"
                         >

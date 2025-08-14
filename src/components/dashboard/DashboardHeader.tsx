@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import MonthNavigation from '@/components/common/MonthNavigation';
@@ -22,7 +21,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onAddTransaction
 }) => {
   const { t } = usePreferences();
-
+  
   return (
     <motion.div 
       className="flex flex-col sm:flex-row justify-between items-center gap-4"
@@ -48,7 +47,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           className="flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
-          {t('transaction.addTransaction')}
+          Adicionar Lançamento {/* ✅ Texto fixo ao invés de tradução */}
         </Button>
       </div>
     </motion.div>

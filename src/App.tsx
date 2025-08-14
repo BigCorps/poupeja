@@ -1,32 +1,28 @@
-import { Toaster } from "./components/ui/toaster";
-import { Toaster as Sonner } from "./components/ui/sonner";
-import { TooltipProvider } from "./components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { PreferencesProvider } from "./contexts/PreferencesContext";
-import { SubscriptionProvider } from "./contexts/SubscriptionContext";
-import { BrandingProvider } from "./contexts/BrandingContext";
-import { AppProvider } from "./contexts/AppContext";
-import { SaldoProvider } from "./contexts/SaldoContext";
-import { SupabaseInitializer } from "./components/common/SupabaseInitializer";
-import { CadastroPage } from './pages/CadastroPage';
+import { PreferencesProvider } from "@/contexts/PreferencesContext";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
+import { AppProvider } from "@/contexts/AppContext";
+import { SaldoProvider } from "@/contexts/SaldoContext";
+import { SupabaseInitializer } from "@/components/common/SupabaseInitializer";
 import Index from "./pages/Index";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
+import CadastroPage from "./pages/CadastroPage";
 import RegisterPage from "./pages/RegisterPage";
 import RegisterWithPlanPage from "./pages/RegisterWithPlanPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
-import TransactionsPage from "./pages/TransactionsPage";
 import SaldoDashboard from "./pages/SaldoDashboard";
 import ExpensesPage from "./pages/ExpensesPage";
-import GoalsPage from "./pages/GoalsPage";
 import ReportsPage from "./pages/ReportsPage";
-import SchedulePage from "./pages/SchedulePage";
 import SettingsPage from "./pages/SettingsPage";
-import CategoriesPage from "./pages/CategoriesPage";
 import PlansPage from "./pages/PlansPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
@@ -38,7 +34,13 @@ import AdminRoute from "./components/admin/AdminRoute";
 import ConnectedBanksPage from "./pages/ConnectedBanksPage";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
-import CustomDashboard from "./pages/CustomDashboard";
+
+// ✅ CORREÇÃO: O caminho de importação correto para MainLayout
+import MainLayout from "./components/layout/MainLayout"; 
+
+// ✅ ADIÇÃO: Novos imports para as páginas reestruturadas
+import LancamentosPage from "./pages/LancamentosPage";
+import FluxoCaixaPage from "./pages/FluxoCaixaPage";
 
 import "./App.css";
 
@@ -75,48 +77,41 @@ function App() {
                           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                           <Route path="/reset-password" element={<ResetPasswordPage />} />
                           <Route path="/profile" element={<ProfilePage />} />
-                          <Route path="/transactions" element={<TransactionsPage />} />
-                          <Route path="/cadastros" element={<CadastroPage />} />
+                          
+                          <Route path="/cadastros" element={<MainLayout><CadastroPage /></MainLayout>} />
+                          
+                          {/* ✅ CORREÇÃO: Novas rotas envolvidas com MainLayout */}
+                          <Route path="/lancamentos" element={<MainLayout><LancamentosPage /></MainLayout>} />
+                          <Route path="/fluxo-caixa" element={<MainLayout><FluxoCaixaPage /></MainLayout>} />
+                          
                           <Route path="/saldo" element={<SaldoDashboard />} />
                           <Route path="/expenses" element={<ExpensesPage />} />
-                          <Route path="/goals" element={<GoalsPage />} />
                           <Route path="/reports" element={<ReportsPage />} />
-                          <Route path="/schedule" element={<SchedulePage />} />
                           <Route path="/settings" element={<SettingsPage />} />
-                          <Route path="/categories" element={<CategoriesPage />} />
-                          <Route path="/custom-dashboard" element={<CustomDashboard />} />
                           
-                          <Route path="/cobranca" 
-                            element={
-                              <Suspense fallback={<div>Carregando Cobrança...</div>}>
-                                <LazyCobranca />
-                              </Suspense>
-                            } 
-                          />
-                          <Route path="/pagamentos" 
-                            element={
-                              <Suspense fallback={<div>Carregando Pagamentos...</div>}>
-                                <LazyPagamentos />
-                              </Suspense>
-                            } 
-                          />
+                          <Route path="/cobranca" element={
+                            <Suspense fallback={<div>Carregando Cobrança...</div>}>
+                              <LazyCobranca />
+                            </Suspense>
+                          } />
+                          <Route path="/pagamentos" element={
+                            <Suspense fallback={<div>Carregando Pagamentos...</div>}>
+                              <LazyPagamentos />
+                            </Suspense>
+                          } />
                           <Route path="/pagamentos-em-lote" element={<PagamentosEmLote />} />
                           
-                          <Route path="/consultas" 
-                            element={
-                              <Suspense fallback={<div>Carregando Consultas...</div>}>
-                                <LazyConsultas />
-                              </Suspense>
-                            } 
-                          />
+                          <Route path="/consultas" element={
+                            <Suspense fallback={<div>Carregando Consultas...</div>}>
+                              <LazyConsultas />
+                            </Suspense>
+                          } />
 
-                          <Route path="/agente-ia" 
-                            element={
-                              <Suspense fallback={<div>Carregando Agente IA...</div>}>
-                                <LazyAgenteIA />
-                              </Suspense>
-                            } 
-                          />
+                          <Route path="/agente-ia" element={
+                            <Suspense fallback={<div>Carregando Agente IA...</div>}>
+                              <LazyAgenteIA />
+                            </Suspense>
+                          } />
                           
                           <Route path="/connected-banks" element={<ConnectedBanksPage />} />
                           <Route path="/plans" element={<PlansPage />} />
@@ -124,14 +119,11 @@ function App() {
                           <Route path="/payment-success" element={<PaymentSuccessPage />} />
                           <Route path="/thank-you" element={<ThankYouPage />} />
                           <Route path="/achievements" element={<AchievementsPage />} />
-                          <Route
-                            path="/admin"
-                            element={
-                              <AdminRoute>
-                                <AdminDashboard />
-                              </AdminRoute>
-                            }
-                          />
+                          <Route path="/admin" element={
+                            <AdminRoute>
+                              <AdminDashboard />
+                            </AdminRoute>
+                          } />
 
                           <Route path="/terms" element={<Terms />} />
                           <Route path="/privacy" element={<Privacy />} />

@@ -7,7 +7,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBrandingConfig } from '@/hooks/useBrandingConfig';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import { LayoutDashboard, Receipt, BarChart3, Target, User, DatabaseIcon, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard, Layers, FileSearch, Code } from 'lucide-react'; // Added Code for HTML section
+import { LayoutDashboard, Receipt, BarChart3, Target, User, DatabaseIcon, Settings, FolderOpen, Calendar, Crown, LogOut, Shield, Wallet, ChevronDown, ChevronRight, Bot, ScanLine, CreditCard, Layers, FileSearch, Code, TrendingUp } from 'lucide-react';
 
 interface SidebarProps {
   onProfileClick?: () => void;
@@ -104,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     );
   }
 
-  // Menu padrão para usuários normais
+  // ✅ MENU REESTRUTURADO - Menu padrão para usuários normais
   const defaultMenuItems = [
     {
       icon: LayoutDashboard,
@@ -117,24 +117,20 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       href: '/saldo'
     },
     {
-      name: 'Cadastros',
-      href: '/cadastros',
-      icon: DatabaseIcon
-    }
+      icon: DatabaseIcon,
+      label: 'Cadastros',
+      href: '/cadastros'
+    },
+    // ✅ ADICIONADO: Novos itens de menu conforme relatório
     {
       icon: Receipt,
-      label: t('nav.transactions'),
-      href: '/transactions'
+      label: 'Lançamentos',
+      href: '/lancamentos'
     },
     {
-      icon: Target,
-      label: t('nav.goals'),
-      href: '/goals'
-    },
-    {
-      icon: Calendar,
-      label: t('schedule.title'),
-      href: '/schedule'
+      icon: TrendingUp,
+      label: 'Fluxo de Caixa',
+      href: '/fluxo-caixa'
     },
     {
       icon: BarChart3,
@@ -159,19 +155,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
       label: 'Contas',
       href: '/pagamentos-em-lote'
     },
-    // ✅ NOVO: Seção HTML/JS
     {
-      icon: Code,
-      label: 'Dashboard HTML',
-      href: '/custom-dashboard'
+      icon: FileSearch,
+      label: 'Consultas',
+      href: '/consultas'
     },
-    // Removi o item "Consultas" para evitar duplicação ou confusão, já que o novo item tem funcionalidade similar
     {
       icon: Bot,
       label: 'Agente IA',
       href: '/agente-ia'
-    },
-    // Removi o item "Planos" daqui
+    }
   ];
 
   // Adicionar item admin apenas se o usuário for admin e não estiver na página admin
@@ -185,7 +178,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onProfileClick, onConfigClick }) => {
     menuItems.push(adminMenuItem);
   }
 
-  // Removi os itens de menu 'bottomMenuItems' e 'profileMenuItems' para simplificar o código
   const profileMenuItems = [
     {
       icon: User,
