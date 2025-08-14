@@ -23,7 +23,6 @@ interface PaymentMethod {
   id: string;
   user_id: string;
   name: string;
-  type: 'cash' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'pix' | 'other' | 'both' | 'receipt' | 'payment';
   is_default: boolean;
 }
 
@@ -513,16 +512,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state.user]);
 
-  const addPaymentMethod = useCallback(async (paymentMethod: Omit<PaymentMethod, 'id' | 'user_id'>) => {
+  const addPaymentM  const addPaymentMethod = useCallback(async (paymentMethod: Omit<PaymentMethod, 'id' | 'user_id'>) => {
     if (!state.user) throw new Error('Usuário não autenticado');
     
     try {
       const { data, error } = await supabase
         .from('poupeja_payment_methods')
-        .insert({ 
-          ...paymentMethod, 
+        .insert({
+          name: paymentMethod.name,
           user_id: state.user.id,
-          is_default: false 
+          is_default: paymentMethod.is_default
         })
         .select()
         .single();
@@ -534,33 +533,29 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar método de pagamento.' });
       throw err;
     }
-  }, [state.user]);
-
-  const updatePaymentMethod = useCallback(async (paymentMethod: PaymentMethod) => {
-    if (!state.user) throw new Error('Usuário não autenticado');
+  }, [state.user]  const updatePaymentMethod = useCallback(async (paymentMethod: PaymentMethod) => {
+    if (!state.user) throw new Error("Usuário não autenticado");
     
     try {
       const { data, error } = await supabase
-        .from('poupeja_payment_methods')
+        .from("poupeja_payment_methods")
         .update({
           name: paymentMethod.name,
-          type: paymentMethod.type
+          is_default: paymentMethod.is_default
         })
-        .eq('id', paymentMethod.id)
-        .eq('user_id', state.user.id)
+        .eq("id", paymentMethod.id)
+        .eq("user_id", state.user.id)
         .select()
         .single();
       
       if (error) throw error;
-      dispatch({ type: 'UPDATE_PAYMENT_METHOD', payload: data });
+      dispatch({ type: "UPDATE_PAYMENT_METHOD", payload: data });
     } catch (err) {
-      console.error('Erro ao atualizar método de pagamento:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar método de pagamento.' });
+      console.error("Erro ao atualizar método de pagamento:", err);
+      dispatch({ type: "SET_ERROR", payload: "Erro ao atualizar método de pagamento." });
       throw err;
     }
-  }, [state.user]);
-
-  const deletePaymentMethod = useCallback(async (id: string) => {
+  }, [state.user]); useCallback(async (id: string) => {
     if (!state.user) throw new Error('Usuário não autenticado');
     
     try {
