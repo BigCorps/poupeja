@@ -336,7 +336,7 @@ export const useApp = useAppContext;
 // ✅ PROVIDER COMPLETO
 // ===================================================
 
-const AppProvider = ({ children }: { children: ReactNode }) => {
+export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
 
   // ===================================================
@@ -1063,4 +1063,3 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export default AppProvider;
-
