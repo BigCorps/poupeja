@@ -1,8 +1,6 @@
-// src/pages/DemonstrativoPage.tsx - COMPONENTE COMPLETO DRE
+// src/pages/DemonstrativoPage.tsx - DEMONSTRATIVO DE RESULTADOS
 import React, { useState, useEffect, useMemo } from 'react';
 import { FileText, Download, TrendingUp, TrendingDown, Calculator, Calendar } from 'lucide-react';
-import MainLayout from '@/components/layout/MainLayout';
-import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,10 +18,7 @@ import {
   Tooltip, 
   ResponsiveContainer,
   LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell
+  Line
 } from 'recharts';
 
 // ===================================================
@@ -42,6 +37,7 @@ interface DRELine {
   color?: string;
   isBold?: boolean;
   isSubtotal?: boolean;
+  isPercentageLine?: boolean;
 }
 
 interface MonthlyData {
@@ -71,7 +67,60 @@ const MONTHS = [
   { value: '12', label: 'Dezembro', short: 'Dez' }
 ];
 
-const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+// Estrutura padrão do DRE baseada no PDF
+const DEFAULT_DRE_STRUCTURE = [
+  // RECEITAS BRUTAS
+  { id: 'receitas_brutas', label: '(+) Receitas Brutas', level: 0, isBold: true, isCalculated: false },
+  { id: 'importacoes', label: 'Importações', level: 1, isBold: false, isCalculated: false },
+  { id: 'receita_vendas', label: 'Receita com Vendas', level: 1, isBold: false, isCalculated: false },
+  
+  // DEDUÇÕES
+  { id: 'deducoes_vendas', label: '(-) Deduções sobre Vendas', level: 0, isBold: true, isCalculated: false },
+  { id: 'impostos_vendas', label: 'Impostos Sobre Vendas', level: 1, isBold: false, isCalculated: false },
+  { id: 'outras_deducoes', label: 'Outras Deduções', level: 1, isBold: false, isCalculated: false },
+  
+  // RECEITA LÍQUIDA
+  { id: 'receita_liquida', label: '(=) Receita Líquida', level: 0, isBold: true, isCalculated: true, isSubtotal: true },
+  
+  // CUSTOS VARIÁVEIS
+  { id: 'custos_variaveis', label: '(-) Custos Variáveis', level: 0, isBold: true, isCalculated: false },
+  { id: 'custos_variaveis_item', label: 'Custos Variáveis', level: 1, isBold: false, isCalculated: false },
+  
+  // MARGEM DE CONTRIBUIÇÃO
+  { id: 'margem_contribuicao', label: '(=) Margem de Contribuição', level: 0, isBold: true, isCalculated: true, isSubtotal: true },
+  { id: 'margem_contribuicao_percent', label: '(=) % Margem Contribuição', level: 0, isBold: true, isCalculated: true, isPercentageLine: true },
+  
+  // CUSTOS FIXOS
+  { id: 'custos_fixos', label: '(-) Custos Fixos', level: 0, isBold: true, isCalculated: false },
+  { id: 'gastos_marketing', label: 'Gastos com Marketing', level: 1, isBold: false, isCalculated: false },
+  { id: 'gastos_ocupacao', label: 'Gastos com Ocupação', level: 1, isBold: false, isCalculated: false },
+  { id: 'gastos_pessoal', label: 'Gastos com Pessoal', level: 1, isBold: false, isCalculated: false },
+  { id: 'gastos_terceiros', label: 'Gastos com Serviços de Terceiros', level: 1, isBold: false, isCalculated: false },
+  
+  // RESULTADO OPERACIONAL
+  { id: 'resultado_operacional', label: '(=) Resultado Operacional', level: 0, isBold: true, isCalculated: true, isSubtotal: true },
+  { id: 'margem_operacional_percent', label: '(=) % Margem Operacional', level: 0, isBold: true, isCalculated: true, isPercentageLine: true },
+  
+  // RESULTADO FINANCEIRO
+  { id: 'receita_financeira', label: 'Receita Financeira', level: 1, isBold: false, isCalculated: false },
+  { id: 'despesa_financeira', label: 'Despesa Financeira', level: 1, isBold: false, isCalculated: false },
+  
+  // RESULTADO NÃO OPERACIONAL
+  { id: 'resultado_nao_operacional', label: 'Resultado Não Operacional', level: 1, isBold: false, isCalculated: false },
+  { id: 'receitas_nao_operacionais', label: 'Receitas não Operacionais', level: 1, isBold: false, isCalculated: false },
+  { id: 'gastos_nao_operacionais', label: 'Gastos não Operacionais', level: 1, isBold: false, isCalculated: false },
+  
+  // LUCRO ANTES DO IMPOSTO
+  { id: 'lair', label: '(=) Lucro Antes do Imposto de Renda (LAIR)', level: 0, isBold: true, isCalculated: true, isSubtotal: true },
+  
+  // IMPOSTOS
+  { id: 'impostos_ir_csll', label: '(-) Imposto de Renda e CSLL', level: 0, isBold: true, isCalculated: false },
+  { id: 'ir_csll', label: 'Imposto de Renda e CSLL', level: 1, isBold: false, isCalculated: false },
+  
+  // LUCRO LÍQUIDO
+  { id: 'lucro_liquido', label: '(=) Lucro Líquido', level: 0, isBold: true, isCalculated: true, isSubtotal: true },
+  { id: 'lucro_liquido_percent', label: '(=) % Lucro Líquido', level: 0, isBold: true, isCalculated: true, isPercentageLine: true }
+];
 
 // ===================================================
 // ✅ COMPONENTE PRINCIPAL
@@ -102,213 +151,230 @@ export const DemonstrativoPage = () => {
   // ===================================================
 
   const processedDREData = useMemo(() => {
-    if (!dreData || dreData.length === 0) {
-      return { dreLines: [], monthlyData: [] };
+    // Criar estrutura padrão com valores zerados
+    const dreLines: DRELine[] = DEFAULT_DRE_STRUCTURE.map(item => ({
+      ...item,
+      values: MONTHS.reduce((acc, month) => ({ ...acc, [month.value]: 0 }), {}),
+      total: 0,
+      percentage: 0
+    }));
+
+    // Se há dados do Supabase, processar e integrar
+    if (dreData && dreData.length > 0) {
+      // Agrupar dados por categoria e mês
+      const dataByCategory = dreData.reduce((acc, item) => {
+        if (!acc[item.categoria_nome]) {
+          acc[item.categoria_nome] = {
+            type: item.categoria_tipo,
+            parent_id: item.parent_id,
+            months: {}
+          };
+        }
+        
+        const monthKey = item.mes.toString().padStart(2, '0');
+        acc[item.categoria_nome].months[monthKey] = {
+          receitas: item.receitas,
+          despesas: item.despesas
+        };
+        
+        return acc;
+      }, {} as any);
+
+      // Mapear categorias do Supabase para a estrutura do DRE
+      Object.entries(dataByCategory).forEach(([categoryName, data]: [string, any]) => {
+        // Encontrar linha correspondente ou adicionar nova
+        let targetLineId = '';
+        
+        if (data.type === 'income') {
+          // Mapear receitas para receita com vendas
+          targetLineId = 'receita_vendas';
+        } else if (data.type === 'expense') {
+          // Mapear despesas baseado no nome da categoria
+          const categoryLower = categoryName.toLowerCase();
+          if (categoryLower.includes('marketing')) {
+            targetLineId = 'gastos_marketing';
+          } else if (categoryLower.includes('ocupação') || categoryLower.includes('aluguel')) {
+            targetLineId = 'gastos_ocupacao';
+          } else if (categoryLower.includes('pessoal') || categoryLower.includes('salário')) {
+            targetLineId = 'gastos_pessoal';
+          } else if (categoryLower.includes('terceiros') || categoryLower.includes('serviço')) {
+            targetLineId = 'gastos_terceiros';
+          } else {
+            targetLineId = 'custos_variaveis_item';
+          }
+        }
+
+        // Atualizar valores na linha correspondente
+        const lineIndex = dreLines.findIndex(line => line.id === targetLineId);
+        if (lineIndex !== -1) {
+          MONTHS.forEach(month => {
+            const monthData = data.months[month.value] || { receitas: 0, despesas: 0 };
+            const value = data.type === 'income' ? monthData.receitas : monthData.despesas;
+            dreLines[lineIndex].values[month.value] += value;
+            dreLines[lineIndex].total += value;
+          });
+        }
+      });
+
+      // Adicionar categorias personalizadas do usuário que não foram mapeadas
+      if (categories && categories.length > 0) {
+        categories.forEach(category => {
+          // Verificar se a categoria já foi mapeada
+          const categoryData = dataByCategory[category.name];
+          if (!categoryData) {
+            // Adicionar nova linha para categoria personalizada
+            const newLine: DRELine = {
+              id: `custom_${category.id}`,
+              label: category.name,
+              level: 1,
+              isCalculated: false,
+              values: MONTHS.reduce((acc, month) => ({ ...acc, [month.value]: 0 }), {}),
+              total: 0,
+              percentage: 0,
+              isBold: false
+            };
+            
+            // Inserir na posição apropriada baseado no tipo
+            if (category.type === 'income') {
+              const insertIndex = dreLines.findIndex(line => line.id === 'deducoes_vendas');
+              dreLines.splice(insertIndex, 0, newLine);
+            } else {
+              const insertIndex = dreLines.findIndex(line => line.id === 'margem_contribuicao');
+              dreLines.splice(insertIndex, 0, newLine);
+            }
+          }
+        });
+      }
     }
 
-    // Agrupar dados por categoria e mês
-    const dataByCategory = dreData.reduce((acc, item) => {
-      if (!acc[item.categoria_nome]) {
-        acc[item.categoria_nome] = {
-          type: item.categoria_tipo,
-          parent_id: item.parent_id,
-          months: {}
-        };
-      }
-      
-      const monthKey = item.mes.toString().padStart(2, '0');
-      acc[item.categoria_nome].months[monthKey] = {
-        receitas: item.receitas,
-        despesas: item.despesas
-      };
-      
-      return acc;
-    }, {} as any);
+    // Calcular totais e percentuais
+    const receitasBrutas = dreLines.find(line => line.id === 'receitas_brutas');
+    const deducoesVendas = dreLines.find(line => line.id === 'deducoes_vendas');
+    const receitaLiquida = dreLines.find(line => line.id === 'receita_liquida');
+    const custosVariaveis = dreLines.find(line => line.id === 'custos_variaveis');
+    const margemContribuicao = dreLines.find(line => line.id === 'margem_contribuicao');
+    const custosFixos = dreLines.find(line => line.id === 'custos_fixos');
+    const resultadoOperacional = dreLines.find(line => line.id === 'resultado_operacional');
+    const lair = dreLines.find(line => line.id === 'lair');
+    const impostosIrCsll = dreLines.find(line => line.id === 'impostos_ir_csll');
+    const lucroLiquido = dreLines.find(line => line.id === 'lucro_liquido');
 
-    // Criar linhas do DRE
-    const dreLines: DRELine[] = [];
-    
-    // 1. RECEITAS BRUTAS
-    dreLines.push({
-      id: 'receitas_brutas',
-      label: 'RECEITAS BRUTAS',
-      level: 0,
-      isCalculated: false,
-      values: {},
-      total: 0,
-      isBold: true,
-      color: '#10B981'
-    });
+    // Calcular receitas brutas (soma das receitas)
+    if (receitasBrutas) {
+      MONTHS.forEach(month => {
+        const receitas = dreLines
+          .filter(line => line.level === 1 && line.id.includes('receita') || line.id === 'importacoes')
+          .reduce((sum, line) => sum + (line.values[month.value] || 0), 0);
+        receitasBrutas.values[month.value] = receitas;
+      });
+      receitasBrutas.total = Object.values(receitasBrutas.values).reduce((sum, val) => sum + val, 0);
+    }
 
-    // Adicionar categorias de receita
-    Object.entries(dataByCategory).forEach(([categoryName, data]: [string, any]) => {
-      if (data.type === 'income' && !data.parent_id) {
-        const values = {};
-        let total = 0;
-        
-        MONTHS.forEach(month => {
-          const monthData = data.months[month.value] || { receitas: 0, despesas: 0 };
-          values[month.value] = monthData.receitas;
-          total += monthData.receitas;
-        });
+    // Calcular deduções (soma das deduções)
+    if (deducoesVendas) {
+      MONTHS.forEach(month => {
+        const deducoes = dreLines
+          .filter(line => line.level === 1 && (line.id.includes('impostos') || line.id.includes('deducoes')))
+          .reduce((sum, line) => sum + (line.values[month.value] || 0), 0);
+        deducoesVendas.values[month.value] = deducoes;
+      });
+      deducoesVendas.total = Object.values(deducoesVendas.values).reduce((sum, val) => sum + val, 0);
+    }
 
-        dreLines.push({
-          id: `receita_${categoryName}`,
-          label: categoryName,
-          level: 1,
-          isCalculated: false,
-          values,
-          total
-        });
-      }
-    });
+    // Calcular receita líquida
+    if (receitaLiquida && receitasBrutas && deducoesVendas) {
+      MONTHS.forEach(month => {
+        receitaLiquida.values[month.value] = 
+          (receitasBrutas.values[month.value] || 0) - (deducoesVendas.values[month.value] || 0);
+      });
+      receitaLiquida.total = Object.values(receitaLiquida.values).reduce((sum, val) => sum + val, 0);
+    }
 
-    // Calcular total de receitas brutas
-    const receitasBrutasValues = {};
-    let receitasBrutasTotal = 0;
-    MONTHS.forEach(month => {
-      const monthTotal = dreLines
-        .filter(line => line.id.startsWith('receita_'))
-        .reduce((sum, line) => sum + (line.values[month.value] || 0), 0);
-      receitasBrutasValues[month.value] = monthTotal;
-      receitasBrutasTotal += monthTotal;
-    });
-    
-    dreLines[0].values = receitasBrutasValues;
-    dreLines[0].total = receitasBrutasTotal;
+    // Calcular custos variáveis
+    if (custosVariaveis) {
+      MONTHS.forEach(month => {
+        const custos = dreLines
+          .filter(line => line.level === 1 && line.id.includes('custos_variaveis'))
+          .reduce((sum, line) => sum + (line.values[month.value] || 0), 0);
+        custosVariaveis.values[month.value] = custos;
+      });
+      custosVariaveis.total = Object.values(custosVariaveis.values).reduce((sum, val) => sum + val, 0);
+    }
 
-    // 2. DEDUÇÕES DA RECEITA BRUTA
-    dreLines.push({
-      id: 'deducoes',
-      label: 'DEDUÇÕES DA RECEITA BRUTA',
-      level: 0,
-      isCalculated: false,
-      values: {},
-      total: 0,
-      isBold: true,
-      color: '#EF4444'
-    });
+    // Calcular margem de contribuição
+    if (margemContribuicao && receitaLiquida && custosVariaveis) {
+      MONTHS.forEach(month => {
+        margemContribuicao.values[month.value] = 
+          (receitaLiquida.values[month.value] || 0) - (custosVariaveis.values[month.value] || 0);
+      });
+      margemContribuicao.total = Object.values(margemContribuicao.values).reduce((sum, val) => sum + val, 0);
+    }
 
-    // 3. RECEITA LÍQUIDA (calculada)
-    dreLines.push({
-      id: 'receita_liquida',
-      label: 'RECEITA LÍQUIDA',
-      level: 0,
-      isCalculated: true,
-      formula: 'receitas_brutas - deducoes',
-      values: receitasBrutasValues, // Por enquanto igual às brutas
-      total: receitasBrutasTotal,
-      isBold: true,
-      isSubtotal: true,
-      color: '#3B82F6'
-    });
+    // Calcular custos fixos
+    if (custosFixos) {
+      MONTHS.forEach(month => {
+        const custos = dreLines
+          .filter(line => line.level === 1 && line.id.includes('gastos_'))
+          .reduce((sum, line) => sum + (line.values[month.value] || 0), 0);
+        custosFixos.values[month.value] = custos;
+      });
+      custosFixos.total = Object.values(custosFixos.values).reduce((sum, val) => sum + val, 0);
+    }
 
-    // 4. CUSTOS VARIÁVEIS
-    dreLines.push({
-      id: 'custos_variaveis',
-      label: 'CUSTOS VARIÁVEIS',
-      level: 0,
-      isCalculated: false,
-      values: {},
-      total: 0,
-      isBold: true,
-      color: '#F59E0B'
-    });
+    // Calcular resultado operacional
+    if (resultadoOperacional && margemContribuicao && custosFixos) {
+      MONTHS.forEach(month => {
+        resultadoOperacional.values[month.value] = 
+          (margemContribuicao.values[month.value] || 0) - (custosFixos.values[month.value] || 0);
+      });
+      resultadoOperacional.total = Object.values(resultadoOperacional.values).reduce((sum, val) => sum + val, 0);
+    }
 
-    // Adicionar categorias de custos variáveis (despesas operacionais)
-    Object.entries(dataByCategory).forEach(([categoryName, data]: [string, any]) => {
-      if (data.type === 'expense' && !data.parent_id) {
-        const values = {};
-        let total = 0;
-        
-        MONTHS.forEach(month => {
-          const monthData = data.months[month.value] || { receitas: 0, despesas: 0 };
-          values[month.value] = monthData.despesas;
-          total += monthData.despesas;
-        });
+    // Calcular LAIR (igual ao resultado operacional por enquanto)
+    if (lair && resultadoOperacional) {
+      MONTHS.forEach(month => {
+        lair.values[month.value] = resultadoOperacional.values[month.value] || 0;
+      });
+      lair.total = resultadoOperacional.total;
+    }
 
-        dreLines.push({
-          id: `custo_${categoryName}`,
-          label: categoryName,
-          level: 1,
-          isCalculated: false,
-          values,
-          total
-        });
-      }
-    });
+    // Calcular impostos
+    if (impostosIrCsll) {
+      MONTHS.forEach(month => {
+        const impostos = dreLines
+          .filter(line => line.level === 1 && line.id.includes('ir_csll'))
+          .reduce((sum, line) => sum + (line.values[month.value] || 0), 0);
+        impostosIrCsll.values[month.value] = impostos;
+      });
+      impostosIrCsll.total = Object.values(impostosIrCsll.values).reduce((sum, val) => sum + val, 0);
+    }
 
-    // Calcular total de custos variáveis
-    const custosVariaveisValues = {};
-    let custosVariaveisTotal = 0;
-    MONTHS.forEach(month => {
-      const monthTotal = dreLines
-        .filter(line => line.id.startsWith('custo_'))
-        .reduce((sum, line) => sum + (line.values[month.value] || 0), 0);
-      custosVariaveisValues[month.value] = monthTotal;
-      custosVariaveisTotal += monthTotal;
-    });
-    
-    const custosVariaveisIndex = dreLines.findIndex(line => line.id === 'custos_variaveis');
-    dreLines[custosVariaveisIndex].values = custosVariaveisValues;
-    dreLines[custosVariaveisIndex].total = custosVariaveisTotal;
-
-    // 5. MARGEM DE CONTRIBUIÇÃO (calculada)
-    const margemContribuicaoValues = {};
-    let margemContribuicaoTotal = 0;
-    MONTHS.forEach(month => {
-      const receita = receitasBrutasValues[month.value] || 0;
-      const custos = custosVariaveisValues[month.value] || 0;
-      const margem = receita - custos;
-      margemContribuicaoValues[month.value] = margem;
-      margemContribuicaoTotal += margem;
-    });
-
-    dreLines.push({
-      id: 'margem_contribuicao',
-      label: 'MARGEM DE CONTRIBUIÇÃO',
-      level: 0,
-      isCalculated: true,
-      formula: 'receita_liquida - custos_variaveis',
-      values: margemContribuicaoValues,
-      total: margemContribuicaoTotal,
-      isBold: true,
-      isSubtotal: true,
-      color: margemContribuicaoTotal >= 0 ? '#10B981' : '#EF4444'
-    });
-
-    // 6. RESULTADO OPERACIONAL (igual à margem por enquanto)
-    dreLines.push({
-      id: 'resultado_operacional',
-      label: 'RESULTADO OPERACIONAL',
-      level: 0,
-      isCalculated: true,
-      formula: 'margem_contribuicao',
-      values: margemContribuicaoValues,
-      total: margemContribuicaoTotal,
-      isBold: true,
-      isSubtotal: true,
-      color: margemContribuicaoTotal >= 0 ? '#10B981' : '#EF4444'
-    });
-
-    // 7. RESULTADO LÍQUIDO (igual ao operacional por enquanto)
-    dreLines.push({
-      id: 'resultado_liquido',
-      label: 'RESULTADO LÍQUIDO',
-      level: 0,
-      isCalculated: true,
-      formula: 'resultado_operacional',
-      values: margemContribuicaoValues,
-      total: margemContribuicaoTotal,
-      isBold: true,
-      isSubtotal: true,
-      color: margemContribuicaoTotal >= 0 ? '#10B981' : '#EF4444'
-    });
+    // Calcular lucro líquido
+    if (lucroLiquido && lair && impostosIrCsll) {
+      MONTHS.forEach(month => {
+        lucroLiquido.values[month.value] = 
+          (lair.values[month.value] || 0) - (impostosIrCsll.values[month.value] || 0);
+      });
+      lucroLiquido.total = Object.values(lucroLiquido.values).reduce((sum, val) => sum + val, 0);
+    }
 
     // Calcular percentuais
+    const receitaBrutaTotal = receitasBrutas?.total || 0;
     dreLines.forEach(line => {
-      if (receitasBrutasTotal > 0) {
-        line.percentage = (line.total / receitasBrutasTotal) * 100;
+      if (line.isPercentageLine) {
+        // Linhas de percentual
+        const baseLineId = line.id.replace('_percent', '');
+        const baseLine = dreLines.find(l => l.id === baseLineId);
+        if (baseLine && receitaBrutaTotal > 0) {
+          MONTHS.forEach(month => {
+            const baseValue = baseLine.values[month.value] || 0;
+            const receitaBase = receitasBrutas?.values[month.value] || 0;
+            line.values[month.value] = receitaBase > 0 ? (baseValue / receitaBase) * 100 : 0;
+          });
+          line.total = receitaBrutaTotal > 0 ? (baseLine.total / receitaBrutaTotal) * 100 : 0;
+        }
+      } else if (receitaBrutaTotal > 0) {
+        line.percentage = (line.total / receitaBrutaTotal) * 100;
       }
     });
 
@@ -316,13 +382,13 @@ export const DemonstrativoPage = () => {
     const monthlyData: MonthlyData[] = MONTHS.map(month => ({
       month: month.value,
       monthName: month.short,
-      receitas: receitasBrutasValues[month.value] || 0,
-      despesas: custosVariaveisValues[month.value] || 0,
-      resultado: margemContribuicaoValues[month.value] || 0
+      receitas: receitasBrutas?.values[month.value] || 0,
+      despesas: (custosVariaveis?.values[month.value] || 0) + (custosFixos?.values[month.value] || 0),
+      resultado: lucroLiquido?.values[month.value] || 0
     }));
 
     return { dreLines, monthlyData };
-  }, [dreData]);
+  }, [dreData, categories]);
 
   // ===================================================
   // ✅ FUNÇÕES AUXILIARES
@@ -339,7 +405,7 @@ export const DemonstrativoPage = () => {
 
   const formatPercentage = (value: number): string => {
     if (hideValues) return '••••';
-    return `${value.toFixed(1)}%`;
+    return `${value.toFixed(2)}%`;
   };
 
   const exportToPDF = () => {
@@ -365,34 +431,19 @@ export const DemonstrativoPage = () => {
   const renderDRETable = () => {
     const { dreLines } = processedDREData;
 
-    if (dreLines.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <Calculator className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h3 className="text-lg font-semibold mb-2">Nenhum dado encontrado</h3>
-          <p className="text-muted-foreground mb-4">
-            Não há lançamentos para o ano selecionado ou os dados ainda não foram processados.
-          </p>
-          <Button onClick={() => getDREData(selectedYear)}>
-            Recarregar Dados
-          </Button>
-        </div>
-      );
-    }
-
     return (
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse bg-white rounded-lg shadow-sm">
           <thead>
-            <tr className="border-b-2 border-border">
-              <th className="text-left p-3 font-semibold">Descrição</th>
+            <tr className="bg-gray-50 border-b-2 border-gray-200">
+              <th className="text-left p-3 font-semibold text-gray-700">Descrição</th>
               {MONTHS.map(month => (
-                <th key={month.value} className="text-right p-3 font-semibold min-w-[100px]">
+                <th key={month.value} className="text-right p-3 font-semibold text-gray-700 min-w-[80px]">
                   {month.short}
                 </th>
               ))}
-              <th className="text-right p-3 font-semibold min-w-[120px]">Total</th>
-              <th className="text-right p-3 font-semibold min-w-[80px]">%</th>
+              <th className="text-right p-3 font-semibold text-gray-700 min-w-[100px]">Total</th>
+              <th className="text-right p-3 font-semibold text-gray-700 min-w-[60px]">Av%</th>
             </tr>
           </thead>
           <tbody>
@@ -400,34 +451,43 @@ export const DemonstrativoPage = () => {
               <tr 
                 key={line.id} 
                 className={cn(
-                  "border-b border-border hover:bg-muted/50",
-                  line.isSubtotal && "bg-muted/30",
+                  "border-b border-gray-100 hover:bg-gray-50 transition-colors",
+                  line.isSubtotal && "bg-blue-50 border-blue-200",
                   line.isBold && "font-semibold"
                 )}
               >
                 <td 
                   className={cn(
-                    "p-3",
+                    "p-3 text-gray-800",
                     line.level === 0 ? "font-bold" : `pl-${3 + line.level * 4}`,
-                    line.color && "border-l-4"
+                    line.isSubtotal && "text-blue-800"
                   )}
-                  style={line.color ? { borderLeftColor: line.color } : {}}
                 >
                   {line.label}
                 </td>
                 {MONTHS.map(month => (
-                  <td key={month.value} className="text-right p-3 font-mono text-sm">
-                    {formatCurrency(line.values[month.value] || 0)}
+                  <td key={month.value} className="text-right p-3 font-mono text-sm text-gray-600">
+                    {line.isPercentageLine 
+                      ? formatPercentage(line.values[month.value] || 0)
+                      : formatCurrency(line.values[month.value] || 0)
+                    }
                   </td>
                 ))}
                 <td className={cn(
                   "text-right p-3 font-mono text-sm font-semibold",
-                  line.total >= 0 ? "text-green-600" : "text-red-600"
+                  line.total >= 0 ? "text-green-600" : "text-red-600",
+                  line.isSubtotal && "text-blue-600"
                 )}>
-                  {formatCurrency(line.total)}
+                  {line.isPercentageLine 
+                    ? formatPercentage(line.total || 0)
+                    : formatCurrency(line.total || 0)
+                  }
                 </td>
-                <td className="text-right p-3 font-mono text-sm">
-                  {line.percentage ? formatPercentage(line.percentage) : '-'}
+                <td className="text-right p-3 font-mono text-sm text-gray-600">
+                  {line.isPercentageLine 
+                    ? '-' 
+                    : (line.percentage ? formatPercentage(line.percentage) : '0,00%')
+                  }
                 </td>
               </tr>
             ))}
@@ -439,15 +499,6 @@ export const DemonstrativoPage = () => {
 
   const renderCharts = () => {
     const { monthlyData } = processedDREData;
-
-    if (monthlyData.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <TrendingUp className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <p className="text-muted-foreground">Nenhum dado disponível para gráficos</p>
-        </div>
-      );
-    }
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -513,97 +564,77 @@ export const DemonstrativoPage = () => {
   // ✅ RENDER PRINCIPAL
   // ===================================================
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.3
-      }
-    }
-  };
-
   return (
-    <MainLayout title="Demonstrativo de Resultados (DRE)">
-      <SubscriptionGuard feature="o demonstrativo de resultados">
-        <div className="w-full p-6 md:p-8">
-          <motion.div
-            className={cn(isMobile ? "space-y-4" : "space-y-6")}
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {/* Header */}
-            <motion.div variants={itemVariants}>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <h2 className="text-2xl font-bold text-foreground">Demonstrativo de Resultados</h2>
-                <div className="flex items-center gap-4">
-                  <Select
-                    onValueChange={(value) => setSelectedYear(Number(value))}
-                    value={selectedYear.toString()}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      <SelectValue placeholder="Selecione o Ano" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getYearOptions().map(year => (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setViewMode(viewMode === 'table' ? 'chart' : 'table')}
-                    className="flex items-center gap-2"
-                  >
-                    {viewMode === 'table' ? <BarChart className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                    {viewMode === 'table' ? 'Ver Gráficos' : 'Ver Tabela'}
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={exportToPDF}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Exportar PDF
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Conteúdo Principal */}
-            <motion.div variants={itemVariants}>
-              {isLoading ? (
-                <div className="flex justify-center items-center h-64">
-                  <p>Carregando dados...</p>
-                </div>
-              ) : (
-                viewMode === 'table' ? renderDRETable() : renderCharts()
-              )}
-            </motion.div>
-          </motion.div>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">Demonstrativo de Resultados</h1>
+          
+          {/* Seletor de Ano */}
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-gray-500" />
+            <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+              <SelectTrigger className="w-24">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {getYearOptions().map(year => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </SubscriptionGuard>
-    </MainLayout>
+
+        <div className="flex items-center gap-2">
+          {/* Toggle View Mode */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+              className="text-xs"
+            >
+              Tabela
+            </Button>
+            <Button
+              variant={viewMode === 'chart' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('chart')}
+              className="text-xs"
+            >
+              Ver Gráficos
+            </Button>
+          </div>
+
+          <Button onClick={exportToPDF} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar PDF
+          </Button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <Card>
+        <CardContent className="p-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">Carregando dados...</span>
+            </div>
+          ) : viewMode === 'table' ? (
+            renderDRETable()
+          ) : (
+            renderCharts()
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
 export default DemonstrativoPage;
-
 
