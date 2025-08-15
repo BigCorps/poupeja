@@ -1,23 +1,13 @@
-// src/contexts/AppContext.tsx - VERSÃO COMPLETA E CORRIGIDA
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, TimeRange } from '@/types';
+import { Category } from '@/types/categories'; // Importar Category do novo arquivo
 
 // ===================================================
 // ✅ INTERFACES E TIPOS COMPLETOS
 // ===================================================
 
-interface Category {
-  id: string;
-  created_at: string;
-  user_id: string;
-  name: string;
-  type: 'income' | 'expense' | 'operational_inflow' | 'operational_outflow' | 'investment_inflow' | 'investment_outflow' | 'financing_inflow' | 'financing_outflow';
-  color: string;
-  icon: string | null;
-  is_default: boolean | null;
-  parent_id?: string | null;
-}
+// A interface Category agora vem de '@/types/categories'
 
 interface PaymentMethod {
   id: string;
@@ -431,6 +421,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           name: category.name,
           type: category.type,
           color: category.color,
+          icon: category.icon, // Adicionado o ícone aqui
           parent_id: category.parent_id
         })
         .eq('id', category.id)
@@ -472,28 +463,32 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const getDefaultPaymentMethods = useCallback(async () => {
     try {
+      dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase
         .from('poupeja_default_payment_methods')
         .select('*')
-        .eq('is_active', true)
         .order('name');
 
       if (error) {
         console.error("Erro ao buscar métodos de pagamento padrão:", error);
+        dispatch({ type: 'SET_ERROR', payload: error.message });
         dispatch({ type: 'SET_DEFAULT_PAYMENT_METHODS', payload: [] });
       } else {
         dispatch({ type: 'SET_DEFAULT_PAYMENT_METHODS', payload: data || [] });
       }
     } catch (err) {
       console.error("Erro inesperado ao buscar métodos de pagamento padrão:", err);
+      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar métodos de pagamento padrão.' });
       dispatch({ type: 'SET_DEFAULT_PAYMENT_METHODS', payload: [] });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, []);
 
   const getPaymentMethods = useCallback(async () => {
     try {
       if (!state.user) return;
-      
+      dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase
         .from('poupeja_payment_methods')
         .select('*')
@@ -502,30 +497,28 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) {
         console.error("Erro ao buscar métodos de pagamento:", error);
+        dispatch({ type: 'SET_ERROR', payload: error.message });
         dispatch({ type: 'SET_PAYMENT_METHODS', payload: [] });
       } else {
         dispatch({ type: 'SET_PAYMENT_METHODS', payload: data || [] });
       }
     } catch (err) {
       console.error("Erro inesperado ao buscar métodos de pagamento:", err);
+      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar métodos de pagamento.' });
       dispatch({ type: 'SET_PAYMENT_METHODS', payload: [] });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [state.user]);
 
   const addPaymentMethod = useCallback(async (paymentMethod: Omit<PaymentMethod, 'id' | 'user_id'>) => {
     if (!state.user) throw new Error('Usuário não autenticado');
-    
     try {
       const { data, error } = await supabase
         .from('poupeja_payment_methods')
-        .insert({
-          name: paymentMethod.name,
-          user_id: state.user.id,
-          is_default: paymentMethod.is_default
-        })
+        .insert({ ...paymentMethod, user_id: state.user.id })
         .select()
         .single();
-      
       if (error) throw error;
       dispatch({ type: 'ADD_PAYMENT_METHOD', payload: data });
     } catch (err) {
@@ -535,41 +528,33 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state.user]);
 
-  // ✅ CORREÇÃO: Adicionado async à função updatePaymentMethod
   const updatePaymentMethod = useCallback(async (paymentMethod: PaymentMethod) => {
-    if (!state.user) throw new Error("Usuário não autenticado");
-    
+    if (!state.user) throw new Error('Usuário não autenticado');
     try {
       const { data, error } = await supabase
-        .from("poupeja_payment_methods")
-        .update({
-          name: paymentMethod.name,
-          is_default: paymentMethod.is_default
-        })
-        .eq("id", paymentMethod.id)
-        .eq("user_id", state.user.id)
+        .from('poupeja_payment_methods')
+        .update(paymentMethod)
+        .eq('id', paymentMethod.id)
+        .eq('user_id', state.user.id)
         .select()
         .single();
-      
       if (error) throw error;
-      dispatch({ type: "UPDATE_PAYMENT_METHOD", payload: data });
+      dispatch({ type: 'UPDATE_PAYMENT_METHOD', payload: data });
     } catch (err) {
-      console.error("Erro ao atualizar método de pagamento:", err);
-      dispatch({ type: "SET_ERROR", payload: "Erro ao atualizar método de pagamento." });
+      console.error('Erro ao atualizar método de pagamento:', err);
+      dispatch({ type: 'SET_ERROR', payload: 'Erro ao atualizar método de pagamento.' });
       throw err;
     }
   }, [state.user]);
 
   const deletePaymentMethod = useCallback(async (id: string) => {
     if (!state.user) throw new Error('Usuário não autenticado');
-    
     try {
       const { error } = await supabase
         .from('poupeja_payment_methods')
         .delete()
         .eq('id', id)
         .eq('user_id', state.user.id);
-      
       if (error) throw error;
       dispatch({ type: 'DELETE_PAYMENT_METHOD', payload: id });
     } catch (err) {
@@ -586,7 +571,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const getSuppliers = useCallback(async () => {
     try {
       if (!state.user) return;
-      
+      dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase
         .from('poupeja_suppliers')
         .select('*')
@@ -595,26 +580,28 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) {
         console.error("Erro ao buscar fornecedores:", error);
+        dispatch({ type: 'SET_ERROR', payload: error.message });
         dispatch({ type: 'SET_SUPPLIERS', payload: [] });
       } else {
         dispatch({ type: 'SET_SUPPLIERS', payload: data || [] });
       }
     } catch (err) {
       console.error("Erro inesperado ao buscar fornecedores:", err);
+      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar fornecedores.' });
       dispatch({ type: 'SET_SUPPLIERS', payload: [] });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [state.user]);
 
   const addSupplier = useCallback(async (supplier: Omit<Supplier, 'id' | 'user_id'>) => {
     if (!state.user) throw new Error('Usuário não autenticado');
-    
     try {
       const { data, error } = await supabase
         .from('poupeja_suppliers')
         .insert({ ...supplier, user_id: state.user.id })
         .select()
         .single();
-      
       if (error) throw error;
       dispatch({ type: 'ADD_SUPPLIER', payload: data });
     } catch (err) {
@@ -626,7 +613,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const updateSupplier = useCallback(async (supplier: Supplier) => {
     if (!state.user) throw new Error('Usuário não autenticado');
-    
     try {
       const { data, error } = await supabase
         .from('poupeja_suppliers')
@@ -635,7 +621,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', state.user.id)
         .select()
         .single();
-      
       if (error) throw error;
       dispatch({ type: 'UPDATE_SUPPLIER', payload: data });
     } catch (err) {
@@ -647,14 +632,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteSupplier = useCallback(async (id: string) => {
     if (!state.user) throw new Error('Usuário não autenticado');
-    
     try {
       const { error } = await supabase
         .from('poupeja_suppliers')
         .delete()
         .eq('id', id)
         .eq('user_id', state.user.id);
-      
       if (error) throw error;
       dispatch({ type: 'DELETE_SUPPLIER', payload: id });
     } catch (err) {
@@ -672,19 +655,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (!state.user) return;
       dispatch({ type: 'SET_LOADING', payload: true });
-      
       const { data, error } = await supabase
         .from('poupeja_lancamentos')
-        .select(`
-          *,
-          categoria:poupeja_categories!categoria_id(id, name, color, type),
-          subcategoria:poupeja_categories!subcategoria_id(id, name, color, type),
-          fornecedor:poupeja_suppliers(id, name),
-          forma_pagamento:poupeja_payment_methods(id, name)
-        `)
+        .select('*')
         .eq('user_id', state.user.id)
-        .eq('account_type', state.accountType)
-        .order('data_referencia', { ascending: false });
+        .order('data_vencimento', { ascending: false });
 
       if (error) {
         console.error("Erro ao buscar lançamentos:", error);
@@ -700,28 +675,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [state.user, state.accountType]);
+  }, [state.user]);
 
   const addLancamento = useCallback(async (lancamento: Omit<Lancamento, 'id' | 'created_at' | 'user_id' | 'updated_at'>) => {
     if (!state.user) throw new Error('Usuário não autenticado');
-    
     try {
       const { data, error } = await supabase
         .from('poupeja_lancamentos')
-        .insert({ 
-          ...lancamento, 
-          user_id: state.user.id,
-          account_type: state.accountType
-        })
-        .select(`
-          *,
-          categoria:poupeja_categories!categoria_id(id, name, color, type),
-          subcategoria:poupeja_categories!subcategoria_id(id, name, color, type),
-          fornecedor:poupeja_suppliers(id, name),
-          forma_pagamento:poupeja_payment_methods(id, name)
-        `)
+        .insert({ ...lancamento, user_id: state.user.id })
+        .select()
         .single();
-      
       if (error) throw error;
       dispatch({ type: 'ADD_LANCAMENTO', payload: data });
     } catch (err) {
@@ -729,26 +692,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: 'SET_ERROR', payload: 'Erro ao adicionar lançamento.' });
       throw err;
     }
-  }, [state.user, state.accountType]);
+  }, [state.user]);
 
   const updateLancamento = useCallback(async (lancamento: Lancamento) => {
     if (!state.user) throw new Error('Usuário não autenticado');
-    
     try {
       const { data, error } = await supabase
         .from('poupeja_lancamentos')
         .update(lancamento)
         .eq('id', lancamento.id)
         .eq('user_id', state.user.id)
-        .select(`
-          *,
-          categoria:poupeja_categories!categoria_id(id, name, color, type),
-          subcategoria:poupeja_categories!subcategoria_id(id, name, color, type),
-          fornecedor:poupeja_suppliers(id, name),
-          forma_pagamento:poupeja_payment_methods(id, name)
-        `)
+        .select()
         .single();
-      
       if (error) throw error;
       dispatch({ type: 'UPDATE_LANCAMENTO', payload: data });
     } catch (err) {
@@ -760,14 +715,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteLancamento = useCallback(async (id: string) => {
     if (!state.user) throw new Error('Usuário não autenticado');
-    
     try {
       const { error } = await supabase
         .from('poupeja_lancamentos')
         .delete()
         .eq('id', id)
         .eq('user_id', state.user.id);
-
       if (error) throw error;
       dispatch({ type: 'DELETE_LANCAMENTO', payload: id });
     } catch (err) {
@@ -784,6 +737,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const getCashFlowData = useCallback(async (startDate?: string, endDate?: string) => {
     try {
       if (!state.user) return;
+      dispatch({ type: 'SET_LOADING', payload: true });
       
       let query = supabase
         .from('poupeja_cash_flow')
@@ -792,88 +746,57 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         .eq('account_type', state.accountType)
         .order('date', { ascending: true });
 
-      if (startDate) query = query.gte('date', startDate);
-      if (endDate) query = query.lte('date', endDate);
+      if (startDate) {
+        query = query.gte('date', startDate);
+      }
+      if (endDate) {
+        query = query.lte('date', endDate);
+      }
 
       const { data, error } = await query;
 
       if (error) {
-        console.error("Erro ao buscar dados do fluxo de caixa:", error);
+        console.error("Erro ao buscar dados de fluxo de caixa:", error);
+        dispatch({ type: 'SET_ERROR', payload: error.message });
         dispatch({ type: 'SET_CASH_FLOW_DATA', payload: [] });
       } else {
         dispatch({ type: 'SET_CASH_FLOW_DATA', payload: data || [] });
       }
     } catch (err) {
-      console.error("Erro inesperado ao buscar dados do fluxo de caixa:", err);
+      console.error("Erro inesperado ao buscar dados de fluxo de caixa:", err);
+      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar dados de fluxo de caixa.' });
       dispatch({ type: 'SET_CASH_FLOW_DATA', payload: [] });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [state.user, state.accountType]);
 
   const generateCashFlowData = useCallback(async (startDate: string, endDate: string) => {
     if (!state.user) throw new Error('Usuário não autenticado');
-    
     try {
-      // Buscar lançamentos no período
-      const { data: lancamentos, error: lancamentosError } = await supabase
-        .from('poupeja_lancamentos')
-        .select('data_referencia, classificacao, valor_pago, status_pagamento')
-        .eq('user_id', state.user.id)
-        .eq('account_type', state.accountType)
-        .gte('data_referencia', startDate)
-        .lte('data_referencia', endDate)
-        .eq('status_pagamento', 'pago');
-
-      if (lancamentosError) throw lancamentosError;
-
-      // Agrupar por data
-      const cashFlowByDate = new Map();
-      let saldoAcumulado = 0;
-
-      lancamentos?.forEach(lancamento => {
-        const date = lancamento.data_referencia;
-        if (!cashFlowByDate.has(date)) {
-          cashFlowByDate.set(date, { entradas: 0, saidas: 0 });
-        }
-        
-        const dayData = cashFlowByDate.get(date);
-        if (lancamento.classificacao === 'receita') {
-          dayData.entradas += lancamento.valor_pago;
-        } else {
-          dayData.saidas += lancamento.valor_pago;
-        }
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const { data, error } = await supabase.rpc('generate_cash_flow_data', {
+        p_user_id: state.user.id,
+        p_account_type: state.accountType,
+        p_start_date: startDate,
+        p_end_date: endDate,
       });
 
-      // Preparar dados para inserção
-      const cashFlowData = Array.from(cashFlowByDate.entries()).map(([date, data]) => {
-        const saldoDia = data.entradas - data.saidas;
-        saldoAcumulado += saldoDia;
-        
-        return {
-          user_id: state.user!.id,
-          account_type: state.accountType,
-          date,
-          entradas: data.entradas,
-          saidas: data.saidas,
-          saldo_dia: saldoDia,
-          saldo_acumulado: saldoAcumulado
-        };
-      });
-
-      // Inserir ou atualizar dados
-      const { error: upsertError } = await supabase
-        .from('poupeja_cash_flow')
-        .upsert(cashFlowData, { 
-          onConflict: 'user_id,account_type,date' 
-        });
-
-      if (upsertError) throw upsertError;
-
-      // Recarregar dados
-      await getCashFlowData(startDate, endDate);
+      if (error) {
+        console.error("Erro ao gerar dados de fluxo de caixa:", error);
+        dispatch({ type: 'SET_ERROR', payload: error.message });
+      } else {
+        // A função RPC pode retornar os dados diretamente ou apenas acionar a geração
+        // Se retornar dados, você pode despachá-los aqui
+        console.log('Dados de fluxo de caixa gerados/atualizados:', data);
+        // Após gerar, buscar os dados atualizados
+        await getCashFlowData(startDate, endDate);
+      }
     } catch (err) {
-      console.error('Erro ao gerar dados do fluxo de caixa:', err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro ao gerar dados do fluxo de caixa.' });
-      throw err;
+      console.error("Erro inesperado ao gerar dados de fluxo de caixa:", err);
+      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao gerar dados de fluxo de caixa.' });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [state.user, state.accountType, getCashFlowData]);
 
@@ -884,80 +807,76 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const getDREData = useCallback(async (year: number) => {
     try {
       if (!state.user) return;
-      
-      const { data, error } = await supabase
-        .from('poupeja_dre_data')
-        .select('*')
-        .eq('user_id', state.user.id)
-        .eq('account_type', state.accountType)
-        .eq('ano', year);
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const { data, error } = await supabase.rpc('get_dre_data', {
+        p_user_id: state.user.id,
+        p_account_type: state.accountType,
+        p_year: year,
+      });
 
       if (error) {
-        console.error("Erro ao buscar dados do DRE:", error);
+        console.error("Erro ao buscar dados de DRE:", error);
+        dispatch({ type: 'SET_ERROR', payload: error.message });
         dispatch({ type: 'SET_DRE_DATA', payload: [] });
       } else {
         dispatch({ type: 'SET_DRE_DATA', payload: data || [] });
       }
     } catch (err) {
-      console.error("Erro inesperado ao buscar dados do DRE:", err);
+      console.error("Erro inesperado ao buscar dados de DRE:", err);
+      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao buscar dados de DRE.' });
       dispatch({ type: 'SET_DRE_DATA', payload: [] });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [state.user, state.accountType]);
 
   // ===================================================
-  // ✅ EFEITOS
+  // ✅ EFEITOS E AUTENTICAÇÃO
   // ===================================================
 
-  // Listener de autenticação corrigido
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
         dispatch({ type: 'SET_SESSION', payload: session });
-        if (session) {
-          dispatch({ type: 'SET_USER', payload: session.user });
-        } else {
-          dispatch({ type: 'SET_USER', payload: null });
-        }
+        dispatch({ type: 'SET_USER', payload: session?.user || null });
         dispatch({ type: 'SET_AUTH_READY', payload: true });
+
+        if (session?.user) {
+          // Carregar dados iniciais após login
+          getCategories();
+          getPaymentMethods();
+          getDefaultPaymentMethods();
+          getSuppliers();
+          getLancamentos();
+          // getCashFlowData(); // Pode ser chamado em componentes específicos com base no range de datas
+          // getDREData(); // Pode ser chamado em componentes específicos com base no ano
+        }
       }
     );
 
-    // Cleanup corrigido
-    return () => {
-      if (data?.subscription?.unsubscribe) {
-        data.subscription.unsubscribe();
+    // Tentar carregar a sessão inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      dispatch({ type: 'SET_SESSION', payload: session });
+      dispatch({ type: 'SET_USER', payload: session?.user || null });
+      dispatch({ type: 'SET_AUTH_READY', payload: true });
+      if (session?.user) {
+        getCategories();
+        getPaymentMethods();
+        getDefaultPaymentMethods();
+        getSuppliers();
+        getLancamentos();
       }
-    };
-  }, []);
+    });
 
-  // Carregar dados quando usuário muda
-  useEffect(() => {
-    if (state.user) {
-      Promise.all([
-        getCategories(),
-        getPaymentMethods(),
-        getDefaultPaymentMethods(),
-        getSuppliers(),
-        getLancamentos()
-      ]).catch(error => {
-        console.error('Erro ao carregar dados iniciais:', error);
-      });
-    } else {
-      // Limpar estados quando não há usuário
-      dispatch({ type: 'SET_CATEGORIES', payload: [] });
-      dispatch({ type: 'SET_PAYMENT_METHODS', payload: [] });
-      dispatch({ type: 'SET_DEFAULT_PAYMENT_METHODS', payload: [] });
-      dispatch({ type: 'SET_SUPPLIERS', payload: [] });
-      dispatch({ type: 'SET_LANCAMENTOS', payload: [] });
-      dispatch({ type: 'SET_CASH_FLOW_DATA', payload: [] });
-      dispatch({ type: 'SET_DRE_DATA', payload: [] });
-    }
-  }, [state.user, state.accountType, getCategories, getPaymentMethods, getDefaultPaymentMethods, getSuppliers, getLancamentos]);
-  
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []); // Dependências vazias para rodar apenas uma vez na montagem
+
   // ===================================================
-  // ✅ VALORES COMPUTADOS
+  // ✅ VALORES COMPUTADOS (MEMOIZED)
   // ===================================================
-  
+
   const parentCategories = useMemo(() => {
     return state.categories.filter(cat => !cat.parent_id);
   }, [state.categories]);
@@ -967,98 +886,81 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [state.categories]);
 
   const allPaymentMethods = useMemo(() => {
-    // Combinar métodos padrão e personalizados
-    const defaultMethods = state.defaultPaymentMethods.map(method => ({
-      ...method,
-      user_id: 'default',
-      is_default: true
-    }));
-    
-    return [...defaultMethods, ...state.paymentMethods];
-  }, [state.defaultPaymentMethods, state.paymentMethods]);
-  
-  // ===================================================
-  // ✅ VALOR DO CONTEXTO
-  // ===================================================
-  
-  const value = useMemo(() => ({
-    ...state,
-    dispatch,
-    toggleHideValues,
-    logout,
-    setCustomDateRange,
-    setTimeRange,
-    setAccountType,
-    
-    // Categories
-    getCategories,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    
-    // Payment Methods
-    getPaymentMethods,
-    getDefaultPaymentMethods,
-    addPaymentMethod,
-    updatePaymentMethod,
-    deletePaymentMethod,
-    
-    // Suppliers
-    getSuppliers,
-    addSupplier,
-    updateSupplier,
-    deleteSupplier,
-    
-    // Lançamentos
-    getLancamentos,
-    addLancamento,
-    updateLancamento,
-    deleteLancamento,
-    
-    // Cash Flow
-    getCashFlowData,
-    generateCashFlowData,
-    
-    // DRE
-    getDREData,
-    
-    // Computed values
-    parentCategories,
-    subcategories,
-    allPaymentMethods,
-  }), [
-    state,
-    toggleHideValues,
-    logout,
-    setCustomDateRange,
-    setTimeRange,
-    setAccountType,
-    getCategories,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    getPaymentMethods,
-    getDefaultPaymentMethods,
-    addPaymentMethod,
-    updatePaymentMethod,
-    deletePaymentMethod,
-    getSuppliers,
-    addSupplier,
-    updateSupplier,
-    deleteSupplier,
-    getLancamentos,
-    addLancamento,
-    updateLancamento,
-    deleteLancamento,
-    getCashFlowData,
-    generateCashFlowData,
-    getDREData,
-    parentCategories,
-    subcategories,
-    allPaymentMethods,
-  ]);
+    const userMethods = state.paymentMethods.map(pm => ({ ...pm, is_user_defined: true }));
+    const defaultMethods = state.defaultPaymentMethods.map(dpm => ({ ...dpm, is_user_defined: false }));
+    return [...userMethods, ...defaultMethods].sort((a, b) => a.name.localeCompare(b.name));
+  }, [state.paymentMethods, state.defaultPaymentMethods]);
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  const contextValue = useMemo(
+    () => ({
+      ...state,
+      dispatch,
+      toggleHideValues,
+      logout,
+      setTimeRange,
+      setCustomDateRange,
+      setAccountType,
+      getCategories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      getPaymentMethods,
+      getDefaultPaymentMethods,
+      addPaymentMethod,
+      updatePaymentMethod,
+      deletePaymentMethod,
+      getSuppliers,
+      addSupplier,
+      updateSupplier,
+      deleteSupplier,
+      getLancamentos,
+      addLancamento,
+      updateLancamento,
+      deleteLancamento,
+      getCashFlowData,
+      generateCashFlowData,
+      getDREData,
+      parentCategories,
+      subcategories,
+      allPaymentMethods,
+    }),
+    [
+      state,
+      toggleHideValues,
+      logout,
+      setTimeRange,
+      setCustomDateRange,
+      setAccountType,
+      getCategories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      getPaymentMethods,
+      getDefaultPaymentMethods,
+      addPaymentMethod,
+      updatePaymentMethod,
+      deletePaymentMethod,
+      getSuppliers,
+      addSupplier,
+      updateSupplier,
+      deleteSupplier,
+      getLancamentos,
+      addLancamento,
+      updateLancamento,
+      deleteLancamento,
+      getCashFlowData,
+      generateCashFlowData,
+      getDREData,
+      parentCategories,
+      subcategories,
+      allPaymentMethods,
+    ]
+  );
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
 };
 
-export default AppProvider;
