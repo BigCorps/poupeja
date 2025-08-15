@@ -16,7 +16,7 @@ import CategoryForm from '@/components/categories/CategoryForm';
 import CategoryIcon from '@/components/categories/CategoryIcon';
 
 import { Category } from '@/types/categories';
-import { PaymentMethod, DefaultPaymentMethod, Supplier } from '@/types';
+import { PaymentMethod, DefaultPaymentMethod, Supplier } from '@/types/cadastros'; // Importar de cadastros.ts
 
 const CATEGORY_COLORS = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
@@ -200,10 +200,10 @@ export default function CadastroPage() {
           <div className="mx-auto max-w-md">
             <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">
-              Nenhuma categoria {categoryType === 'income' ? 'de receita' : 'de despesa'} encontrada
+              Nenhuma categoria ${categoryType === 'income' ? 'de receita' : 'de despesa'} encontrada
             </h3>
             <p className="text-muted-foreground mb-6">
-              Comece criando sua primeira categoria para organizar suas {categoryType === 'income' ? 'receitas' : 'despesas'}.
+              Comece criando sua primeira categoria para organizar suas ${categoryType === 'income' ? 'receitas' : 'despesas'}.
             </p>
             <Button onClick={handleAddCategory} size="lg">
               <Plus className="mr-2 h-5 w-5" />
@@ -252,7 +252,7 @@ export default function CadastroPage() {
                         </h3>
                         {subcategories.length > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            {subcategories.length} subcategoria{subcategories.length > 1 ? 's' : ''}
+                            ${subcategories.length} subcategoria${subcategories.length > 1 ? 's' : ''}
                           </p>
                         )}
                       </div>
@@ -589,7 +589,7 @@ export default function CadastroPage() {
                     <div key={supplier.id} className="border rounded-lg p-4 bg-card flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <User className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-medium">{supplier.name}</span>
+                        <span className="font-medium">${supplier.name}</span>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -652,7 +652,7 @@ export default function CadastroPage() {
                     <div key={method.id} className="border rounded-lg p-4 bg-card flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CreditCard className="h-5 w-5 text-muted-foreground" />
-                        <span className="font-medium">{method.name}</span>
+                        <span className="font-medium">${method.name}</span>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -701,7 +701,7 @@ export default function CadastroPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a categoria "{categoryToDelete?.name}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir a categoria "${categoryToDelete?.name}"? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -717,7 +717,7 @@ export default function CadastroPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a forma de pagamento "{paymentMethodToDelete?.name}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir a forma de pagamento "${paymentMethodToDelete?.name}"? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -733,7 +733,7 @@ export default function CadastroPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o fornecedor/cliente "{supplierToDelete?.name}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir o fornecedor/cliente "${supplierToDelete?.name}"? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -747,9 +747,9 @@ export default function CadastroPage() {
       <Dialog open={supplierFormOpen} onOpenChange={setSupplierFormOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{editingSupplier ? 'Editar Fornecedor/Cliente' : 'Novo Fornecedor/Cliente'}</DialogTitle>
+            <DialogTitle>${editingSupplier ? 'Editar Fornecedor/Cliente' : 'Novo Fornecedor/Cliente'}</DialogTitle>
             <DialogDescription>
-              {editingSupplier ? 'Edite os detalhes do fornecedor/cliente.' : 'Adicione um novo fornecedor ou cliente.'}
+              ${editingSupplier ? 'Edite os detalhes do fornecedor/cliente.' : 'Adicione um novo fornecedor ou cliente.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -773,9 +773,9 @@ export default function CadastroPage() {
       <Dialog open={paymentFormOpen} onOpenChange={setPaymentFormOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{editingPaymentMethod ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento'}</DialogTitle>
+            <DialogTitle>${editingPaymentMethod ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento'}</DialogTitle>
             <DialogDescription>
-              {editingPaymentMethod ? 'Edite os detalhes da forma de pagamento.' : 'Adicione uma nova forma de pagamento.'}
+              ${editingPaymentMethod ? 'Edite os detalhes da forma de pagamento.' : 'Adicione uma nova forma de pagamento.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -797,3 +797,4 @@ export default function CadastroPage() {
     </div>
   );
 }
+
