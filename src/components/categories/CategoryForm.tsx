@@ -95,6 +95,8 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   }, [open, initialData, form, categoryType, parentId]);
 
   const onSubmit = (data: any) => {
+    console.log('📝 Dados do formulário:', data);
+    
     if (initialData && initialData.id) {
       onSave({ ...data, id: initialData.id });
     } else {
@@ -111,16 +113,22 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   );
 
   const isSubcategory = parentId || initialData?.parent_id;
+  const isEditing = initialData && initialData.id;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]" aria-describedby="category-dialog-description">
+      <DialogContent className="sm:max-w-[500px]" aria-describedby="category-dialog-description">
         <DialogHeader>
           <DialogTitle>
-            {initialData ? 'Editar categoria' : isSubcategory ? 'Adicionar subcategoria' : 'Adicionar categoria'}
+            {isEditing 
+              ? 'Editar categoria' 
+              : isSubcategory 
+                ? 'Adicionar subcategoria' 
+                : 'Adicionar categoria'
+            }
           </DialogTitle>
           <DialogDescription id="category-dialog-description">
-            {initialData 
+            {isEditing 
               ? 'Edite os detalhes da categoria.' 
               : isSubcategory 
                 ? 'Preencha os detalhes para adicionar uma nova subcategoria.'
@@ -128,10 +136,11 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
             }
           </DialogDescription>
         </DialogHeader>
+        
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {parentName && (
-              <div className="bg-muted p-2 rounded-lg text-sm text-center">
+              <div className="bg-muted p-3 rounded-lg text-sm text-center">
                 Adicionando subcategoria para: <span className="font-semibold">{parentName}</span>
               </div>
             )}
@@ -141,66 +150,75 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <FormLabel htmlFor="name" className="text-right">Nome</FormLabel>
-                    <FormControl>
-                      <Input id="name" {...field} className="col-span-3" placeholder="Nome da categoria" />
-                    </FormControl>
-                  </div>
-                  <FormMessage className="col-start-2 col-span-3" />
+                  <FormLabel>Nome da categoria</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Digite o nome da categoria" />
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <FormLabel htmlFor="type" className="text-right">Tipo</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubcategory}>
-                      <FormControl className="col-span-3">
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="expense">Despesa</SelectItem>
-                        <SelectItem value="income">Receita</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <FormMessage className="col-start-2 col-span-3" />
-                </FormItem>
-              )}
-            />
-
+            {/* Seleção de tipo - apenas para categorias principais ou ao editar */}
             {!isSubcategory && (
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo da categoria</FormLabel>
+                    <FormControl>
+                      <div className="flex rounded-lg border p-1">
+                        <Button
+                          type="button"
+                          variant={field.value === 'expense' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => field.onChange('expense')}
+                          className="flex-1 rounded-md"
+                        >
+                          Despesa
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={field.value === 'income' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => field.onChange('income')}
+                          className="flex-1 rounded-md"
+                        >
+                          Receita
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Seleção de categoria pai - apenas para categorias principais */}
+            {!isSubcategory && !isEditing && parentCategories.length > 0 && (
               <FormField
                 control={form.control}
                 name="parent_id"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <FormLabel htmlFor="parent_id" className="text-right">Categoria Pai</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
-                        <FormControl className="col-span-3">
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma categoria pai (opcional)" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="">Nenhuma (categoria principal)</SelectItem>
-                          {parentCategories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <FormMessage className="col-start-2 col-span-3" />
+                    <FormLabel>Categoria pai (opcional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma categoria pai (opcional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma (categoria principal)</SelectItem>
+                        {parentCategories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -211,15 +229,11 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
               name="color"
               render={({ field }) => (
                 <FormItem>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <FormLabel htmlFor="color" className="text-right">Cor</FormLabel>
-                    <FormControl>
-                      <div className="col-span-3">
-                        <ColorPicker selectedColor={field.value} onSelectColor={field.onChange} />
-                      </div>
-                    </FormControl>
-                  </div>
-                  <FormMessage className="col-start-2 col-span-3" />
+                  <FormLabel>Cor da categoria</FormLabel>
+                  <FormControl>
+                    <ColorPicker selectedColor={field.value} onSelectColor={field.onChange} />
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -229,22 +243,21 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
               name="icon"
               render={({ field }) => (
                 <FormItem>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <FormLabel htmlFor="icon" className="text-right">Ícone</FormLabel>
-                    <FormControl>
-                      <div className="col-span-3">
-                        <IconSelector selectedIcon={field.value} onSelectIcon={field.onChange} />
-                      </div>
-                    </FormControl>
-                  </div>
-                  <FormMessage className="col-start-2 col-span-3" />
+                  <FormLabel>Ícone da categoria</FormLabel>
+                  <FormControl>
+                    <IconSelector selectedIcon={field.value} onSelectIcon={field.onChange} />
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
             
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
               <Button type="submit">
-                {initialData ? 'Salvar alterações' : 'Adicionar'}
+                {isEditing ? 'Salvar alterações' : 'Adicionar categoria'}
               </Button>
             </div>
           </form>
@@ -255,5 +268,3 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
 };
 
 export default CategoryForm;
-
-
