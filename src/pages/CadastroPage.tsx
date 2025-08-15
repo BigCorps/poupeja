@@ -41,7 +41,7 @@ export default function CadastroPage() {
     deletePaymentMethod,
     getSuppliers,
     addSupplier,
-        updateSupplier,
+    updateSupplier,
     deleteSupplier,
     isLoading
   } = useAppContext();
@@ -130,68 +130,147 @@ export default function CadastroPage() {
     });
   };
 
-  const renderCategoryTree = useCallback((parentId: string | null, level: number) => {
-    const filteredCategories = categories.filter(cat => cat.parent_id === parentId && cat.type === categoryType);
+  // ✅ CORRIGIDO: Função para renderizar categorias em grade
+  const renderCategoriesGrid = useCallback(() => {
+    // Filtrar categorias principais (sem parent_id) do tipo selecionado
+    const mainCategories = categories.filter(cat => 
+      cat.parent_id === null && cat.type === categoryType
+    );
 
-    return filteredCategories.map(category => {
-      const hasSubcategories = categories.some(subCat => subCat.parent_id === category.id);
-      const isExpanded = expandedCategories.has(category.id);
+    // Função para obter subcategorias
+    const getSubcategories = (parentId: string) => {
+      return categories.filter(cat => cat.parent_id === parentId);
+    };
 
+    if (mainCategories.length === 0) {
       return (
-        <React.Fragment key={category.id}>
-          <div
-            className={`flex items-center justify-between p-3 rounded-lg border bg-card mb-2 ${level > 0 ? `ml-${level * 4}` : ''}`}
-          >
-            <div className="flex items-center gap-3">
-              {hasSubcategories && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleExpandCategory(category.id)}
-                  className="p-0 h-auto w-auto"
-                >
-                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                </Button>
-              )}
-              {!hasSubcategories && level > 0 && <div className="w-4"></div>} {/* Spacer for alignment */}
-              <CategoryIcon icon={category.icon} color={category.color} />
-              <span>{category.name}</span>
-              <Badge variant={category.type === 'income' ? 'default' : 'secondary'}>
-                {category.type === 'income' ? 'Receita' : 'Despesa'}
-              </Badge>
-              {category.is_default && (
-                <Badge variant="outline" className="ml-2">Padrão</Badge>
-              )}
-            </div>
-            <div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Editar
-                  </DropdownMenuItem>
-                  {!category.is_default && (
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={() => handleDeleteCategory(category)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Excluir
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-          {isExpanded && renderCategoryTree(category.id, level + 1)}
-        </React.Fragment>
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">
+            Nenhuma categoria {categoryType === 'income' ? 'de receita' : 'de despesa'} cadastrada. 
+            Clique em "Nova Categoria" para começar.
+          </p>
+          <Button variant="outline" className="mt-4" onClick={handleAddCategory}>
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Categoria
+          </Button>
+        </div>
       );
-    });
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {mainCategories.map(category => {
+          const subcategories = getSubcategories(category.id);
+          const isExpanded = expandedCategories.has(category.id);
+
+          return (
+            <div key={category.id} className="border rounded-lg p-4 bg-card">
+              {/* Categoria Principal */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 flex-1">
+                  {subcategories.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleExpandCategory(category.id)}
+                      className="p-0 h-auto w-auto"
+                    >
+                      {isExpanded ? 
+                        <ChevronDown className="h-4 w-4" /> : 
+                        <ChevronRight className="h-4 w-4" />
+                      }
+                    </Button>
+                  )}
+                  <CategoryIcon icon={category.icon} color={category.color} />
+                  <span className="font-medium text-sm truncate" title={category.name}>
+                    {category.name}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  {category.is_default && (
+                    <Badge variant="outline" className="text-xs">Padrão</Badge>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Editar
+                      </DropdownMenuItem>
+                      {!category.is_default && (
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => handleDeleteCategory(category)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Excluir
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+
+              {/* Subcategorias */}
+              {isExpanded && subcategories.length > 0 && (
+                <div className="space-y-2 mt-3 pt-3 border-t">
+                  {subcategories.map(subcat => (
+                    <div key={subcat.id} className="flex items-center justify-between py-1 px-2 rounded bg-muted/50">
+                      <div className="flex items-center gap-2 flex-1">
+                        <CategoryIcon icon={subcat.icon} color={subcat.color} className="w-3 h-3" />
+                        <span className="text-xs truncate" title={subcat.name}>
+                          {subcat.name}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-1">
+                        {subcat.is_default && (
+                          <Badge variant="outline" className="text-xs scale-75">Padrão</Badge>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                              <MoreVertical className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditCategory(subcat)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            {!subcat.is_default && (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeleteCategory(subcat)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Indicador de subcategorias */}
+              {!isExpanded && subcategories.length > 0 && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {subcategories.length} subcategoria{subcategories.length > 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
   }, [categories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory]);
 
   // ===================================================
@@ -332,6 +411,7 @@ export default function CadastroPage() {
         email: newSupplierEmail.trim() || null,
         phone: newSupplierPhone.trim() || null,
         address: newSupplierAddress.trim() || null,
+        contact_person: null
       };
 
       if (editingSupplier) {
@@ -419,32 +499,29 @@ export default function CadastroPage() {
                   Organize suas receitas e despesas em categorias
                 </CardDescription>
               </div>
-              <Button onClick={handleAddCategory}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Categoria
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select value={categoryType} onValueChange={(value: 'expense' | 'income') => setCategoryType(value)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="expense">Despesas</SelectItem>
+                    <SelectItem value="income">Receitas</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleAddCategory}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nova Categoria
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
-              ) : categories.filter(cat => cat.type === categoryType && cat.parent_id === null).length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">Nenhuma categoria cadastrada. Clique em "Nova Categoria" para começar.</p>
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={handleAddCategory}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Categoria
-                  </Button>
-                </div>
               ) : (
-                <div className="space-y-2">
-                  {renderCategoryTree(null, 0)}
-                </div>
+                renderCategoriesGrid()
               )}
             </CardContent>
           </Card>
@@ -519,15 +596,15 @@ export default function CadastroPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {suppliers.map((supplier) => (
                     <div
                       key={supplier.id}
                       className="bg-card p-3 rounded-lg flex items-center justify-between border"
                     >
-                      <div className="flex items-center gap-3">
-                        <span>{supplier.name}</span>
-                        <Badge variant="outline" className="ml-2">
+                      <div className="flex items-center gap-3 flex-1">
+                        <span className="truncate">{supplier.name}</span>
+                        <Badge variant="outline" className="shrink-0">
                           {supplier.type === 'supplier' ? 'Fornecedor' : supplier.type === 'customer' ? 'Cliente' : 'Ambos'}
                         </Badge>
                       </div>
@@ -569,35 +646,6 @@ export default function CadastroPage() {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplier-name" className="text-right">
-                    Nome
-                  </Label>
-                  <Input
-                    id="supplier-name"
-                    value={newSupplierName}
-                    onChange={(e) => setNewSupplierName(e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplier-type" className="text-right">
-                    Tipo
-                  </Label>
-                  <Select
-                    value={newSupplierType}
-                    onValueChange={(value: 'supplier' | 'customer' | 'client' | 'both') => setNewSupplierType(value)}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="supplier">Fornecedor</SelectItem>
-                      <SelectItem value="customer">Cliente</SelectItem>
-                      <SelectItem value="both">Ambos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="supplier-document" className="text-right">
                     Documento
@@ -715,10 +763,10 @@ export default function CadastroPage() {
                       key={method.id}
                       className="bg-card p-3 rounded-lg flex items-center justify-between border"
                     >
-                      <div className="flex items-center gap-3">
-                        <span>{method.name}</span>
+                      <div className="flex items-center gap-3 flex-1">
+                        <span className="truncate">{method.name}</span>
                         {method.is_default && (
-                          <Badge variant="outline" className="ml-2">Padrão</Badge>
+                          <Badge variant="outline" className="shrink-0">Padrão</Badge>
                         )}
                       </div>
                       <div>
@@ -812,3 +860,32 @@ export default function CadastroPage() {
     </div>
   );
 }
+                  <Label htmlFor="supplier-name" className="text-right">
+                    Nome
+                  </Label>
+                  <Input
+                    id="supplier-name"
+                    value={newSupplierName}
+                    onChange={(e) => setNewSupplierName(e.target.value)}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplier-type" className="text-right">
+                    Tipo
+                  </Label>
+                  <Select
+                    value={newSupplierType}
+                    onValueChange={(value: 'supplier' | 'customer' | 'client' | 'both') => setNewSupplierType(value)}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="supplier">Fornecedor</SelectItem>
+                      <SelectItem value="customer">Cliente</SelectItem>
+                      <SelectItem value="both">Ambos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
