@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Circle,
@@ -23,7 +22,19 @@ import {
   Scissors,
   Shirt,
   Plane,
-  LucideProps
+  LucideProps,
+  Heart,
+  Gamepad2,
+  Banknote,
+  ShoppingCart,
+  Zap,
+  Phone,
+  Wifi,
+  Droplet,
+  Building,
+  Wrench,
+  Baby,
+  PiggyBank
 } from 'lucide-react';
 
 interface IconSelectorProps {
@@ -40,31 +51,43 @@ type LucideIconComponent = React.ForwardRefExoticComponent<
 const icons: { name: string, component: LucideIconComponent }[] = [
   { name: 'circle', component: Circle },
   { name: 'home', component: Home },
-  { name: 'shopping-bag', component: ShoppingBag },
   { name: 'car', component: Car },
+  { name: 'utensils', component: Utensils },
+  { name: 'heart', component: Heart },
+  { name: 'book', component: BookOpen },
+  { name: 'gamepad-2', component: Gamepad2 },
+  { name: 'banknote', component: Banknote },
+  { name: 'briefcase', component: Briefcase },
+  { name: 'trending-up', component: TrendingUp },
+  { name: 'shopping-cart', component: ShoppingCart },
+  { name: 'plane', component: Plane },
+  { name: 'coffee', component: Coffee },
+  { name: 'gift', component: Gift },
+  { name: 'zap', component: Zap },
+  { name: 'phone', component: Phone },
+  { name: 'wifi', component: Wifi },
+  { name: 'droplet', component: Droplet },
+  { name: 'building', component: Building },
+  { name: 'shirt', component: Shirt },
+  { name: 'wrench', component: Wrench },
+  { name: 'baby', component: Baby },
+  { name: 'piggy-bank', component: PiggyBank },
+  { name: 'credit-card', component: CreditCard },
+  { name: 'shopping-bag', component: ShoppingBag },
   { name: 'film', component: FilmIcon },
   { name: 'activity', component: Activity },
-  { name: 'book', component: BookOpen },
   { name: 'file-text', component: FileText },
   { name: 'more-horizontal', component: MoreHorizontal },
-  { name: 'briefcase', component: Briefcase },
   { name: 'laptop', component: Laptop },
-  { name: 'trending-up', component: TrendingUp },
-  { name: 'gift', component: Gift },
   { name: 'plus-circle', component: PlusCircle },
-  { name: 'utensils', component: Utensils },
   { name: 'dollar-sign', component: DollarSign },
-  { name: 'credit-card', component: CreditCard },
-  { name: 'coffee', component: Coffee },
   { name: 'smartphone', component: Smartphone },
-  { name: 'scissors', component: Scissors },
-  { name: 'shirt', component: Shirt },
-  { name: 'plane', component: Plane }
+  { name: 'scissors', component: Scissors }
 ];
 
 const IconSelector: React.FC<IconSelectorProps> = ({ selectedIcon, onSelectIcon }) => {
   return (
-    <div className="grid grid-cols-6 gap-2 py-2">
+    <div className="grid grid-cols-6 gap-2 py-2 max-h-48 overflow-y-auto">
       {icons.map((icon) => {
         const IconComponent = icon.component;
         return (
@@ -72,8 +95,10 @@ const IconSelector: React.FC<IconSelectorProps> = ({ selectedIcon, onSelectIcon 
             key={icon.name}
             type="button"
             onClick={() => onSelectIcon(icon.name)}
-            className={`w-8 h-8 rounded-md flex items-center justify-center ${
-              selectedIcon === icon.name ? 'bg-primary text-primary-foreground' : 'bg-muted'
+            className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
+              selectedIcon === icon.name 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-muted hover:bg-muted/80'
             }`}
           >
             <IconComponent size={16} />
@@ -85,3 +110,4 @@ const IconSelector: React.FC<IconSelectorProps> = ({ selectedIcon, onSelectIcon 
 };
 
 export default IconSelector;
+
