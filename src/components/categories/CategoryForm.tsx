@@ -255,3 +255,5 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
 };
 
 export default CategoryForm;
+
+
