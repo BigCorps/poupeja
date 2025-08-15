@@ -1,76 +1,55 @@
-
 import React from 'react';
 import { 
-  Circle,
-  Home, 
-  ShoppingBag, 
-  Car, 
-  FilmIcon, 
-  Activity, 
-  BookOpen, 
-  FileText, 
-  MoreHorizontal,
-  Briefcase,
-  Laptop,
-  TrendingUp,
-  Gift,
-  PlusCircle,
-  Utensils,
-  DollarSign,
-  CreditCard,
-  Coffee,
-  Smartphone,
-  Scissors,
-  Shirt,
-  Plane,
-  LucideProps
+  Home, Car, Utensils, Heart, Book, Gamepad2, 
+  Circle, Banknote, Briefcase, TrendingUp, 
+  ShoppingCart, Plane, Coffee, Gift,
+  Zap, Phone, Wifi, Droplet, Building,
+  Shirt, Wrench, Baby, PiggyBank, CreditCard
 } from 'lucide-react';
 
 interface CategoryIconProps {
-  icon: string;
+  icon: string | null;
   color: string;
-  size?: number;
+  className?: string;
 }
 
-// Define a type that matches the Lucide components structure
-type LucideIconComponent = React.ForwardRefExoticComponent<
-  Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>
->;
-
-// Create the icon map with the correct type
-const iconMap: Record<string, LucideIconComponent> = {
-  'circle': Circle,
-  'home': Home,
-  'shopping-bag': ShoppingBag,
-  'car': Car,
-  'film': FilmIcon,
-  'activity': Activity,
-  'book': BookOpen,
-  'file-text': FileText,
-  'more-horizontal': MoreHorizontal,
-  'briefcase': Briefcase,
-  'laptop': Laptop,
+const iconMap = {
+  // Ícones padrão do sistema
+  home: Home,
+  car: Car,
+  utensils: Utensils,
+  heart: Heart,
+  book: Book,
+  'gamepad-2': Gamepad2,
+  banknote: Banknote,
+  briefcase: Briefcase,
   'trending-up': TrendingUp,
-  'gift': Gift,
-  'plus-circle': PlusCircle,
-  'utensils': Utensils,
-  'dollar-sign': DollarSign,
+  circle: Circle,
+  
+  // Ícones adicionais
+  'shopping-cart': ShoppingCart,
+  plane: Plane,
+  coffee: Coffee,
+  gift: Gift,
+  zap: Zap,
+  phone: Phone,
+  wifi: Wifi,
+  droplet: Droplet,
+  building: Building,
+  shirt: Shirt,
+  wrench: Wrench,
+  baby: Baby,
+  'piggy-bank': PiggyBank,
   'credit-card': CreditCard,
-  'coffee': Coffee,
-  'smartphone': Smartphone,
-  'scissors': Scissors,
-  'shirt': Shirt,
-  'plane': Plane
 };
 
-const CategoryIcon: React.FC<CategoryIconProps> = ({ icon, color, size = 20 }) => {
-  const IconComponent = iconMap[icon] || Circle;
-
+export default function CategoryIcon({ icon, color, className = "w-4 h-4" }: CategoryIconProps) {
+  const IconComponent = icon && iconMap[icon as keyof typeof iconMap] ? iconMap[icon as keyof typeof iconMap] : Circle;
+  
   return (
-    <div className="flex items-center justify-center rounded-full" style={{ backgroundColor: color, width: size + 10, height: size + 10 }}>
-      <IconComponent className="text-white" size={size} />
-    </div>
+    <IconComponent 
+      className={className}
+      style={{ color }}
+    />
   );
-};
-
-export default CategoryIcon;
+}
