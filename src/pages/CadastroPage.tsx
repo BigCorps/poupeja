@@ -67,6 +67,21 @@ export default function CadastroPage() {
     setCategoryFormOpen(true);
   };
 
+  const handleAddSubcategory = (parentCategory: Category) => {
+    setEditingCategory({
+      id: '',
+      name: '',
+      type: parentCategory.type,
+      color: parentCategory.color,
+      icon: parentCategory.icon,
+      parent_id: parentCategory.id,
+      is_default: false,
+      created_at: '',
+      user_id: ''
+    } as Category);
+    setCategoryFormOpen(true);
+  };
+
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
     setCategoryFormOpen(true);
@@ -74,7 +89,7 @@ export default function CadastroPage() {
 
   const handleSaveCategory = useCallback(async (category: Omit<Category, 'id'> | Category) => {
     try {
-      if ((category as Category).id) {
+      if ((category as Category).id && (category as Category).id !== '') {
         await updateCategory(category as Category);
         toast({ title: 'Sucesso', description: 'Categoria atualizada com sucesso' });
       } else {
@@ -132,10 +147,21 @@ export default function CadastroPage() {
 
   // ✅ CORRIGIDO: Função para renderizar categorias em grade
   const renderCategoriesGrid = useCallback(() => {
-    // Filtrar categorias principais (sem parent_id) do tipo selecionado
-    const mainCategories = categories.filter(cat => 
-      cat.parent_id === null && cat.type === categoryType
-    );
+    console.log('Todas as categorias:', categories);
+    console.log('Tipo selecionado:', categoryType);
+    
+    // ✅ CORREÇÃO: Filtrar categorias principais (sem parent_id) do tipo selecionado
+    // Verificar se o tipo da categoria corresponde ao tipo selecionado OU se é uma categoria padrão
+    const mainCategories = categories.filter(cat => {
+      const isMainCategory = cat.parent_id === null || cat.parent_id === undefined;
+      const isCorrectType = cat.type === categoryType;
+      
+      console.log(`Categoria: ${cat.name}, parent_id: ${cat.parent_id}, type: ${cat.type}, isMain: ${isMainCategory}, isCorrectType: ${isCorrectType}`);
+      
+      return isMainCategory && isCorrectType;
+    });
+
+    console.log('Categorias principais filtradas:', mainCategories);
 
     // Função para obter subcategorias
     const getSubcategories = (parentId: string) => {
@@ -201,6 +227,10 @@ export default function CadastroPage() {
                       <DropdownMenuItem onClick={() => handleEditCategory(category)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAddSubcategory(category)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Adicionar Subcategoria
                       </DropdownMenuItem>
                       {!category.is_default && (
                         <DropdownMenuItem
@@ -271,7 +301,7 @@ export default function CadastroPage() {
         })}
       </div>
     );
-  }, [categories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory]);
+  }, [categories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory, handleAddSubcategory]);
 
   // ===================================================
   // ✅ ESTADO E FUNÇÕES PARA FORMAS DE PAGAMENTO
@@ -407,11 +437,10 @@ export default function CadastroPage() {
       const supplierData = {
         name: newSupplierName,
         type: newSupplierType,
-        document: newSupplierDocument.trim() || null,
-        email: newSupplierEmail.trim() || null,
-        phone: newSupplierPhone.trim() || null,
-        address: newSupplierAddress.trim() || null,
-        contact_person: null
+        document: newSupplierDocument || undefined,
+        email: newSupplierEmail || undefined,
+        phone: newSupplierPhone || undefined,
+        address: newSupplierAddress || undefined,
       };
 
       if (editingSupplier) {
@@ -464,51 +493,50 @@ export default function CadastroPage() {
     }
   }, [supplierToDelete, deleteSupplier, getSuppliers, toast]);
 
+  // ===================================================
+  // ✅ RENDER PRINCIPAL
+  // ===================================================
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Cadastros</h1>
-        <p className="text-muted-foreground">
-          Gerencie categorias, fornecedores e métodos de pagamento
-        </p>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Cadastros</h1>
+          <p className="text-muted-foreground">
+            Gerencie suas categorias, fornecedores e métodos de pagamento
+          </p>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="categorias" className="flex items-center space-x-2">
-            <Tag className="w-4 h-4" />
-            <span>Plano de Contas</span>
+          <TabsTrigger value="categorias" className="flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            Plano de Contas
           </TabsTrigger>
-          <TabsTrigger value="fornecedores" className="flex items-center space-x-2">
-            <User className="w-4 h-4" />
-            <span>Fornecedores/Clientes</span>
+          <TabsTrigger value="fornecedores" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Fornecedores/Clientes
           </TabsTrigger>
-          <TabsTrigger value="pagamentos" className="flex items-center space-x-2">
-            <CreditCard className="w-4 h-4" />
-            <span>Formas de Pagamento</span>
+          <TabsTrigger value="pagamentos" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Formas de Pagamento
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab Categorias */}
+        {/* ===================================================
+            ✅ TAB CATEGORIAS
+            =================================================== */}
         <TabsContent value="categorias" className="space-y-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Plano de Contas</CardTitle>
-                <CardDescription>
-                  Organize suas receitas e despesas em categorias
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Select value={categoryType} onValueChange={(value: 'expense' | 'income') => setCategoryType(value)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="expense">Despesas</SelectItem>
-                    <SelectItem value="income">Receitas</SelectItem>
-                  </SelectContent>
-                </Select>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Plano de Contas</CardTitle>
+                  <CardDescription>
+                    Organize suas receitas e despesas em categorias
+                  </CardDescription>
+                </div>
                 <Button onClick={handleAddCategory}>
                   <Plus className="mr-2 h-4 w-4" />
                   Nova Categoria
@@ -516,102 +544,78 @@ export default function CadastroPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <div className="space-y-4">
+                {/* Filtro por tipo */}
+                <div className="flex items-center gap-4">
+                  <Label>Tipo:</Label>
+                  <Select value={categoryType} onValueChange={(value: 'expense' | 'income') => setCategoryType(value)}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="expense">Despesas</SelectItem>
+                      <SelectItem value="income">Receitas</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              ) : (
-                renderCategoriesGrid()
-              )}
+
+                {/* Grid de categorias */}
+                {isLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Carregando categorias...</p>
+                  </div>
+                ) : (
+                  renderCategoriesGrid()
+                )}
+              </div>
             </CardContent>
           </Card>
-
-          <CategoryForm
-            open={categoryFormOpen}
-            onOpenChange={setCategoryFormOpen}
-            initialData={editingCategory}
-            onSave={handleSaveCategory}
-            categoryType={categoryType}
-          />
-
-          <AlertDialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmação de Exclusão</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir a categoria "{categoryToDelete?.name}"? Esta ação não pode ser desfeita.
-                  {categoryToDelete?.is_default && (
-                    <p className="mt-2 text-destructive font-medium">
-                      Esta é uma categoria padrão e não pode ser excluída.
-                    </p>
-                  )}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={confirmDeleteCategory}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={categoryToDelete?.is_default}
-                >
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </TabsContent>
 
-        {/* Tab Fornecedores */}
+        {/* ===================================================
+            ✅ TAB FORNECEDORES/CLIENTES
+            =================================================== */}
         <TabsContent value="fornecedores" className="space-y-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Fornecedores / Clientes</CardTitle>
+                  <CardTitle>Fornecedores e Clientes</CardTitle>
                   <CardDescription>
                     Gerencie seus fornecedores e clientes
                   </CardDescription>
                 </div>
                 <Button onClick={handleAddSupplier}>
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   Novo Fornecedor/Cliente
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Carregando fornecedores...</p>
                 </div>
               ) : suppliers.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">Nenhum fornecedor/cliente cadastrado. Clique em "Novo Fornecedor/Cliente" para começar.</p>
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={handleAddSupplier}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Fornecedor/Cliente
-                  </Button>
+                  <p className="text-muted-foreground">
+                    Nenhum fornecedor/cliente cadastrado. Clique em "Novo Fornecedor/Cliente" para começar.
+                  </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {suppliers.map((supplier) => (
-                    <div
-                      key={supplier.id}
-                      className="bg-card p-3 rounded-lg flex items-center justify-between border"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <span className="truncate">{supplier.name}</span>
-                        <Badge variant="outline" className="shrink-0">
-                          {supplier.type === 'supplier' ? 'Fornecedor' : supplier.type === 'customer' ? 'Cliente' : 'Ambos'}
-                        </Badge>
-                      </div>
-                      <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {suppliers.map(supplier => (
+                    <div key={supplier.id} className="border rounded-lg p-4 bg-card">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-sm truncate" title={supplier.name}>
+                            {supplier.name}
+                          </span>
+                        </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -630,201 +634,88 @@ export default function CadastroPage() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <div>Tipo: {supplier.type === 'supplier' ? 'Fornecedor' : supplier.type === 'customer' ? 'Cliente' : supplier.type === 'client' ? 'Cliente' : 'Ambos'}</div>
+                        {supplier.document && <div>Doc: {supplier.document}</div>}
+                        {supplier.email && <div>Email: {supplier.email}</div>}
+                        {supplier.phone && <div>Tel: {supplier.phone}</div>}
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </CardContent>
           </Card>
-
-          <AlertDialog open={supplierFormOpen} onOpenChange={setSupplierFormOpen}>
-            <AlertDialogContent className="sm:max-w-[600px]">
-              <AlertDialogHeader>
-                <AlertDialogTitle>{editingSupplier ? 'Editar Fornecedor/Cliente' : 'Adicionar Fornecedor/Cliente'}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {editingSupplier ? 'Edite os detalhes do fornecedor/cliente.' : 'Preencha os detalhes para adicionar um novo fornecedor/cliente.'}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplier-name" className="text-right">
-                    Nome
-                  </Label>
-                  <Input
-                    id="supplier-name"
-                    value={newSupplierName}
-                    onChange={(e) => setNewSupplierName(e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplier-type" className="text-right">
-                    Tipo
-                  </Label>
-                  <Select
-                    value={newSupplierType}
-                    onValueChange={(value: 'supplier' | 'customer' | 'client' | 'both') => setNewSupplierType(value)}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="supplier">Fornecedor</SelectItem>
-                      <SelectItem value="customer">Cliente</SelectItem>
-                      <SelectItem value="both">Ambos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplier-document" className="text-right">
-                    Documento
-                  </Label>
-                  <Input
-                    id="supplier-document"
-                    value={newSupplierDocument}
-                    onChange={(e) => setNewSupplierDocument(e.target.value)}
-                    className="col-span-3"
-                    placeholder="CPF/CNPJ"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplier-email" className="text-right">
-                    Email
-                  </Label>
-                  <Input
-                    id="supplier-email"
-                    value={newSupplierEmail}
-                    onChange={(e) => setNewSupplierEmail(e.target.value)}
-                    className="col-span-3"
-                    type="email"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplier-phone" className="text-right">
-                    Telefone
-                  </Label>
-                  <Input
-                    id="supplier-phone"
-                    value={newSupplierPhone}
-                    onChange={(e) => setNewSupplierPhone(e.target.value)}
-                    className="col-span-3"
-                    type="tel"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplier-address" className="text-right">
-                    Endereço
-                  </Label>
-                  <Input
-                    id="supplier-address"
-                    value={newSupplierAddress}
-                    onChange={(e) => setNewSupplierAddress(e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-              </div>
-              <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setSupplierFormOpen(false)}>
-                  Cancelar
-                </AlertDialogCancel>
-                <AlertDialogAction onClick={handleSaveSupplier}>
-                  {editingSupplier ? 'Salvar Alterações' : 'Adicionar'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <AlertDialog open={deleteSupplierDialogOpen} onOpenChange={setDeleteSupplierDialogOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmação de Exclusão</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir o fornecedor/cliente "{supplierToDelete?.name}"? Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={confirmDeleteSupplier}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </TabsContent>
 
-        {/* Tab Formas de Pagamento */}
+        {/* ===================================================
+            ✅ TAB FORMAS DE PAGAMENTO
+            =================================================== */}
         <TabsContent value="pagamentos" className="space-y-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Formas de Pagamento</CardTitle>
-                <CardDescription>Gerencie suas formas de pagamento</CardDescription>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Formas de Pagamento</CardTitle>
+                  <CardDescription>
+                    Gerencie suas formas de pagamento
+                  </CardDescription>
+                </div>
+                <Button onClick={handleAddPaymentMethod}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nova Forma de Pagamento
+                </Button>
               </div>
-              <Button onClick={handleAddPaymentMethod}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Forma de Pagamento
-              </Button>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Carregando formas de pagamento...</p>
                 </div>
               ) : allPaymentMethods.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">Nenhuma forma de pagamento cadastrada. Clique em "Nova Forma de Pagamento" para começar.</p>
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={handleAddPaymentMethod}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Forma de Pagamento
-                  </Button>
+                  <p className="text-muted-foreground">
+                    Nenhuma forma de pagamento cadastrada. Clique em "Nova Forma de Pagamento" para começar.
+                  </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {allPaymentMethods.map((method) => (
-                    <div
-                      key={method.id}
-                      className="bg-card p-3 rounded-lg flex items-center justify-between border"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <span className="truncate">{method.name}</span>
-                        {method.is_default && (
-                          <Badge variant="outline" className="shrink-0">Padrão</Badge>
-                        )}
-                      </div>
-                      <div>
-                        {method.is_user_defined ? (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditPaymentMethod(method as PaymentMethod)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDeletePaymentMethod(method as PaymentMethod)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        ) : (
-                          <Button variant="ghost" size="sm" disabled>
-                            {/* Método Padrão */}
-                          </Button>
-                        )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {allPaymentMethods.map(paymentMethod => (
+                    <div key={paymentMethod.id} className="border rounded-lg p-4 bg-card">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-sm truncate" title={paymentMethod.name}>
+                            {paymentMethod.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {paymentMethod.is_default && (
+                            <Badge variant="outline" className="text-xs">Padrão</Badge>
+                          )}
+                          {(paymentMethod as any).is_user_defined && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditPaymentMethod(paymentMethod as PaymentMethod)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDeletePaymentMethod(paymentMethod as PaymentMethod)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -832,60 +723,196 @@ export default function CadastroPage() {
               )}
             </CardContent>
           </Card>
-
-          <AlertDialog open={paymentFormOpen} onOpenChange={setPaymentFormOpen}>
-            <AlertDialogContent className="sm:max-w-[425px]">
-              <AlertDialogHeader>
-                <AlertDialogTitle>{editingPaymentMethod ? 'Editar Forma de Pagamento' : 'Adicionar Forma de Pagamento'}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {editingPaymentMethod ? 'Edite os detalhes da forma de pagamento.' : 'Preencha os detalhes para adicionar uma nova forma de pagamento.'}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Nome
-                  </Label>
-                  <Input
-                    id="name"
-                    value={newPaymentMethodName}
-                    onChange={(e) => setNewPaymentMethodName(e.target.value)}
-                    className="col-span-3"
-                  />
-                </div>
-              </div>
-              <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setPaymentFormOpen(false)}>
-                  Cancelar
-                </AlertDialogCancel>
-                <AlertDialogAction onClick={handleSavePaymentMethod}>
-                  {editingPaymentMethod ? 'Salvar Alterações' : 'Adicionar'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <AlertDialog open={deletePaymentMethodDialogOpen} onOpenChange={setDeletePaymentMethodDialogOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmação de Exclusão</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir a forma de pagamento "{paymentMethodToDelete?.name}"? Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={confirmDeletePaymentMethod}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </TabsContent>
       </Tabs>
+
+      {/* ===================================================
+          ✅ DIALOGS E MODAIS
+          =================================================== */}
+
+      {/* Modal de Categoria */}
+      <CategoryForm
+        open={categoryFormOpen}
+        onOpenChange={setCategoryFormOpen}
+        initialData={editingCategory}
+        onSave={handleSaveCategory}
+        categoryType={categoryType}
+        parentId={editingCategory?.parent_id}
+        parentName={editingCategory?.parent_id ? categories.find(c => c.id === editingCategory.parent_id)?.name : null}
+      />
+
+      {/* Dialog de confirmação para deletar categoria */}
+      <AlertDialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a categoria "{categoryToDelete?.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCategory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de Forma de Pagamento */}
+      <AlertDialog open={paymentFormOpen} onOpenChange={setPaymentFormOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {editingPaymentMethod ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {editingPaymentMethod ? 'Edite os dados da forma de pagamento.' : 'Preencha os dados da nova forma de pagamento.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="payment-name" className="text-right">Nome</Label>
+              <Input
+                id="payment-name"
+                value={newPaymentMethodName}
+                onChange={(e) => setNewPaymentMethodName(e.target.value)}
+                className="col-span-3"
+                placeholder="Ex: Cartão de Crédito"
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSavePaymentMethod}>
+              {editingPaymentMethod ? 'Salvar' : 'Criar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de confirmação para deletar forma de pagamento */}
+      <AlertDialog open={deletePaymentMethodDialogOpen} onOpenChange={setDeletePaymentMethodDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a forma de pagamento "{paymentMethodToDelete?.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeletePaymentMethod} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de Fornecedor/Cliente */}
+      <AlertDialog open={supplierFormOpen} onOpenChange={setSupplierFormOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {editingSupplier ? 'Editar Fornecedor/Cliente' : 'Novo Fornecedor/Cliente'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {editingSupplier ? 'Edite os dados do fornecedor/cliente.' : 'Preencha os dados do novo fornecedor/cliente.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="supplier-name" className="text-right">Nome</Label>
+              <Input
+                id="supplier-name"
+                value={newSupplierName}
+                onChange={(e) => setNewSupplierName(e.target.value)}
+                className="col-span-3"
+                placeholder="Nome do fornecedor/cliente"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="supplier-type" className="text-right">Tipo</Label>
+              <Select value={newSupplierType} onValueChange={(value: 'supplier' | 'customer' | 'client' | 'both') => setNewSupplierType(value)}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="supplier">Fornecedor</SelectItem>
+                  <SelectItem value="customer">Cliente</SelectItem>
+                  <SelectItem value="client">Cliente</SelectItem>
+                  <SelectItem value="both">Ambos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="supplier-document" className="text-right">Documento</Label>
+              <Input
+                id="supplier-document"
+                value={newSupplierDocument}
+                onChange={(e) => setNewSupplierDocument(e.target.value)}
+                className="col-span-3"
+                placeholder="CPF/CNPJ"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="supplier-email" className="text-right">Email</Label>
+              <Input
+                id="supplier-email"
+                type="email"
+                value={newSupplierEmail}
+                onChange={(e) => setNewSupplierEmail(e.target.value)}
+                className="col-span-3"
+                placeholder="email@exemplo.com"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="supplier-phone" className="text-right">Telefone</Label>
+              <Input
+                id="supplier-phone"
+                value={newSupplierPhone}
+                onChange={(e) => setNewSupplierPhone(e.target.value)}
+                className="col-span-3"
+                placeholder="(11) 99999-9999"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="supplier-address" className="text-right">Endereço</Label>
+              <Input
+                id="supplier-address"
+                value={newSupplierAddress}
+                onChange={(e) => setNewSupplierAddress(e.target.value)}
+                className="col-span-3"
+                placeholder="Endereço completo"
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveSupplier}>
+              {editingSupplier ? 'Salvar' : 'Criar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de confirmação para deletar fornecedor/cliente */}
+      <AlertDialog open={deleteSupplierDialogOpen} onOpenChange={setDeleteSupplierDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o fornecedor/cliente "{supplierToDelete?.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteSupplier} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
