@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { Plus, Edit2, Trash2, Save, X, Tag, User, CreditCard } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Plus, Edit, MoreVertical, Trash2, Tag, User, CreditCard, ChevronDown, ChevronRight, Save, X } from 'lucide-react';
 import { useAppContext } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
+import CategoryForm from '@/components/categories/CategoryForm';
+import CategoryIcon from '@/components/categories/CategoryIcon';
+
+import { Category } from '@/types/categories';
+import { PaymentMethod, DefaultPaymentMethod, Supplier } from '@/types';
 
 const CATEGORY_COLORS = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
@@ -19,230 +27,362 @@ export default function CadastroPage() {
   const { toast } = useToast();
   const {
     categories,
+    paymentMethods,
+    defaultPaymentMethods,
     suppliers,
-    allPaymentMethods,
+    getCategories,
     addCategory,
     updateCategory,
     deleteCategory,
-    addSupplier,
-    updateSupplier,
-    deleteSupplier,
+    getPaymentMethods,
+    getDefaultPaymentMethods,
     addPaymentMethod,
     updatePaymentMethod,
     deletePaymentMethod,
+    getSuppliers,
+    addSupplier,
+        updateSupplier,
+    deleteSupplier,
     isLoading
   } = useAppContext();
 
   const [activeTab, setActiveTab] = useState('categorias');
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [showSupplierForm, setShowSupplierForm] = useState(false);
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
 
-  const [categoryForm, setCategoryForm] = useState({
-    name: '', type: 'expense', color: '#3B82F6', parent_id: null
-  });
-  const [supplierForm, setSupplierForm] = useState({
-    name: '', type: 'supplier', document: '', email: '', phone: '', address: ''
-  });
-  const [paymentForm, setPaymentForm] = useState({
-    name: '', is_default: false
-  });
+  // ===================================================
+  // ✅ ESTADO E FUNÇÕES PARA CATEGORIAS
+  // ===================================================
+  const [categoryFormOpen, setCategoryFormOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryType, setCategoryType] = useState<'expense' | 'income'>('expense');
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  const handleSaveCategory = useCallback(async () => {
-    if (!categoryForm.name.trim()) {
-      toast({ title: "Erro", description: "Nome da categoria é obrigatório", variant: "destructive" });
-      return;
-    }
-    
+  useEffect(() => {
+    getCategories();
+  }, [getCategories]);
+
+  const handleAddCategory = () => {
+    setEditingCategory(null);
+    setCategoryFormOpen(true);
+  };
+
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setCategoryFormOpen(true);
+  };
+
+  const handleSaveCategory = useCallback(async (category: Omit<Category, 'id'> | Category) => {
     try {
-      if (editingItem) {
-        await updateCategory({ ...categoryForm, id: editingItem.id });
-        toast({ title: "Sucesso", description: "Categoria atualizada com sucesso" });
+      if ((category as Category).id) {
+        await updateCategory(category as Category);
+        toast({ title: 'Sucesso', description: 'Categoria atualizada com sucesso' });
       } else {
-        await addCategory(categoryForm);
-        toast({ title: "Sucesso", description: "Categoria criada com sucesso" });
+        await addCategory(category as Omit<Category, 'id' | 'created_at' | 'user_id'>);
+        toast({ title: 'Sucesso', description: 'Categoria criada com sucesso' });
       }
-      resetCategoryForm();
-    } catch (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      setCategoryFormOpen(false);
+      setEditingCategory(null);
+      getCategories(); // Re-fetch para atualizar a lista
+    } catch (error: any) {
+      console.error('Erro ao salvar categoria:', error);
+      toast({ title: 'Erro', description: error.message || 'Erro ao salvar categoria', variant: 'destructive' });
     }
-  }, [categoryForm, editingItem, updateCategory, addCategory, toast]);
+  }, [addCategory, updateCategory, getCategories, toast]);
 
-  const handleDeleteCategory = useCallback(async (id) => {
-    try {
-      await deleteCategory(id);
-      toast({ title: "Sucesso", description: "Categoria excluída com sucesso" });
-    } catch (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+  const handleDeleteCategory = (category: Category) => {
+    setCategoryToDelete(category);
+    setDeleteCategoryDialogOpen(true);
+  };
+
+  const confirmDeleteCategory = useCallback(async () => {
+    if (categoryToDelete) {
+      try {
+        await deleteCategory(categoryToDelete.id);
+        toast({
+          title: 'Sucesso',
+          description: `${categoryToDelete.name} excluída com sucesso`,
+        });
+        getCategories(); // Re-fetch para atualizar a lista
+      } catch (error: any) {
+        console.error('Erro ao deletar categoria:', error);
+        toast({
+          title: 'Erro',
+          description: error.message || 'Erro ao deletar categoria',
+          variant: 'destructive',
+        });
+      } finally {
+        setDeleteCategoryDialogOpen(false);
+        setCategoryToDelete(null);
+      }
     }
-  }, [deleteCategory, toast]);
-  
-  const handleSaveSupplier = useCallback(async () => {
-    if (!supplierForm.name.trim()) {
-      toast({ title: "Erro", description: "Nome do fornecedor/cliente é obrigatório", variant: "destructive" });
-      return;
-    }
-    
-    try {
-      if (editingItem) {
-        await updateSupplier({ ...supplierForm, id: editingItem.id });
-        toast({ title: "Sucesso", description: "Fornecedor/Cliente atualizado com sucesso" });
+  }, [categoryToDelete, deleteCategory, getCategories, toast]);
+
+  const toggleExpandCategory = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
       } else {
-        await addSupplier(supplierForm);
-        toast({ title: "Sucesso", description: "Fornecedor/Cliente criado com sucesso" });
+        newSet.add(categoryId);
       }
-      resetSupplierForm();
-    } catch (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    }
-  }, [supplierForm, editingItem, updateSupplier, addSupplier, toast]);
+      return newSet;
+    });
+  };
 
-  const handleDeleteSupplier = useCallback(async (id) => {
-    try {
-      await deleteSupplier(id);
-      toast({ title: "Sucesso", description: "Fornecedor/Cliente excluído com sucesso" });
-    } catch (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    }
-  }, [deleteSupplier, toast]);
-  
-  const handleSavePayment = useCallback(async () => {
-    if (!paymentForm.name.trim()) {
-      toast({ title: "Erro", description: "Nome do método de pagamento é obrigatório", variant: "destructive" });
-      return;
-    }
-    
-    try {
-      if (editingItem) {
-        await updatePaymentMethod({ ...paymentForm, id: editingItem.id });
-        toast({ title: "Sucesso", description: "Método de pagamento atualizado com sucesso" });
-      } else {
-        await addPaymentMethod(paymentForm);
-        toast({ title: "Sucesso", description: "Método de pagamento criado com sucesso" });
-      }
-      resetPaymentForm();
-    } catch (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    }
-  }, [paymentForm, editingItem, updatePaymentMethod, addPaymentMethod, toast]);
+  const renderCategoryTree = useCallback((parentId: string | null, level: number) => {
+    const filteredCategories = categories.filter(cat => cat.parent_id === parentId && cat.type === categoryType);
 
-  const handleDeletePayment = useCallback(async (id) => {
-    // Não permitir deletar métodos padrão
-    const method = allPaymentMethods.find(pm => pm.id === id);
-    if (method && method.user_id === 'default') {
-      toast({ title: "Erro", description: "Não é possível deletar métodos de pagamento padrão", variant: "destructive" });
-      return;
-    }
+    return filteredCategories.map(category => {
+      const hasSubcategories = categories.some(subCat => subCat.parent_id === category.id);
+      const isExpanded = expandedCategories.has(category.id);
 
-    try {
-      await deletePaymentMethod(id);
-      toast({ title: "Sucesso", description: "Método de pagamento excluído com sucesso" });
-    } catch (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    }
-  }, [deletePaymentMethod, toast, allPaymentMethods]);
-
-  const resetCategoryForm = useCallback(() => {
-    setCategoryForm({ name: '', type: 'expense', color: '#3B82F6', parent_id: null });
-    setShowCategoryForm(false);
-    setEditingItem(null);
-  }, []);
-
-  const handleEditCategory = useCallback((category) => {
-    setCategoryForm(category);
-    setEditingItem(category);
-    setShowCategoryForm(true);
-  }, []);
-
-  const resetSupplierForm = useCallback(() => {
-    setSupplierForm({ name: '', type: 'supplier', document: '', email: '', phone: '', address: '' });
-    setShowSupplierForm(false);
-    setEditingItem(null);
-  }, []);
-
-  const handleEditSupplier = useCallback((supplier) => {
-    setSupplierForm(supplier);
-    setEditingItem(supplier);
-    setShowSupplierForm(true);
-  }, []);
-
-  const resetPaymentForm = useCallback(() => {
-    setPaymentForm({ name: '', is_default: false });
-    setShowPaymentForm(false);
-    setEditingItem(null);
-  }, []);
-
-  const handleEditPayment = useCallback((payment) => {
-    // Não permitir editar métodos padrão
-    if (payment.user_id === 'default') {
-      toast({ title: "Aviso", description: "Métodos de pagamento padrão não podem ser editados", variant: "default" });
-      return;
-    }
-    
-    setPaymentForm(payment);
-    setEditingItem(payment);
-    setShowPaymentForm(true);
-  }, [toast]);
-
-  const renderCategoryTree = (parentId = null, level = 0) => {
-    if (!categories || !Array.isArray(categories) || categories.length === 0) {
-      return null;
-    }
-
-    const filteredCategories = categories.filter(cat => cat.parent_id === parentId);
-
-    return filteredCategories.map(category => (
-      <div key={category.id} className={`pl-${level * 6} space-y-2`}>
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div className="flex items-center space-x-3">
-              <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: category.color }}
-              />
-              <span className="font-medium">{category.name}</span>
+      return (
+        <React.Fragment key={category.id}>
+          <div
+            className={`flex items-center justify-between p-3 rounded-lg border bg-card mb-2 ${level > 0 ? `ml-${level * 4}` : ''}`}
+          >
+            <div className="flex items-center gap-3">
+              {hasSubcategories && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleExpandCategory(category.id)}
+                  className="p-0 h-auto w-auto"
+                >
+                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </Button>
+              )}
+              {!hasSubcategories && level > 0 && <div className="w-4"></div>} {/* Spacer for alignment */}
+              <CategoryIcon icon={category.icon} color={category.color} />
+              <span>{category.name}</span>
               <Badge variant={category.type === 'income' ? 'default' : 'secondary'}>
                 {category.type === 'income' ? 'Receita' : 'Despesa'}
               </Badge>
               {category.is_default && (
-                <Badge variant="outline" className="text-xs">Padrão</Badge>
+                <Badge variant="outline" className="ml-2">Padrão</Badge>
               )}
             </div>
-            <div className="flex items-center space-x-2">
-              {!category.is_default && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEditCategory(category)}
-                  >
-                    <Edit2 className="w-4 h-4" />
+            <div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteCategory(category.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </>
-              )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </DropdownMenuItem>
+                  {!category.is_default && (
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => handleDeleteCategory(category)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Excluir
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          </CardContent>
-        </Card>
-        {renderCategoryTree(category.id, level + 1)}
-      </div>
-    ));
+          </div>
+          {isExpanded && renderCategoryTree(category.id, level + 1)}
+        </React.Fragment>
+      );
+    });
+  }, [categories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory]);
+
+  // ===================================================
+  // ✅ ESTADO E FUNÇÕES PARA FORMAS DE PAGAMENTO
+  // ===================================================
+  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [paymentMethodToDelete, setPaymentMethodToDelete] = useState<PaymentMethod | null>(null);
+  const [deletePaymentMethodDialogOpen, setDeletePaymentMethodDialogOpen] = useState(false);
+  const [newPaymentMethodName, setNewPaymentMethodName] = useState('');
+
+  useEffect(() => {
+    getPaymentMethods();
+    getDefaultPaymentMethods();
+  }, [getPaymentMethods, getDefaultPaymentMethods]);
+
+  const handleAddPaymentMethod = () => {
+    setEditingPaymentMethod(null);
+    setNewPaymentMethodName('');
+    setPaymentFormOpen(true);
   };
-  
-  if (isLoading && (!categories || categories.length === 0)) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+
+  const handleEditPaymentMethod = (paymentMethod: PaymentMethod) => {
+    setEditingPaymentMethod(paymentMethod);
+    setNewPaymentMethodName(paymentMethod.name);
+    setPaymentFormOpen(true);
+  };
+
+  const handleSavePaymentMethod = useCallback(async () => {
+    if (!newPaymentMethodName.trim()) {
+      toast({ title: "Erro", description: "Nome do método de pagamento é obrigatório", variant: "destructive" });
+      return;
+    }
+
+    try {
+      if (editingPaymentMethod) {
+        await updatePaymentMethod({ ...editingPaymentMethod, name: newPaymentMethodName });
+        toast({ title: "Sucesso", description: "Método de pagamento atualizado com sucesso" });
+      } else {
+        await addPaymentMethod({ name: newPaymentMethodName, is_default: false });
+        toast({ title: "Sucesso", description: "Método de pagamento criado com sucesso" });
+      }
+      setPaymentFormOpen(false);
+      setEditingPaymentMethod(null);
+      setNewPaymentMethodName('');
+      getPaymentMethods(); // Re-fetch para atualizar a lista
+    } catch (error: any) {
+      console.error("Erro ao salvar método de pagamento:", error);
+      toast({ title: "Erro", description: error.message || "Erro ao salvar método de pagamento", variant: "destructive" });
+    }
+  }, [newPaymentMethodName, editingPaymentMethod, addPaymentMethod, updatePaymentMethod, getPaymentMethods, toast]);
+
+  const handleDeletePaymentMethod = (paymentMethod: PaymentMethod) => {
+    setPaymentMethodToDelete(paymentMethod);
+    setDeletePaymentMethodDialogOpen(true);
+  };
+
+  const confirmDeletePaymentMethod = useCallback(async () => {
+    if (paymentMethodToDelete) {
+      try {
+        await deletePaymentMethod(paymentMethodToDelete.id);
+        toast({
+          title: 'Sucesso',
+          description: `${paymentMethodToDelete.name} excluído com sucesso`,
+        });
+        getPaymentMethods(); // Re-fetch para atualizar a lista
+      } catch (error: any) {
+        console.error('Erro ao deletar método de pagamento:', error);
+        toast({
+          title: 'Erro',
+          description: error.message || 'Erro ao deletar método de pagamento',
+          variant: 'destructive',
+        });
+      } finally {
+        setDeletePaymentMethodDialogOpen(false);
+        setPaymentMethodToDelete(null);
+      }
+    }
+  }, [paymentMethodToDelete, deletePaymentMethod, getPaymentMethods, toast]);
+
+  const allPaymentMethods = useMemo(() => {
+    const userMethods = paymentMethods.map(pm => ({ ...pm, is_user_defined: true }));
+    const defaultMethods = defaultPaymentMethods.map(dpm => ({ ...dpm, is_user_defined: false }));
+    return [...userMethods, ...defaultMethods].sort((a, b) => a.name.localeCompare(b.name));
+  }, [paymentMethods, defaultPaymentMethods]);
+
+  // ===================================================
+  // ✅ ESTADO E FUNÇÕES PARA FORNECEDORES/CLIENTES
+  // ===================================================
+  const [supplierFormOpen, setSupplierFormOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
+  const [deleteSupplierDialogOpen, setDeleteSupplierDialogOpen] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierType, setNewSupplierType] = useState<'supplier' | 'customer' | 'client' | 'both'>('supplier');
+  const [newSupplierDocument, setNewSupplierDocument] = useState('');
+  const [newSupplierEmail, setNewSupplierEmail] = useState('');
+  const [newSupplierPhone, setNewSupplierPhone] = useState('');
+  const [newSupplierAddress, setNewSupplierAddress] = useState('');
+
+  useEffect(() => {
+    getSuppliers();
+  }, [getSuppliers]);
+
+  const handleAddSupplier = () => {
+    setEditingSupplier(null);
+    setNewSupplierName('');
+    setNewSupplierType('supplier');
+    setNewSupplierDocument('');
+    setNewSupplierEmail('');
+    setNewSupplierPhone('');
+    setNewSupplierAddress('');
+    setSupplierFormOpen(true);
+  };
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
+    setNewSupplierName(supplier.name);
+    setNewSupplierType(supplier.type);
+    setNewSupplierDocument(supplier.document || '');
+    setNewSupplierEmail(supplier.email || '');
+    setNewSupplierPhone(supplier.phone || '');
+    setNewSupplierAddress(supplier.address || '');
+    setSupplierFormOpen(true);
+  };
+
+  const handleSaveSupplier = useCallback(async () => {
+    if (!newSupplierName.trim()) {
+      toast({ title: "Erro", description: "Nome do fornecedor/cliente é obrigatório", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const supplierData = {
+        name: newSupplierName,
+        type: newSupplierType,
+        document: newSupplierDocument || null,
+        email: newSupplierEmail || null,
+        phone: newSupplierPhone || null,
+        address: newSupplierAddress || null,
+      };
+
+      if (editingSupplier) {
+        await updateSupplier({ ...editingSupplier, ...supplierData });
+        toast({ title: "Sucesso", description: "Fornecedor/Cliente atualizado com sucesso" });
+      } else {
+        await addSupplier(supplierData);
+        toast({ title: "Sucesso", description: "Fornecedor/Cliente criado com sucesso" });
+      }
+      setSupplierFormOpen(false);
+      setEditingSupplier(null);
+      setNewSupplierName('');
+      setNewSupplierType('supplier');
+      setNewSupplierDocument('');
+      setNewSupplierEmail('');
+      setNewSupplierPhone('');
+      setNewSupplierAddress('');
+      getSuppliers(); // Re-fetch para atualizar a lista
+    } catch (error: any) {
+      console.error("Erro ao salvar fornecedor/cliente:", error);
+      toast({ title: "Erro", description: error.message || "Erro ao salvar fornecedor/cliente", variant: "destructive" });
+    }
+  }, [newSupplierName, newSupplierType, newSupplierDocument, newSupplierEmail, newSupplierPhone, newSupplierAddress, editingSupplier, addSupplier, updateSupplier, getSuppliers, toast]);
+
+  const handleDeleteSupplier = (supplier: Supplier) => {
+    setSupplierToDelete(supplier);
+    setDeleteSupplierDialogOpen(true);
+  };
+
+  const confirmDeleteSupplier = useCallback(async () => {
+    if (supplierToDelete) {
+      try {
+        await deleteSupplier(supplierToDelete.id);
+        toast({
+          title: 'Sucesso',
+          description: `${supplierToDelete.name} excluído com sucesso`,
+        });
+        getSuppliers(); // Re-fetch para atualizar a lista
+      } catch (error: any) {
+        console.error('Erro ao deletar fornecedor/cliente:', error);
+        toast({
+          title: 'Erro',
+          description: error.message || 'Erro ao deletar fornecedor/cliente',
+          variant: 'destructive',
+        });
+      } finally {
+        setDeleteSupplierDialogOpen(false);
+        setSupplierToDelete(null);
+      }
+    }
+  }, [supplierToDelete, deleteSupplier, getSuppliers, toast]);
 
   return (
     <div className="space-y-6">
@@ -272,112 +412,76 @@ export default function CadastroPage() {
         {/* Tab Categorias */}
         <TabsContent value="categorias" className="space-y-4">
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Plano de Contas</CardTitle>
-                  <CardDescription>
-                    Organize suas receitas e despesas em categorias. As categorias padrão não podem ser editadas.
-                  </CardDescription>
-                </div>
-                <Button onClick={() => {
-                  setEditingItem(null);
-                  setCategoryForm({ name: '', type: 'expense', color: '#3B82F6', parent_id: null });
-                  setShowCategoryForm(true);
-                }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nova Categoria
-                </Button>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Plano de Contas</CardTitle>
+                <CardDescription>
+                  Organize suas receitas e despesas em categorias
+                </CardDescription>
               </div>
+              <Button onClick={handleAddCategory}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Categoria
+              </Button>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {showCategoryForm && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="category-name">Nome</Label>
-                        <Input
-                          id="category-name"
-                          value={categoryForm.name}
-                          onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                          placeholder="Nome da categoria"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="category-type">Tipo</Label>
-                        <Select
-                          value={categoryForm.type}
-                          onValueChange={(value) => setCategoryForm({ ...categoryForm, type: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="expense">Despesa</SelectItem>
-                            <SelectItem value="income">Receita</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="category-parent">Categoria Pai</Label>
-                        <Select
-                          value={categoryForm.parent_id || ''}
-                          onValueChange={(value) => setCategoryForm({ ...categoryForm, parent_id: value || null })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Categoria Principal" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">Nenhuma (Principal)</SelectItem>
-                            {categories && Array.isArray(categories) && categories
-                              .filter(cat => !cat.parent_id && cat.type === categoryForm.type)
-                              .map(cat => (
-                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Cor</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {CATEGORY_COLORS.map(color => (
-                            <button
-                              key={color}
-                              onClick={() => setCategoryForm({ ...categoryForm, color })}
-                              className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${
-                                categoryForm.color === color ? 'border-primary ring-2 ring-primary/20' : 'border-border'
-                              }`}
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex justify-end space-x-2 mt-4">
-                      <Button variant="outline" onClick={resetCategoryForm}>
-                        <X className="w-4 h-4 mr-2" />
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleSaveCategory}>
-                        <Save className="w-4 h-4 mr-2" />
-                        {editingItem ? 'Atualizar' : 'Salvar'}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : categories.filter(cat => cat.type === categoryType && cat.parent_id === null).length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Nenhuma categoria cadastrada. Clique em "Nova Categoria" para começar.</p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={handleAddCategory}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Adicionar Categoria
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {renderCategoryTree(null, 0)}
+                </div>
               )}
-
-              <div className="space-y-2">
-                {renderCategoryTree()}
-                {(!categories || categories.length === 0) && !showCategoryForm && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhuma categoria cadastrada. Clique em "Nova Categoria" para começar.
-                  </div>
-                )}
-              </div>
             </CardContent>
           </Card>
+
+          <CategoryForm
+            open={categoryFormOpen}
+            onOpenChange={setCategoryFormOpen}
+            initialData={editingCategory}
+            onSave={handleSaveCategory}
+            categoryType={categoryType}
+          />
+
+          <AlertDialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmação de Exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir a categoria "{categoryToDelete?.name}"? Esta ação não pode ser desfeita.
+                  {categoryToDelete?.is_default && (
+                    <p className="mt-2 text-destructive font-medium">
+                      Esta é uma categoria padrão e não pode ser excluída.
+                    </p>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmDeleteCategory}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={categoryToDelete?.is_default}
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         {/* Tab Fornecedores */}
@@ -391,237 +495,318 @@ export default function CadastroPage() {
                     Gerencie seus fornecedores e clientes
                   </CardDescription>
                 </div>
-                <Button onClick={() => {
-                  setEditingItem(null);
-                  setSupplierForm({ name: '', type: 'supplier', document: '', email: '', phone: '', address: '' });
-                  setShowSupplierForm(true);
-                }}>
+                <Button onClick={handleAddSupplier}>
                   <Plus className="w-4 h-4 mr-2" />
                   Novo Fornecedor/Cliente
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {showSupplierForm && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-name">Nome</Label>
-                        <Input
-                          id="supplier-name"
-                          value={supplierForm.name}
-                          onChange={(e) => setSupplierForm({ ...supplierForm, name: e.target.value })}
-                          placeholder="Nome do fornecedor/cliente"
-                        />
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : suppliers.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Nenhum fornecedor/cliente cadastrado. Clique em "Novo Fornecedor/Cliente" para começar.</p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={handleAddSupplier}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Adicionar Fornecedor/Cliente
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {suppliers.map((supplier) => (
+                    <div
+                      key={supplier.id}
+                      className="bg-card p-3 rounded-lg flex items-center justify-between border"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span>{supplier.name}</span>
+                        <Badge variant="outline" className="ml-2">
+                          {supplier.type === 'supplier' ? 'Fornecedor' : supplier.type === 'customer' ? 'Cliente' : 'Ambos'}
+                        </Badge>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-type">Tipo</Label>
-                        <Select
-                          value={supplierForm.type}
-                          onValueChange={(value) => setSupplierForm({ ...supplierForm, type: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="supplier">Fornecedor</SelectItem>
-                            <SelectItem value="customer">Cliente</SelectItem>
-                            <SelectItem value="both">Ambos</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-document">Documento</Label>
-                        <Input
-                          id="supplier-document"
-                          value={supplierForm.document}
-                          onChange={(e) => setSupplierForm({ ...supplierForm, document: e.target.value })}
-                          placeholder="CPF/CNPJ"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-email">Email</Label>
-                        <Input
-                          id="supplier-email"
-                          type="email"
-                          value={supplierForm.email}
-                          onChange={(e) => setSupplierForm({ ...supplierForm, email: e.target.value })}
-                          placeholder="email@exemplo.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-phone">Telefone</Label>
-                        <Input
-                          id="supplier-phone"
-                          value={supplierForm.phone}
-                          onChange={(e) => setSupplierForm({ ...supplierForm, phone: e.target.value })}
-                          placeholder="(XX) XXXXX-XXXX"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="supplier-address">Endereço</Label>
-                        <Input
-                          id="supplier-address"
-                          value={supplierForm.address}
-                          onChange={(e) => setSupplierForm({ ...supplierForm, address: e.target.value })}
-                          placeholder="Endereço completo"
-                        />
+                      <div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditSupplier(supplier)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDeleteSupplier(supplier)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
-                    <div className="flex justify-end space-x-2 mt-4">
-                      <Button variant="outline" onClick={resetSupplierForm}>
-                        <X className="w-4 h-4 mr-2" />
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleSaveSupplier}>
-                        <Save className="w-4 h-4 mr-2" />
-                        {editingItem ? 'Atualizar' : 'Salvar'}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                  ))}
+                </div>
               )}
-
-              <div className="space-y-2">
-                {suppliers.length === 0 && !showSupplierForm ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhum fornecedor/cliente cadastrado. Clique em "Novo Fornecedor/Cliente" para começar.
-                  </div>
-                ) : (
-                  suppliers.map(supplier => (
-                    <Card key={supplier.id}>
-                      <CardContent className="flex items-center justify-between p-4">
-                        <div className="flex items-center space-x-3">
-                          <User className="w-5 h-5 text-muted-foreground" />
-                          <div>
-                            <span className="font-medium">{supplier.name}</span>
-                            {supplier.document && (
-                              <p className="text-sm text-muted-foreground">{supplier.document}</p>
-                            )}
-                          </div>
-                          <Badge variant="outline">
-                            {supplier.type === 'supplier' && 'Fornecedor'}
-                            {supplier.type === 'customer' && 'Cliente'}
-                            {supplier.type === 'both' && 'Ambos'}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditSupplier(supplier)}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteSupplier(supplier.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
             </CardContent>
           </Card>
+
+          <AlertDialog open={supplierFormOpen} onOpenChange={setSupplierFormOpen}>
+            <AlertDialogContent className="sm:max-w-[600px]">
+              <AlertDialogHeader>
+                <AlertDialogTitle>{editingSupplier ? 'Editar Fornecedor/Cliente' : 'Adicionar Fornecedor/Cliente'}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {editingSupplier ? 'Edite os detalhes do fornecedor/cliente.' : 'Preencha os detalhes para adicionar um novo fornecedor/cliente.'}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplier-name" className="text-right">
+                    Nome
+                  </Label>
+                  <Input
+                    id="supplier-name"
+                    value={newSupplierName}
+                    onChange={(e) => setNewSupplierName(e.target.value)}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplier-type" className="text-right">
+                    Tipo
+                  </Label>
+                  <Select
+                    value={newSupplierType}
+                    onValueChange={(value: 'supplier' | 'customer' | 'client' | 'both') => setNewSupplierType(value)}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="supplier">Fornecedor</SelectItem>
+                      <SelectItem value="customer">Cliente</SelectItem>
+                      <SelectItem value="both">Ambos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplier-document" className="text-right">
+                    Documento
+                  </Label>
+                  <Input
+                    id="supplier-document"
+                    value={newSupplierDocument}
+                    onChange={(e) => setNewSupplierDocument(e.target.value)}
+                    className="col-span-3"
+                    placeholder="CPF/CNPJ"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplier-email" className="text-right">
+                    Email
+                  </Label>
+                  <Input
+                    id="supplier-email"
+                    value={newSupplierEmail}
+                    onChange={(e) => setNewSupplierEmail(e.target.value)}
+                    className="col-span-3"
+                    type="email"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplier-phone" className="text-right">
+                    Telefone
+                  </Label>
+                  <Input
+                    id="supplier-phone"
+                    value={newSupplierPhone}
+                    onChange={(e) => setNewSupplierPhone(e.target.value)}
+                    className="col-span-3"
+                    type="tel"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplier-address" className="text-right">
+                    Endereço
+                  </Label>
+                  <Input
+                    id="supplier-address"
+                    value={newSupplierAddress}
+                    onChange={(e) => setNewSupplierAddress(e.target.value)}
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setSupplierFormOpen(false)}>
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={handleSaveSupplier}>
+                  {editingSupplier ? 'Salvar Alterações' : 'Adicionar'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={deleteSupplierDialogOpen} onOpenChange={setDeleteSupplierDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmação de Exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir o fornecedor/cliente "{supplierToDelete?.name}"? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmDeleteSupplier}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         {/* Tab Formas de Pagamento */}
         <TabsContent value="pagamentos" className="space-y-4">
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Formas de Pagamento</CardTitle>
-                  <CardDescription>
-                    Gerencie suas formas de pagamento. Métodos padrão não podem ser editados ou removidos.
-                  </CardDescription>
-                </div>
-                <Button onClick={() => {
-                  setEditingItem(null);
-                  setPaymentForm({ name: '', is_default: false });
-                  setShowPaymentForm(true);
-                }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nova Forma de Pagamento
-                </Button>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Formas de Pagamento</CardTitle>
+                <CardDescription>Gerencie suas formas de pagamento</CardDescription>
               </div>
+              <Button onClick={handleAddPaymentMethod}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Forma de Pagamento
+              </Button>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {showPaymentForm && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="payment-name">Nome</Label>
-                        <Input
-                          id="payment-name"
-                          value={paymentForm.name}
-                          onChange={(e) => setPaymentForm({ ...paymentForm, name: e.target.value })}
-                          placeholder="Nome da forma de pagamento"
-                        />
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : allPaymentMethods.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Nenhuma forma de pagamento cadastrada. Clique em "Nova Forma de Pagamento" para começar.</p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={handleAddPaymentMethod}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Adicionar Forma de Pagamento
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {allPaymentMethods.map((method) => (
+                    <div
+                      key={method.id}
+                      className="bg-card p-3 rounded-lg flex items-center justify-between border"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span>{method.name}</span>
+                        {method.is_default && (
+                          <Badge variant="outline" className="ml-2">Padrão</Badge>
+                        )}
+                      </div>
+                      <div>
+                        {method.is_user_defined ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditPaymentMethod(method as PaymentMethod)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeletePaymentMethod(method as PaymentMethod)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          <Button variant="ghost" size="sm" disabled>
+                            {/* Método Padrão */}
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex justify-end space-x-2 mt-4">
-                      <Button variant="outline" onClick={resetPaymentForm}>
-                        <X className="w-4 h-4 mr-2" />
-                        Cancelar
-                      </Button>
-                      <Button onClick={handleSavePayment}>
-                        <Save className="w-4 h-4 mr-2" />
-                        {editingItem ? 'Atualizar' : 'Salvar'}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                  ))}
+                </div>
               )}
-
-              <div className="space-y-2">
-                {allPaymentMethods.length === 0 && !showPaymentForm ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhuma forma de pagamento cadastrada. Clique em "Nova Forma de Pagamento" para começar.
-                  </div>
-                ) : (
-                  allPaymentMethods.map(payment => (
-                    <Card key={payment.id}>
-                      <CardContent className="flex items-center justify-between p-4">
-                        <div className="flex items-center space-x-3">
-                          <CreditCard className="w-5 h-5 text-muted-foreground" />
-                          <span className="font-medium">{payment.name}</span>
-                          {(payment.is_default || payment.user_id === 'default') && (
-                            <Badge variant="outline">Padrão</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditPayment(payment)}
-                            disabled={payment.user_id === 'default'}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeletePayment(payment.id)}
-                            disabled={payment.user_id === 'default'}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
             </CardContent>
           </Card>
+
+          <AlertDialog open={paymentFormOpen} onOpenChange={setPaymentFormOpen}>
+            <AlertDialogContent className="sm:max-w-[425px]">
+              <AlertDialogHeader>
+                <AlertDialogTitle>{editingPaymentMethod ? 'Editar Forma de Pagamento' : 'Adicionar Forma de Pagamento'}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {editingPaymentMethod ? 'Edite os detalhes da forma de pagamento.' : 'Preencha os detalhes para adicionar uma nova forma de pagamento.'}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Nome
+                  </Label>
+                  <Input
+                    id="name"
+                    value={newPaymentMethodName}
+                    onChange={(e) => setNewPaymentMethodName(e.target.value)}
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setPaymentFormOpen(false)}>
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={handleSavePaymentMethod}>
+                  {editingPaymentMethod ? 'Salvar Alterações' : 'Adicionar'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={deletePaymentMethodDialogOpen} onOpenChange={setDeletePaymentMethodDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmação de Exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir a forma de pagamento "{paymentMethodToDelete?.name}"? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmDeletePaymentMethod}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
       </Tabs>
     </div>
