@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ColorPickerProps {
@@ -35,12 +34,12 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ selectedColor, onSelectColor 
           key={color}
           type="button"
           onClick={() => onSelectColor(color)}
-          className="w-8 h-8 rounded-full relative flex items-center justify-center"
+          className="w-8 h-8 rounded-full relative flex items-center justify-center border-2 border-transparent hover:border-gray-300 transition-colors"
           style={{ backgroundColor: color }}
         >
           {selectedColor === color && (
             <span className="absolute inset-0 flex items-center justify-center">
-              <span className="h-2.5 w-2.5 bg-white rounded-full"></span>
+              <span className="h-2.5 w-2.5 bg-white rounded-full shadow-sm"></span>
             </span>
           )}
         </button>
@@ -50,3 +49,4 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ selectedColor, onSelectColor 
 };
 
 export default ColorPicker;
+
