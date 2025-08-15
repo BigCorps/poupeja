@@ -534,8 +534,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       throw err;
     }
   }, [state.user]);
-
-  const updatePaymentMethod = useCallback(async (paymentMethod: PaymentMethod) => {
     if (!state.user) throw new Error("Usuário não autenticado");
     
     try {
@@ -560,9 +558,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [state.user]);
 
   const deletePaymentMethod = useCallback(async (id: string) => {
-    if (!state.user) throw new Error('Usuário não autenticado');
-    
-    try {
       const { error } = await supabase
         .from('poupeja_payment_methods')
         .delete()
