@@ -23,16 +23,4 @@ export interface Supplier {
   updated_at?: string;
 }
 
-export interface Category {
-  id?: string;
-  user_id?: string;
-  name: string;
-  type: 'income' | 'expense';
-  color: string;
-  icon?: string;
-  parent_id?: string | null;
-  sort_order?: number;
-  is_default?: boolean;
-  created_at?: string;
-}
 
