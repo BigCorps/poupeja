@@ -1,39 +1,12 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { User, TimeRange } from '@/types';
+import { User, TimeRange } from '@/types/index'; // Importar User e TimeRange de index.ts
 import { Category } from '@/types/categories'; // Importar Category do novo arquivo
+import { PaymentMethod, DefaultPaymentMethod, Supplier } from '@/types/cadastros'; // Importar de cadastros.ts
 
 // ===================================================
 // ✅ INTERFACES E TIPOS COMPLETOS
 // ===================================================
-
-// A interface Category agora vem de '@/types/categories'
-
-interface PaymentMethod {
-  id: string;
-  user_id: string;
-  name: string;
-  is_default: boolean;
-}
-
-interface DefaultPaymentMethod {
-  id: string;
-  name: string;
-  is_active: boolean;
-  created_at: string;
-}
-
-interface Supplier {
-  id: string;
-  user_id: string;
-  name: string;
-  type: 'supplier' | 'customer' | 'client' | 'both';
-  contact_person: string | null;
-  email: string | null;
-  phone: string | null;
-  document: string | null;
-  address: string | null;
-}
 
 interface Lancamento {
   id: string;
@@ -533,7 +506,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data, error } = await supabase
         .from('poupeja_payment_methods')
-        .update(paymentMethod)
+        .update({ name: paymentMethod.name, is_default: paymentMethod.is_default })
         .eq('id', paymentMethod.id)
         .eq('user_id', state.user.id)
         .select()
@@ -565,7 +538,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [state.user]);
 
   // ===================================================
-  // ✅ FUNÇÕES DE FORNECEDORES
+  // ✅ FUNÇÕES DE FORNECEDORES/CLIENTES
   // ===================================================
 
   const getSuppliers = useCallback(async () => {
@@ -575,7 +548,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase
         .from('poupeja_suppliers')
         .select('*')
-        .eq('user_id', state.user.id)
+        .or(`user_id.eq.${state.user.id},is_default.eq.true`)
         .order('name');
 
       if (error) {
@@ -616,7 +589,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data, error } = await supabase
         .from('poupeja_suppliers')
-        .update(supplier)
+        .update({ name: supplier.name, document: supplier.document, email: supplier.email, phone: supplier.phone, address: supplier.address, type: supplier.type })
         .eq('id', supplier.id)
         .eq('user_id', state.user.id)
         .select()
@@ -657,9 +630,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       dispatch({ type: 'SET_LOADING', payload: true });
       const { data, error } = await supabase
         .from('poupeja_lancamentos')
-        .select('*')
+        .select(`
+          *,
+          categoria:poupeja_categories(name, color, icon, type, parent_id),
+          subcategoria:poupeja_categories!subcategoria_id(name, color, icon, type, parent_id),
+          fornecedor:poupeja_suppliers(name),
+          forma_pagamento:poupeja_payment_methods(name)
+        `)
         .eq('user_id', state.user.id)
-        .order('data_vencimento', { ascending: false });
+        .order('data_referencia', { ascending: false });
 
       if (error) {
         console.error("Erro ao buscar lançamentos:", error);
@@ -738,13 +717,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (!state.user) return;
       dispatch({ type: 'SET_LOADING', payload: true });
-      
+
       let query = supabase
         .from('poupeja_cash_flow')
         .select('*')
         .eq('user_id', state.user.id)
-        .eq('account_type', state.accountType)
-        .order('date', { ascending: true });
+        .eq('account_type', state.accountType);
 
       if (startDate) {
         query = query.gte('date', startDate);
@@ -753,7 +731,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         query = query.lte('date', endDate);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.order('date', { ascending: true });
 
       if (error) {
         console.error("Erro ao buscar dados de fluxo de caixa:", error);
@@ -775,26 +753,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (!state.user) throw new Error('Usuário não autenticado');
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const { data, error } = await supabase.rpc('generate_cash_flow_data', {
-        p_user_id: state.user.id,
-        p_account_type: state.accountType,
-        p_start_date: startDate,
-        p_end_date: endDate,
+      const { data, error } = await supabase.functions.invoke('generate-cash-flow', {
+        body: { userId: state.user.id, accountType: state.accountType, startDate, endDate },
       });
 
       if (error) {
-        console.error("Erro ao gerar dados de fluxo de caixa:", error);
+        console.error("Erro ao gerar fluxo de caixa:", error);
         dispatch({ type: 'SET_ERROR', payload: error.message });
       } else {
-        // A função RPC pode retornar os dados diretamente ou apenas acionar a geração
-        // Se retornar dados, você pode despachá-los aqui
-        console.log('Dados de fluxo de caixa gerados/atualizados:', data);
-        // Após gerar, buscar os dados atualizados
-        await getCashFlowData(startDate, endDate);
+        console.log("Fluxo de caixa gerado:", data);
+        // Atualizar os dados do fluxo de caixa após a geração
+        getCashFlowData(startDate, endDate);
       }
     } catch (err) {
-      console.error("Erro inesperado ao gerar dados de fluxo de caixa:", err);
-      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao gerar dados de fluxo de caixa.' });
+      console.error("Erro inesperado ao gerar fluxo de caixa:", err);
+      dispatch({ type: 'SET_ERROR', payload: 'Erro inesperado ao gerar fluxo de caixa.' });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -808,10 +781,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (!state.user) return;
       dispatch({ type: 'SET_LOADING', payload: true });
-      const { data, error } = await supabase.rpc('get_dre_data', {
-        p_user_id: state.user.id,
-        p_account_type: state.accountType,
-        p_year: year,
+
+      const { data, error } = await supabase.functions.invoke('get-dre-data', {
+        body: { userId: state.user.id, accountType: state.accountType, year },
       });
 
       if (error) {
@@ -831,50 +803,46 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [state.user, state.accountType]);
 
   // ===================================================
-  // ✅ EFEITOS E AUTENTICAÇÃO
+  // ✅ AUTENTICAÇÃO
   // ===================================================
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        dispatch({ type: 'SET_SESSION', payload: session });
-        dispatch({ type: 'SET_USER', payload: session?.user || null });
-        dispatch({ type: 'SET_AUTH_READY', payload: true });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      dispatch({ type: 'SET_SESSION', payload: session });
+      dispatch({ type: 'SET_USER', payload: session?.user || null });
+      dispatch({ type: 'SET_AUTH_READY', payload: true });
+    });
 
-        if (session?.user) {
-          // Carregar dados iniciais após login
-          getCategories();
-          getPaymentMethods();
-          getDefaultPaymentMethods();
-          getSuppliers();
-          getLancamentos();
-          // getCashFlowData(); // Pode ser chamado em componentes específicos com base no range de datas
-          // getDREData(); // Pode ser chamado em componentes específicos com base no ano
-        }
-      }
-    );
-
-    // Tentar carregar a sessão inicial
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       dispatch({ type: 'SET_SESSION', payload: session });
       dispatch({ type: 'SET_USER', payload: session?.user || null });
       dispatch({ type: 'SET_AUTH_READY', payload: true });
-      if (session?.user) {
-        getCategories();
-        getPaymentMethods();
-        getDefaultPaymentMethods();
-        getSuppliers();
-        getLancamentos();
-      }
     });
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []); // Dependências vazias para rodar apenas uma vez na montagem
+  }, []);
 
   // ===================================================
-  // ✅ VALORES COMPUTADOS (MEMOIZED)
+  // ✅ CARREGAMENTO INICIAL DE DADOS
+  // ===================================================
+
+  useEffect(() => {
+    if (state.user) {
+      getCategories();
+      getPaymentMethods();
+      getDefaultPaymentMethods();
+      getSuppliers();
+      getLancamentos();
+      // getCashFlowData(); // Chamar com datas específicas se necessário
+      // getDREData(new Date().getFullYear()); // Chamar com ano específico se necessário
+    }
+  }, [state.user, getCategories, getPaymentMethods, getDefaultPaymentMethods, getSuppliers, getLancamentos]);
+
+  // ===================================================
+  // ✅ VALORES COMPUTADOS PARA O CONTEXTO
   // ===================================================
 
   const parentCategories = useMemo(() => {
@@ -891,72 +859,43 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return [...userMethods, ...defaultMethods].sort((a, b) => a.name.localeCompare(b.name));
   }, [state.paymentMethods, state.defaultPaymentMethods]);
 
-  const contextValue = useMemo(
-    () => ({
-      ...state,
-      dispatch,
-      toggleHideValues,
-      logout,
-      setTimeRange,
-      setCustomDateRange,
-      setAccountType,
-      getCategories,
-      addCategory,
-      updateCategory,
-      deleteCategory,
-      getPaymentMethods,
-      getDefaultPaymentMethods,
-      addPaymentMethod,
-      updatePaymentMethod,
-      deletePaymentMethod,
-      getSuppliers,
-      addSupplier,
-      updateSupplier,
-      deleteSupplier,
-      getLancamentos,
-      addLancamento,
-      updateLancamento,
-      deleteLancamento,
-      getCashFlowData,
-      generateCashFlowData,
-      getDREData,
-      parentCategories,
-      subcategories,
-      allPaymentMethods,
-    }),
-    [
-      state,
-      toggleHideValues,
-      logout,
-      setTimeRange,
-      setCustomDateRange,
-      setAccountType,
-      getCategories,
-      addCategory,
-      updateCategory,
-      deleteCategory,
-      getPaymentMethods,
-      getDefaultPaymentMethods,
-      addPaymentMethod,
-      updatePaymentMethod,
-      deletePaymentMethod,
-      getSuppliers,
-      addSupplier,
-      updateSupplier,
-      deleteSupplier,
-      getLancamentos,
-      addLancamento,
-      updateLancamento,
-      deleteLancamento,
-      getCashFlowData,
-      generateCashFlowData,
-      getDREData,
-      parentCategories,
-      subcategories,
-      allPaymentMethods,
-  ]);
+  const contextValue = useMemo(() => ({
+    ...state,
+    dispatch,
+    toggleHideValues,
+    logout,
+    setTimeRange,
+    setCustomDateRange,
+    setAccountType,
+    getCategories,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    getPaymentMethods,
+    getDefaultPaymentMethods,
+    addPaymentMethod,
+    updatePaymentMethod,
+    deletePaymentMethod,
+    getSuppliers,
+    addSupplier,
+    updateSupplier,
+    deleteSupplier,
+    getLancamentos,
+    addLancamento,
+    updateLancamento,
+    deleteLancamento,
+    getCashFlowData,
+    generateCashFlowData,
+    getDREData,
+    parentCategories,
+    subcategories,
+    allPaymentMethods,
+  }), [state, toggleHideValues, logout, setTimeRange, setCustomDateRange, setAccountType, getCategories, addCategory, updateCategory, deleteCategory, getPaymentMethods, getDefaultPaymentMethods, addPaymentMethod, updatePaymentMethod, deletePaymentMethod, getSuppliers, addSupplier, updateSupplier, deleteSupplier, getLancamentos, addLancamento, updateLancamento, deleteLancamento, getCashFlowData, generateCashFlowData, getDREData, parentCategories, subcategories, allPaymentMethods]);
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
 };
 
-export default AppProvider;
