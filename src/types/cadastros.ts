@@ -13,7 +13,7 @@ export interface Supplier {
   id?: string;
   user_id?: string;
   name: string;
-  type: 'supplier' | 'client' | 'both';
+  type: 'supplier' | 'customer' | 'both';
   document?: string;
   email?: string;
   phone?: string;
