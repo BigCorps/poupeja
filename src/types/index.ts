@@ -1,5 +1,3 @@
-export type TransactionType = 'income' | 'expense';
-
 export type TimeRange = 'today' | 'yesterday' | '7days' | '14days' | '30days' | 'custom';
 
 export interface Transaction {
@@ -98,3 +96,5 @@ export interface ReportType {
 }
 
 export type ReportFormat = 'csv' | 'pdf';
+
+
