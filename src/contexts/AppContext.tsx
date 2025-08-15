@@ -467,7 +467,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [state.user]);
 
   // ===================================================
-  // ✅ FUNÇÕES DE MÉTODOS DE PAGAMENTO
+  // ✅ FUNÇÕES DE MÉTODOS DE PAGAMENTO - CORRIGIDAS
   // ===================================================
 
   const getDefaultPaymentMethods = useCallback(async () => {
@@ -534,6 +534,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       throw err;
     }
   }, [state.user]);
+
+  // ✅ CORREÇÃO: Adicionado async à função updatePaymentMethod
+  const updatePaymentMethod = useCallback(async (paymentMethod: PaymentMethod) => {
     if (!state.user) throw new Error("Usuário não autenticado");
     
     try {
@@ -558,6 +561,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [state.user]);
 
   const deletePaymentMethod = useCallback(async (id: string) => {
+    if (!state.user) throw new Error('Usuário não autenticado');
+    
+    try {
       const { error } = await supabase
         .from('poupeja_payment_methods')
         .delete()
@@ -965,7 +971,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const defaultMethods = state.defaultPaymentMethods.map(method => ({
       ...method,
       user_id: 'default',
-      type: 'other' as const,
       is_default: true
     }));
     
