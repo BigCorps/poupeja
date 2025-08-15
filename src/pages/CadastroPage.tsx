@@ -328,10 +328,10 @@ export default function CadastroPage() {
       const supplierData = {
         name: newSupplierName,
         type: newSupplierType,
-        document: newSupplierDocument || null,
-        email: newSupplierEmail || null,
-        phone: newSupplierPhone || null,
-        address: newSupplierAddress || null,
+        document: newSupplierDocument.trim() || null,
+        email: newSupplierEmail.trim() || null,
+        phone: newSupplierPhone.trim() || null,
+        address: newSupplierAddress.trim() || null,
       };
 
       if (editingSupplier) {
