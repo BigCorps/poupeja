@@ -954,13 +954,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       parentCategories,
       subcategories,
       allPaymentMethods,
-    ]
-  );
+  ]);
 
-  return (
-    <AppContext.Provider value={contextValue}>
-      {children}
-    </AppContext.Provider>
-  );
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
+export default AppProvider;
