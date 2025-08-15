@@ -11,9 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { cn } from '@/lib/utils';
 
 import CategoryForm from '@/components/categories/CategoryForm';
 import CategoryIcon from '@/components/categories/CategoryIcon';
+import MainLayout from '@/components/layout/MainLayout';
+import SubscriptionGuard from '@/components/subscription/SubscriptionGuard';
 
 import { Category } from '@/types/categories';
 import { PaymentMethod, DefaultPaymentMethod, Supplier } from '@/types';
@@ -25,6 +30,9 @@ const CATEGORY_COLORS = [
 
 export default function CadastroPage() {
   const { toast } = useToast();
+  const { t } = usePreferences();
+  const isMobile = useIsMobile();
+  
   const {
     categories,
     paymentMethods,
@@ -196,17 +204,17 @@ export default function CadastroPage() {
 
     if (mainCategories.length === 0) {
       return (
-        <div className="text-center py-12">
+        <div className="text-center py-8 md:py-12">
           <div className="mx-auto max-w-md">
-            <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">
+            <Tag className="mx-auto h-8 w-8 md:h-12 md:w-12 text-muted-foreground mb-4" />
+            <h3 className="text-base md:text-lg font-semibold mb-2">
               Nenhuma categoria {categoryType === 'income' ? 'de receita' : 'de despesa'} encontrada
             </h3>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-sm md:text-base text-muted-foreground mb-6">
               Comece criando sua primeira categoria para organizar suas {categoryType === 'income' ? 'receitas' : 'despesas'}.
             </p>
-            <Button onClick={handleAddCategory} size="lg">
-              <Plus className="mr-2 h-5 w-5" />
+            <Button onClick={handleAddCategory} size={isMobile ? "default" : "lg"}>
+              <Plus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
               Criar Primeira Categoria
             </Button>
           </div>
@@ -215,17 +223,17 @@ export default function CadastroPage() {
     }
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-6">
         {mainCategories.map(category => {
           const subcategories = getSubcategories(category.id);
           const isExpanded = expandedCategories.has(category.id);
 
           return (
             <Card key={category.id} className="group hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
+              <CardContent className="p-4 md:p-6">
                 {/* Categoria Principal */}
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
                     {subcategories.length > 0 && (
                       <Button
                         variant="ghost"
@@ -234,20 +242,20 @@ export default function CadastroPage() {
                         className="p-1 h-auto w-auto shrink-0"
                       >
                         {isExpanded ? 
-                          <ChevronDown className="h-4 w-4" /> : 
-                          <ChevronRight className="h-4 w-4" />
+                          <ChevronDown className="h-3 w-3 md:h-4 md:w-4" /> : 
+                          <ChevronRight className="h-3 w-3 md:h-4 md:w-4" />
                         }
                       </Button>
                     )}
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
                       <div 
-                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                        className="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center shrink-0"
                         style={{ backgroundColor: category.color + '20', border: `2px solid ${category.color}` }}
                       >
-                        <CategoryIcon icon={category.icon} color={category.color} className="w-5 h-5" />
+                        <CategoryIcon icon={category.icon} color={category.color} className="w-4 h-4 md:w-5 md:h-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-sm truncate" title={category.name}>
+                        <h3 className="font-semibold text-xs md:text-sm truncate" title={category.name}>
                           {category.name}
                         </h3>
                         {subcategories.length > 0 && (
@@ -259,14 +267,14 @@ export default function CadastroPage() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1 md:gap-2 shrink-0">
                     {category.is_default && (
-                      <Badge variant="secondary" className="text-xs">Padrão</Badge>
+                      <Badge variant="secondary" className="text-xs scale-75 md:scale-100">Padrão</Badge>
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreVertical className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" className="h-6 w-6 md:h-8 md:w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreVertical className="h-3 w-3 md:h-4 md:w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -298,20 +306,20 @@ export default function CadastroPage() {
                     {subcategories.map(subcat => (
                       <div key={subcat.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50 hover:bg-muted transition-colors group/sub">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <CategoryIcon icon={subcat.icon} color={subcat.color} className="w-4 h-4 shrink-0" />
-                          <span className="text-sm truncate" title={subcat.name}>
+                          <CategoryIcon icon={subcat.icon} color={subcat.color} className="w-3 h-3 md:w-4 md:h-4 shrink-0" />
+                          <span className="text-xs md:text-sm truncate" title={subcat.name}>
                             {subcat.name}
                           </span>
                         </div>
                         
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1 md:gap-2 shrink-0">
                           {subcat.is_default && (
-                            <Badge variant="outline" className="text-xs scale-90">Padrão</Badge>
+                            <Badge variant="outline" className="text-xs scale-75 md:scale-90">Padrão</Badge>
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover/sub:opacity-100 transition-opacity">
-                                <MoreVertical className="h-3 w-3" />
+                              <Button variant="ghost" size="sm" className="h-5 w-5 md:h-6 md:w-6 p-0 opacity-0 group-hover/sub:opacity-100 transition-opacity">
+                                <MoreVertical className="h-2.5 w-2.5 md:h-3 md:w-3" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -341,7 +349,7 @@ export default function CadastroPage() {
         })}
       </div>
     );
-  }, [categories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory, handleAddSubcategory, handleAddCategory]);
+  }, [categories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory, handleAddSubcategory, handleAddCategory, isMobile]);
 
   // ===================================================
   // ✅ ESTADO E FUNÇÕES PARA FORMAS DE PAGAMENTO
@@ -538,459 +546,525 @@ export default function CadastroPage() {
   // ===================================================
 
   return (
-    <div className="container mx-auto p-6 space-y-8 max-w-7xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Cadastros</h1>
-          <p className="text-muted-foreground mt-2">
-            Gerencie suas categorias, fornecedores e métodos de pagamento
-          </p>
+    <MainLayout>
+      <SubscriptionGuard feature="cadastros">
+        <div className="w-full px-4 py-4 md:py-8 pb-20 md:pb-8">
+          {/* Content Container */}
+          <div className={cn(
+            isMobile ? "space-y-4" : "space-y-6"
+          )}>
+            {/* Headers - Seguindo o padrão da página Saldo */}
+            {isMobile ? (
+              <div className="flex items-center justify-between">
+                <h1 className="text-xl font-semibold">Cadastros</h1>
+              </div>
+            ) : (
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Cadastros</h2>
+                <p className="text-muted-foreground mt-2">
+                  Gerencie suas categorias, fornecedores e métodos de pagamento
+                </p>
+              </div>
+            )}
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className={cn(
+              isMobile ? "space-y-4" : "space-y-6"
+            )}>
+              <TabsList className={cn(
+                "grid w-full",
+                isMobile ? "grid-cols-1 gap-1 h-auto" : "grid-cols-3"
+              )}>
+                <TabsTrigger 
+                  value="categorias" 
+                  className={cn(
+                    "flex items-center gap-2",
+                    isMobile && "justify-start px-4 py-3"
+                  )}
+                >
+                  <Tag className="h-4 w-4" />
+                  Plano de Contas
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="fornecedores" 
+                  className={cn(
+                    "flex items-center gap-2",
+                    isMobile && "justify-start px-4 py-3"
+                  )}
+                >
+                  <User className="h-4 w-4" />
+                  Fornecedores/Clientes
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="pagamentos" 
+                  className={cn(
+                    "flex items-center gap-2",
+                    isMobile && "justify-start px-4 py-3"
+                  )}
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Formas de Pagamento
+                </TabsTrigger>
+              </TabsList>
+
+              {/* ===================================================
+                  ✅ TAB CATEGORIAS
+                  =================================================== */}
+              <TabsContent value="categorias" className={cn(
+                isMobile ? "space-y-4" : "space-y-6"
+              )}>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className={cn(
+                          isMobile ? "text-lg" : "text-xl"
+                        )}>Plano de Contas</CardTitle>
+                        <CardDescription className={cn(
+                          isMobile ? "text-sm" : ""
+                        )}>
+                          Organize suas receitas e despesas em categorias e subcategorias
+                        </CardDescription>
+                      </div>
+                      <Button onClick={handleAddCategory} size={isMobile ? "default" : "lg"}>
+                        <Plus className={cn(
+                          "mr-2",
+                          isMobile ? "h-4 w-4" : "h-5 w-5"
+                        )} />
+                        {isMobile ? "Nova" : "Nova Categoria"}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className={cn(
+                    isMobile ? "space-y-4" : "space-y-6"
+                  )}>
+                    {/* Filtro por tipo com botões */}
+                    <div className="flex items-center gap-4">
+                      <Label className="text-sm font-medium">Visualizar:</Label>
+                      <div className="flex rounded-lg border p-1">
+                        <Button
+                          variant={categoryType === 'expense' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => setCategoryType('expense')}
+                          className="rounded-md"
+                        >
+                          Despesas
+                        </Button>
+                        <Button
+                          variant={categoryType === 'income' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => setCategoryType('income')}
+                          className="rounded-md"
+                        >
+                          Receitas
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Grid de categorias */}
+                    {isLoading ? (
+                      <div className="text-center py-8 md:py-12">
+                        <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-muted-foreground text-sm md:text-base">Carregando categorias...</p>
+                      </div>
+                    ) : (
+                      renderCategoriesGrid()
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* ===================================================
+                  ✅ TAB FORNECEDORES/CLIENTES
+                  =================================================== */}
+              <TabsContent value="fornecedores" className={cn(
+                isMobile ? "space-y-4" : "space-y-6"
+              )}>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className={cn(
+                          isMobile ? "text-lg" : "text-xl"
+                        )}>Fornecedores e Clientes</CardTitle>
+                        <CardDescription className={cn(
+                          isMobile ? "text-sm" : ""
+                        )}>
+                          Gerencie seus fornecedores e clientes
+                        </CardDescription>
+                      </div>
+                      <Button onClick={handleAddSupplier} size={isMobile ? "default" : "lg"}>
+                        <Plus className={cn(
+                          "mr-2",
+                          isMobile ? "h-4 w-4" : "h-5 w-5"
+                        )} />
+                        {isMobile ? "Novo" : "Novo Fornecedor/Cliente"}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <div className="text-center py-8 md:py-12">
+                        <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-muted-foreground text-sm md:text-base">Carregando fornecedores...</p>
+                      </div>
+                    ) : suppliers.length === 0 ? (
+                      <div className="text-center py-8 md:py-12">
+                        <User className="mx-auto h-8 w-8 md:h-12 md:w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-base md:text-lg font-semibold mb-2">Nenhum fornecedor/cliente cadastrado</h3>
+                        <p className="text-sm md:text-base text-muted-foreground mb-6">
+                          Comece adicionando seus fornecedores e clientes para melhor organização.
+                        </p>
+                        <Button onClick={handleAddSupplier} size={isMobile ? "default" : "lg"}>
+                          <Plus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                          {isMobile ? "Adicionar Primeiro" : "Adicionar Primeiro Fornecedor/Cliente"}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                        {suppliers.map(supplier => (
+                          <Card key={supplier.id} className="group hover:shadow-md transition-shadow">
+                            <CardContent className="p-4 md:p-6">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                                    <User className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <h3 className="font-semibold text-xs md:text-sm truncate" title={supplier.name}>
+                                      {supplier.name}
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground">
+                                      {supplier.type === 'supplier' ? 'Fornecedor' : 
+                                       supplier.type === 'customer' ? 'Cliente' : 
+                                       supplier.type === 'client' ? 'Cliente' : 'Ambos'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 md:h-8 md:w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <MoreVertical className="h-3 w-3 md:h-4 md:w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleEditSupplier(supplier)}>
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Editar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => handleDeleteSupplier(supplier)}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Excluir
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                              <div className="space-y-1 text-xs text-muted-foreground">
+                                {supplier.document && <div>Doc: {supplier.document}</div>}
+                                {supplier.email && <div>Email: {supplier.email}</div>}
+                                {supplier.phone && <div>Tel: {supplier.phone}</div>}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* ===================================================
+                  ✅ TAB FORMAS DE PAGAMENTO
+                  =================================================== */}
+              <TabsContent value="pagamentos" className={cn(
+                isMobile ? "space-y-4" : "space-y-6"
+              )}>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className={cn(
+                          isMobile ? "text-lg" : "text-xl"
+                        )}>Formas de Pagamento</CardTitle>
+                        <CardDescription className={cn(
+                          isMobile ? "text-sm" : ""
+                        )}>
+                          Gerencie suas formas de pagamento
+                        </CardDescription>
+                      </div>
+                      <Button onClick={handleAddPaymentMethod} size={isMobile ? "default" : "lg"}>
+                        <Plus className={cn(
+                          "mr-2",
+                          isMobile ? "h-4 w-4" : "h-5 w-5"
+                        )} />
+                        {isMobile ? "Nova" : "Nova Forma de Pagamento"}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <div className="text-center py-8 md:py-12">
+                        <div className="animate-spin rounded-full h-6 w-6 md:h-8 md:w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-muted-foreground text-sm md:text-base">Carregando formas de pagamento...</p>
+                      </div>
+                    ) : allPaymentMethods.length === 0 ? (
+                      <div className="text-center py-8 md:py-12">
+                        <CreditCard className="mx-auto h-8 w-8 md:h-12 md:w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-base md:text-lg font-semibold mb-2">Nenhuma forma de pagamento cadastrada</h3>
+                        <p className="text-sm md:text-base text-muted-foreground mb-6">
+                          Adicione suas formas de pagamento para melhor controle financeiro.
+                        </p>
+                        <Button onClick={handleAddPaymentMethod} size={isMobile ? "default" : "lg"}>
+                          <Plus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                          {isMobile ? "Adicionar Primeira" : "Adicionar Primeira Forma de Pagamento"}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                        {allPaymentMethods.map(paymentMethod => (
+                          <Card key={paymentMethod.id} className="group hover:shadow-md transition-shadow">
+                            <CardContent className="p-4 md:p-6">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                                    <CreditCard className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <h3 className="font-semibold text-xs md:text-sm truncate" title={paymentMethod.name}>
+                                      {paymentMethod.name}
+                                    </h3>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 md:gap-2 shrink-0">
+                                  {paymentMethod.is_default && (
+                                    <Badge variant="secondary" className="text-xs scale-75 md:scale-100">Padrão</Badge>
+                                  )}
+                                  {(paymentMethod as any).is_user_defined && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-6 w-6 md:h-8 md:w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <MoreVertical className="h-3 w-3 md:h-4 md:w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleEditPaymentMethod(paymentMethod as PaymentMethod)}>
+                                          <Edit className="mr-2 h-4 w-4" />
+                                          Editar
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={() => handleDeletePaymentMethod(paymentMethod as PaymentMethod)}
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Excluir
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="categorias" className="flex items-center gap-2">
-            <Tag className="h-4 w-4" />
-            Plano de Contas
-          </TabsTrigger>
-          <TabsTrigger value="fornecedores" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Fornecedores/Clientes
-          </TabsTrigger>
-          <TabsTrigger value="pagamentos" className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4" />
-            Formas de Pagamento
-          </TabsTrigger>
-        </TabsList>
 
         {/* ===================================================
-            ✅ TAB CATEGORIAS
+            ✅ DIALOGS E MODAIS
             =================================================== */}
-        <TabsContent value="categorias" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl">Plano de Contas</CardTitle>
-                  <CardDescription>
-                    Organize suas receitas e despesas em categorias e subcategorias
-                  </CardDescription>
-                </div>
-                <Button onClick={handleAddCategory} size="lg">
-                  <Plus className="mr-2 h-5 w-5" />
-                  Nova Categoria
-                </Button>
+
+        {/* Modal de Categoria */}
+        <CategoryForm
+          open={categoryFormOpen}
+          onOpenChange={setCategoryFormOpen}
+          initialData={editingCategory}
+          onSave={handleSaveCategory}
+          categoryType={categoryType}
+          parentId={editingCategory?.parent_id}
+          parentName={editingCategory?.parent_id ? categories.find(c => c.id === editingCategory.parent_id)?.name : null}
+        />
+
+        {/* Dialog de confirmação para deletar categoria */}
+        <AlertDialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir a categoria "{categoryToDelete?.name}"? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteCategory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Modal de Forma de Pagamento */}
+        <AlertDialog open={paymentFormOpen} onOpenChange={setPaymentFormOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {editingPaymentMethod ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {editingPaymentMethod ? 'Edite os dados da forma de pagamento.' : 'Preencha os dados da nova forma de pagamento.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="payment-name" className="text-right">Nome</Label>
+                <Input
+                  id="payment-name"
+                  value={newPaymentMethodName}
+                  onChange={(e) => setNewPaymentMethodName(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Ex: Cartão de Crédito"
+                />
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Filtro por tipo com botões */}
-              <div className="flex items-center gap-4">
-                <Label className="text-sm font-medium">Visualizar:</Label>
-                <div className="flex rounded-lg border p-1">
-                  <Button
-                    variant={categoryType === 'expense' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setCategoryType('expense')}
-                    className="rounded-md"
-                  >
-                    Despesas
-                  </Button>
-                  <Button
-                    variant={categoryType === 'income' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setCategoryType('income')}
-                    className="rounded-md"
-                  >
-                    Receitas
-                  </Button>
-                </div>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleSavePaymentMethod}>
+                {editingPaymentMethod ? 'Salvar' : 'Criar'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Dialog de confirmação para deletar forma de pagamento */}
+        <AlertDialog open={deletePaymentMethodDialogOpen} onOpenChange={setDeletePaymentMethodDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir a forma de pagamento "{paymentMethodToDelete?.name}"? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeletePaymentMethod} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Modal de Fornecedor/Cliente */}
+        <AlertDialog open={supplierFormOpen} onOpenChange={setSupplierFormOpen}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {editingSupplier ? 'Editar Fornecedor/Cliente' : 'Novo Fornecedor/Cliente'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {editingSupplier ? 'Edite os dados do fornecedor/cliente.' : 'Preencha os dados do novo fornecedor/cliente.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-name" className="text-right">Nome</Label>
+                <Input
+                  id="supplier-name"
+                  value={newSupplierName}
+                  onChange={(e) => setNewSupplierName(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Nome do fornecedor/cliente"
+                />
               </div>
-
-              {/* Grid de categorias */}
-              {isLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Carregando categorias...</p>
-                </div>
-              ) : (
-                renderCategoriesGrid()
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ===================================================
-            ✅ TAB FORNECEDORES/CLIENTES
-            =================================================== */}
-        <TabsContent value="fornecedores" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl">Fornecedores e Clientes</CardTitle>
-                  <CardDescription>
-                    Gerencie seus fornecedores e clientes
-                  </CardDescription>
-                </div>
-                <Button onClick={handleAddSupplier} size="lg">
-                  <Plus className="mr-2 h-5 w-5" />
-                  Novo Fornecedor/Cliente
-                </Button>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-type" className="text-right">Tipo</Label>
+                <Select value={newSupplierType} onValueChange={(value: 'supplier' | 'customer' | 'client' | 'both') => setNewSupplierType(value)}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="supplier">Fornecedor</SelectItem>
+                    <SelectItem value="customer">Cliente</SelectItem>
+                    <SelectItem value="client">Cliente</SelectItem>
+                    <SelectItem value="both">Ambos</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Carregando fornecedores...</p>
-                </div>
-              ) : suppliers.length === 0 ? (
-                <div className="text-center py-12">
-                  <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Nenhum fornecedor/cliente cadastrado</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Comece adicionando seus fornecedores e clientes para melhor organização.
-                  </p>
-                  <Button onClick={handleAddSupplier} size="lg">
-                    <Plus className="mr-2 h-5 w-5" />
-                    Adicionar Primeiro Fornecedor/Cliente
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {suppliers.map(supplier => (
-                    <Card key={supplier.id} className="group hover:shadow-md transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                              <User className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-semibold text-sm truncate" title={supplier.name}>
-                                {supplier.name}
-                              </h3>
-                              <p className="text-xs text-muted-foreground">
-                                {supplier.type === 'supplier' ? 'Fornecedor' : 
-                                 supplier.type === 'customer' ? 'Cliente' : 
-                                 supplier.type === 'client' ? 'Cliente' : 'Ambos'}
-                              </p>
-                            </div>
-                          </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditSupplier(supplier)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDeleteSupplier(supplier)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        <div className="space-y-1 text-xs text-muted-foreground">
-                          {supplier.document && <div>Doc: {supplier.document}</div>}
-                          {supplier.email && <div>Email: {supplier.email}</div>}
-                          {supplier.phone && <div>Tel: {supplier.phone}</div>}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ===================================================
-            ✅ TAB FORMAS DE PAGAMENTO
-            =================================================== */}
-        <TabsContent value="pagamentos" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl">Formas de Pagamento</CardTitle>
-                  <CardDescription>
-                    Gerencie suas formas de pagamento
-                  </CardDescription>
-                </div>
-                <Button onClick={handleAddPaymentMethod} size="lg">
-                  <Plus className="mr-2 h-5 w-5" />
-                  Nova Forma de Pagamento
-                </Button>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-document" className="text-right">Documento</Label>
+                <Input
+                  id="supplier-document"
+                  value={newSupplierDocument}
+                  onChange={(e) => setNewSupplierDocument(e.target.value)}
+                  className="col-span-3"
+                  placeholder="CPF/CNPJ"
+                />
               </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Carregando formas de pagamento...</p>
-                </div>
-              ) : allPaymentMethods.length === 0 ? (
-                <div className="text-center py-12">
-                  <CreditCard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Nenhuma forma de pagamento cadastrada</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Adicione suas formas de pagamento para melhor controle financeiro.
-                  </p>
-                  <Button onClick={handleAddPaymentMethod} size="lg">
-                    <Plus className="mr-2 h-5 w-5" />
-                    Adicionar Primeira Forma de Pagamento
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {allPaymentMethods.map(paymentMethod => (
-                    <Card key={paymentMethod.id} className="group hover:shadow-md transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                              <CreditCard className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-semibold text-sm truncate" title={paymentMethod.name}>
-                                {paymentMethod.name}
-                              </h3>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {paymentMethod.is_default && (
-                              <Badge variant="secondary" className="text-xs">Padrão</Badge>
-                            )}
-                            {(paymentMethod as any).is_user_defined && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEditPaymentMethod(paymentMethod as PaymentMethod)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Editar
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => handleDeletePaymentMethod(paymentMethod as PaymentMethod)}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Excluir
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* ===================================================
-          ✅ DIALOGS E MODAIS
-          =================================================== */}
-
-      {/* Modal de Categoria */}
-      <CategoryForm
-        open={categoryFormOpen}
-        onOpenChange={setCategoryFormOpen}
-        initialData={editingCategory}
-        onSave={handleSaveCategory}
-        categoryType={categoryType}
-        parentId={editingCategory?.parent_id}
-        parentName={editingCategory?.parent_id ? categories.find(c => c.id === editingCategory.parent_id)?.name : null}
-      />
-
-      {/* Dialog de confirmação para deletar categoria */}
-      <AlertDialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir a categoria "{categoryToDelete?.name}"? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteCategory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modal de Forma de Pagamento */}
-      <AlertDialog open={paymentFormOpen} onOpenChange={setPaymentFormOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {editingPaymentMethod ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {editingPaymentMethod ? 'Edite os dados da forma de pagamento.' : 'Preencha os dados da nova forma de pagamento.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="payment-name" className="text-right">Nome</Label>
-              <Input
-                id="payment-name"
-                value={newPaymentMethodName}
-                onChange={(e) => setNewPaymentMethodName(e.target.value)}
-                className="col-span-3"
-                placeholder="Ex: Cartão de Crédito"
-              />
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-email" className="text-right">Email</Label>
+                <Input
+                  id="supplier-email"
+                  type="email"
+                  value={newSupplierEmail}
+                  onChange={(e) => setNewSupplierEmail(e.target.value)}
+                  className="col-span-3"
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-phone" className="text-right">Telefone</Label>
+                <Input
+                  id="supplier-phone"
+                  value={newSupplierPhone}
+                  onChange={(e) => setNewSupplierPhone(e.target.value)}
+                  className="col-span-3"
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-address" className="text-right">Endereço</Label>
+                <Input
+                  id="supplier-address"
+                  value={newSupplierAddress}
+                  onChange={(e) => setNewSupplierAddress(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Endereço completo"
+                />
+              </div>
             </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSavePaymentMethod}>
-              {editingPaymentMethod ? 'Salvar' : 'Criar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleSaveSupplier}>
+                {editingSupplier ? 'Salvar' : 'Criar'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-      {/* Dialog de confirmação para deletar forma de pagamento */}
-      <AlertDialog open={deletePaymentMethodDialogOpen} onOpenChange={setDeletePaymentMethodDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir a forma de pagamento "{paymentMethodToDelete?.name}"? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeletePaymentMethod} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Modal de Fornecedor/Cliente */}
-      <AlertDialog open={supplierFormOpen} onOpenChange={setSupplierFormOpen}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {editingSupplier ? 'Editar Fornecedor/Cliente' : 'Novo Fornecedor/Cliente'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {editingSupplier ? 'Edite os dados do fornecedor/cliente.' : 'Preencha os dados do novo fornecedor/cliente.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="supplier-name" className="text-right">Nome</Label>
-              <Input
-                id="supplier-name"
-                value={newSupplierName}
-                onChange={(e) => setNewSupplierName(e.target.value)}
-                className="col-span-3"
-                placeholder="Nome do fornecedor/cliente"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="supplier-type" className="text-right">Tipo</Label>
-              <Select value={newSupplierType} onValueChange={(value: 'supplier' | 'customer' | 'client' | 'both') => setNewSupplierType(value)}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="supplier">Fornecedor</SelectItem>
-                  <SelectItem value="customer">Cliente</SelectItem>
-                  <SelectItem value="client">Cliente</SelectItem>
-                  <SelectItem value="both">Ambos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="supplier-document" className="text-right">Documento</Label>
-              <Input
-                id="supplier-document"
-                value={newSupplierDocument}
-                onChange={(e) => setNewSupplierDocument(e.target.value)}
-                className="col-span-3"
-                placeholder="CPF/CNPJ"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="supplier-email" className="text-right">Email</Label>
-              <Input
-                id="supplier-email"
-                type="email"
-                value={newSupplierEmail}
-                onChange={(e) => setNewSupplierEmail(e.target.value)}
-                className="col-span-3"
-                placeholder="email@exemplo.com"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="supplier-phone" className="text-right">Telefone</Label>
-              <Input
-                id="supplier-phone"
-                value={newSupplierPhone}
-                onChange={(e) => setNewSupplierPhone(e.target.value)}
-                className="col-span-3"
-                placeholder="(11) 99999-9999"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="supplier-address" className="text-right">Endereço</Label>
-              <Input
-                id="supplier-address"
-                value={newSupplierAddress}
-                onChange={(e) => setNewSupplierAddress(e.target.value)}
-                className="col-span-3"
-                placeholder="Endereço completo"
-              />
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSaveSupplier}>
-              {editingSupplier ? 'Salvar' : 'Criar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Dialog de confirmação para deletar fornecedor/cliente */}
-      <AlertDialog open={deleteSupplierDialogOpen} onOpenChange={setDeleteSupplierDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o fornecedor/cliente "{supplierToDelete?.name}"? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteSupplier} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        {/* Dialog de confirmação para deletar fornecedor/cliente */}
+        <AlertDialog open={deleteSupplierDialogOpen} onOpenChange={setDeleteSupplierDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o fornecedor/cliente "{supplierToDelete?.name}"? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteSupplier} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </SubscriptionGuard>
+    </MainLayout>
   );
 }
