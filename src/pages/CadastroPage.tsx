@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, Edit, MoreVertical, Trash2, Tag, User, CreditCard, ChevronDown, ChevronRight, Save, X, Search, GripVertical } from 'lucide-react';
+import { Plus, Edit, MoreVertical, Trash2, Tag, User, CreditCard, ChevronDown, ChevronRight, Save, X } from 'lucide-react';
 import { useAppContext } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,11 +60,6 @@ export default function CadastroPage() {
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  
-  // ✅ NOVOS ESTADOS PARA BUSCA E DRAG&DROP
-  const [searchTerm, setSearchTerm] = useState('');
-  const [draggedCategory, setDraggedCategory] = useState<Category | null>(null);
-  const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('🔄 Carregando categorias...');
@@ -176,52 +171,14 @@ export default function CadastroPage() {
     });
   };
 
-  // ✅ FUNÇÕES PARA DRAG & DROP
-  const handleDragStart = (e: React.DragEvent, category: Category) => {
-    setDraggedCategory(category);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent, categoryId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverCategory(categoryId);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverCategory(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetCategoryId: string) => {
-    e.preventDefault();
-    setDragOverCategory(null);
-    
-    if (draggedCategory && draggedCategory.id !== targetCategoryId) {
-      // Aqui você implementaria a lógica para reordenar as categorias
-      console.log('Reordenando categoria:', draggedCategory.name, 'para posição de:', targetCategoryId);
-      // Implementar lógica de reordenação aqui
-    }
-    setDraggedCategory(null);
-  };
-
-  // ✅ FUNÇÃO DE BUSCA
-  const filteredCategories = useMemo(() => {
-    if (!searchTerm.trim()) return categories;
-    
-    return categories.filter(category => 
-      category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (category.parent_id && categories.find(parent => parent.id === category.parent_id)?.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [categories, searchTerm]);
-
-// ✅ MELHORADO: Função para renderizar categorias com melhorias visuais
+  // ✅ CORRIGIDO: Função para renderizar categorias em grade responsiva
   const renderCategoriesGrid = useCallback(() => {
     console.log('🎨 Renderizando grid de categorias...');
-    console.log('🎨 Todas as categorias disponíveis:', filteredCategories.length);
+    console.log('🎨 Todas as categorias disponíveis:', categories.length);
     console.log('🎨 Tipo selecionado:', categoryType);
     
     // ✅ CORREÇÃO: Filtrar categorias principais (sem parent_id) do tipo selecionado
-    const mainCategories = filteredCategories.filter(cat => {
+    const mainCategories = categories.filter(cat => {
       const isMainCategory = !cat.parent_id || cat.parent_id === null;
       const isCorrectType = cat.type === categoryType;
       
@@ -231,90 +188,46 @@ export default function CadastroPage() {
     });
 
     console.log('🎨 Categorias principais filtradas:', mainCategories.length);
-    
-    // ✅ NOVA ORDENAÇÃO: Categorias de usuário primeiro, "Outros" por último
-    const sortedMainCategories = mainCategories.sort((a, b) => {
-      // 1. "Outros" sempre por último
-      const aIsOthers = a.name.toLowerCase().includes('outros') || a.name.toLowerCase() === 'outros';
-      const bIsOthers = b.name.toLowerCase().includes('outros') || b.name.toLowerCase() === 'outros';
-      
-      if (aIsOthers && !bIsOthers) return 1;  // a vai para o final
-      if (!aIsOthers && bIsOthers) return -1; // b vai para o final
-      
-      // 2. Se ambos são "outros" ou nenhum é "outros", ordenar por is_default
-      // Categorias criadas pelo usuário (!is_default) primeiro
-      if (a.is_default !== b.is_default) {
-        return a.is_default ? 1 : -1; // false (usuário) vem antes de true (padrão)
-      }
-      
-      // 3. Por último, ordenar alfabeticamente
-      return a.name.localeCompare(b.name);
-    });
+    mainCategories.forEach(cat => console.log(`✅ ${cat.name} (${cat.type})`));
 
-    console.log('🎨 Categorias principais ordenadas:');
-    sortedMainCategories.forEach((cat, index) => {
-      console.log(`${index + 1}. ${cat.name} (${cat.type}) - ${cat.is_default ? 'Padrão' : 'Usuário'}`);
-    });
-
-    // Função para obter subcategorias com ordenação
+    // Função para obter subcategorias
     const getSubcategories = (parentId: string) => {
-      const subs = filteredCategories.filter(cat => cat.parent_id === parentId);
-      
-      // Aplicar a mesma ordenação nas subcategorias
-      const sortedSubs = subs.sort((a, b) => {
-        // 1. "Outros" sempre por último
-        const aIsOthers = a.name.toLowerCase().includes('outros') || a.name.toLowerCase() === 'outros';
-        const bIsOthers = b.name.toLowerCase().includes('outros') || b.name.toLowerCase() === 'outros';
-        
-        if (aIsOthers && !bIsOthers) return 1;
-        if (!aIsOthers && bIsOthers) return -1;
-        
-        // 2. Categorias do usuário primeiro
-        if (a.is_default !== b.is_default) {
-          return a.is_default ? 1 : -1;
-        }
-        
-        // 3. Ordenar alfabeticamente
-        return a.name.localeCompare(b.name);
-      });
-      
-      console.log(`🔗 Subcategorias ordenadas para ${parentId}:`, sortedSubs.length);
-      return sortedSubs;
+      const subs = categories.filter(cat => cat.parent_id === parentId);
+      console.log(`🔗 Subcategorias para ${parentId}:`, subs.length);
+      return subs;
     };
 
-    if (sortedMainCategories.length === 0) {
+    if (mainCategories.length === 0) {
       return (
         <div className="text-center py-12">
           <div className="mx-auto max-w-md">
             <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">
-              {searchTerm ? 'Nenhuma categoria encontrada' : `Nenhuma categoria ${categoryType === 'income' ? 'de receita' : 'de despesa'} encontrada`}
+              Nenhuma categoria {categoryType === 'income' ? 'de receita' : 'de despesa'} encontrada
             </h3>
             <p className="text-muted-foreground mb-6">
-              {searchTerm ? 'Tente ajustar o termo de busca.' : `Comece criando sua primeira categoria para organizar suas ${categoryType === 'income' ? 'receitas' : 'despesas'}.`}
+              Comece criando sua primeira categoria para organizar suas {categoryType === 'income' ? 'receitas' : 'despesas'}.
             </p>
-            {!searchTerm && (
-              <Button onClick={handleAddCategory} size="lg">
-                <Plus className="mr-2 h-5 w-5" />
-                Criar Primeira Categoria
-              </Button>
-            )}
+            <Button onClick={handleAddCategory} size="lg">
+              <Plus className="mr-2 h-5 w-5" />
+              Criar Primeira Categoria
+            </Button>
           </div>
         </div>
       );
     }
 
-    // ✅ GRID MELHORADO - Cards mais organizados e responsivos
+    // ✅ GRID COMPLETAMENTE RESPONSIVO - Ajusta baseado no espaço disponível
     return (
-      <div className="grid gap-4 auto-fit-cards">
+      <div className="grid gap-6 auto-fit-cards">
         <style jsx>{`
           .auto-fit-cards {
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
           }
           
           @media (max-width: 640px) {
             .auto-fit-cards {
-              grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
               gap: 1rem;
             }
           }
@@ -328,127 +241,90 @@ export default function CadastroPage() {
           
           @media (min-width: 1400px) {
             .auto-fit-cards {
-              grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+              grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             }
           }
         `}</style>
         
-        {sortedMainCategories.map(category => {
+        {mainCategories.map(category => {
           const subcategories = getSubcategories(category.id);
           const isExpanded = expandedCategories.has(category.id);
-          const isDragOver = dragOverCategory === category.id;
 
           return (
-            <Card 
-              key={category.id} 
-              className={cn(
-                "group hover:shadow-lg transition-all duration-200 min-w-0 w-full relative",
-                isDragOver && "ring-2 ring-primary bg-primary/5"
-              )}
-              draggable
-              onDragStart={(e) => handleDragStart(e, category)}
-              onDragOver={(e) => handleDragOver(e, category.id)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, category.id)}
-            >
-              <CardContent className="p-5">
-                {/* ✅ MELHORADO: Header da categoria principal */}
-                <div className="flex items-start gap-4 mb-4">
-                  {/* Drag Handle */}
-                  <div className="opacity-0 group-hover:opacity-50 transition-opacity mt-2 cursor-grab">
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  
-                  {/* Botão expandir/recolher - só aparece se tem subcategorias */}
-                  <div className="flex-shrink-0 mt-1">
-                    {subcategories.length > 0 ? (
+            <Card key={category.id} className="group hover:shadow-md transition-shadow min-w-0 w-full">
+              <CardContent className="p-6">
+                {/* Categoria Principal */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {subcategories.length > 0 && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => toggleExpandCategory(category.id)}
-                        className="p-1 h-7 w-7"
+                        className="p-1 h-auto w-auto shrink-0"
                       >
                         {isExpanded ? 
                           <ChevronDown className="h-4 w-4" /> : 
                           <ChevronRight className="h-4 w-4" />
                         }
                       </Button>
-                    ) : (
-                      <div className="w-7 h-7" /> // Espaçamento para manter alinhamento
                     )}
-                  </div>
-
-                  {/* ✅ MELHORADO: Ícone e informações centralizados */}
-                  <div className="flex-1 flex flex-col items-center text-center min-w-0">
-                    <div 
-                      className="w-16 h-16 rounded-xl flex items-center justify-center mb-3"
-                      style={{ backgroundColor: category.color + '15', border: `2px solid ${category.color}30` }}
-                    >
-                      <CategoryIcon icon={category.icon} color={category.color} className="w-8 h-8" />
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div 
+                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: category.color + '20', border: `2px solid ${category.color}` }}
+                      >
+                        <CategoryIcon icon={category.icon} color={category.color} className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-sm truncate" title={category.name}>
+                          {category.name}
+                        </h3>
+                        {subcategories.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {subcategories.length} subcategoria{subcategories.length > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <h3 className="font-semibold text-base truncate max-w-full" title={category.name}>
-                      {category.name}
-                    </h3>
-                    {subcategories.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {subcategories.length} subcategoria{subcategories.length > 1 ? 's' : ''}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* ✅ MELHORADO: Botões de ação reorganizados */}
-                <div className="flex items-center justify-between mt-4">
-                  {/* Badge Padrão - menor e à esquerda */}
-                  <div className="flex items-center">
-                    {category.is_default ? (
-                      <Badge variant="secondary" className="text-xs px-2 py-1">Padrão</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs px-2 py-1 border-green-200 text-green-700 bg-green-50 dark:border-green-800 dark:text-green-300 dark:bg-green-950">
-                        Personalizada
-                      </Badge>
-                    )}
                   </div>
                   
-                  {/* ✅ NOVO: Botões de ação sempre visíveis */}
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditCategory(category)}
-                      className="h-7 px-2 text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300"
-                    >
-                      <Edit className="mr-1 h-3 w-3" />
-                      Editar
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAddSubcategory(category)}
-                      className="h-7 px-2 text-xs bg-green-50 border-green-200 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:border-green-800 dark:text-green-300"
-                    >
-                      <Plus className="mr-1 h-3 w-3" />
-                      Sub
-                    </Button>
-                    
-                    {!category.is_default && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteCategory(category)}
-                        className="h-7 px-2 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100 dark:bg-red-950 dark:border-red-800 dark:text-red-300"
-                      >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        Excluir
-                      </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {category.is_default && (
+                      <Badge variant="secondary" className="text-xs">Padrão</Badge>
                     )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAddSubcategory(category)}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Adicionar Subcategoria
+                        </DropdownMenuItem>
+                        {!category.is_default && (
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeleteCategory(category)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
 
                 {/* Subcategorias */}
                 {isExpanded && subcategories.length > 0 && (
-                  <div className="space-y-2 pt-4 border-t mt-4">
+                  <div className="space-y-2 pt-4 border-t">
                     {subcategories.map(subcat => (
                       <div key={subcat.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50 hover:bg-muted transition-colors group/sub">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -459,35 +335,31 @@ export default function CadastroPage() {
                         </div>
                         
                         <div className="flex items-center gap-2 shrink-0">
-                          {subcat.is_default ? (
+                          {subcat.is_default && (
                             <Badge variant="outline" className="text-xs scale-90">Padrão</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs scale-90 border-green-200 text-green-700 bg-green-50 dark:border-green-800 dark:text-green-300 dark:bg-green-950">
-                              Custom
-                            </Badge>
                           )}
-                          
-                          {/* Botões para subcategoria */}
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditCategory(subcat)}
-                              className="h-6 w-6 p-0 opacity-0 group-hover/sub:opacity-100 transition-opacity"
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            {!subcat.is_default && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteCategory(subcat)}
-                                className="h-6 w-6 p-0 opacity-0 group-hover/sub:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-3 w-3" />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover/sub:opacity-100 transition-opacity">
+                                <MoreVertical className="h-3 w-3" />
                               </Button>
-                            )}
-                          </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditCategory(subcat)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              {!subcat.is_default && (
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDeleteCategory(subcat)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     ))}
@@ -499,7 +371,7 @@ export default function CadastroPage() {
         })}
       </div>
     );
-  }, [filteredCategories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory, handleAddSubcategory, handleAddCategory, dragOverCategory, searchTerm]);
+  }, [categories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory, handleAddSubcategory, handleAddCategory]);
 
   // ===================================================
   // ✅ ESTADO E FUNÇÕES PARA FORMAS DE PAGAMENTO
@@ -509,7 +381,6 @@ export default function CadastroPage() {
   const [paymentMethodToDelete, setPaymentMethodToDelete] = useState<PaymentMethod | null>(null);
   const [deletePaymentMethodDialogOpen, setDeletePaymentMethodDialogOpen] = useState(false);
   const [newPaymentMethodName, setNewPaymentMethodName] = useState('');
-  const [paymentSearchTerm, setPaymentSearchTerm] = useState('');
 
   useEffect(() => {
     getPaymentMethods();
@@ -583,50 +454,25 @@ export default function CadastroPage() {
   const allPaymentMethods = useMemo(() => {
     const userMethods = paymentMethods.map(pm => ({ ...pm, is_user_defined: true }));
     const defaultMethods = defaultPaymentMethods.map(dpm => ({ ...dpm, is_user_defined: false }));
-    const combined = [...userMethods, ...defaultMethods].sort((a, b) => a.name.localeCompare(b.name));
-    
-    // Filtrar por busca
-    if (paymentSearchTerm.trim()) {
-      return combined.filter(pm => 
-        pm.name.toLowerCase().includes(paymentSearchTerm.toLowerCase())
-      );
-    }
-    
-    return combined;
-  }, [paymentMethods, defaultPaymentMethods, paymentSearchTerm]);
+    return [...userMethods, ...defaultMethods].sort((a, b) => a.name.localeCompare(b.name));
+  }, [paymentMethods, defaultPaymentMethods]);
 
   // ===================================================
   // ✅ RENDER GRID RESPONSIVO PARA FORNECEDORES
   // ===================================================
-  const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
-
-  const filteredSuppliers = useMemo(() => {
-    if (!supplierSearchTerm.trim()) return suppliers;
-    
-    return suppliers.filter(supplier => 
-      supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()) ||
-      (supplier.document && supplier.document.toLowerCase().includes(supplierSearchTerm.toLowerCase())) ||
-      (supplier.email && supplier.email.toLowerCase().includes(supplierSearchTerm.toLowerCase()))
-    );
-  }, [suppliers, supplierSearchTerm]);
-
   const renderSuppliersGrid = useCallback(() => {
-    if (filteredSuppliers.length === 0) {
+    if (suppliers.length === 0) {
       return (
         <div className="text-center py-12">
           <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">
-            {supplierSearchTerm ? 'Nenhum fornecedor/cliente encontrado' : 'Nenhum fornecedor/cliente cadastrado'}
-          </h3>
+          <h3 className="text-lg font-semibold mb-2">Nenhum fornecedor/cliente cadastrado</h3>
           <p className="text-muted-foreground mb-6">
-            {supplierSearchTerm ? 'Tente ajustar o termo de busca.' : 'Comece adicionando seus fornecedores e clientes para melhor organização.'}
+            Comece adicionando seus fornecedores e clientes para melhor organização.
           </p>
-          {!supplierSearchTerm && (
-            <Button onClick={handleAddSupplier} size="lg">
-              <Plus className="mr-2 h-5 w-5" />
-              Adicionar Primeiro Fornecedor/Cliente
-            </Button>
-          )}
+          <Button onClick={handleAddSupplier} size="lg">
+            <Plus className="mr-2 h-5 w-5" />
+            Adicionar Primeiro Fornecedor/Cliente
+          </Button>
         </div>
       );
     }
@@ -659,7 +505,7 @@ export default function CadastroPage() {
           }
         `}</style>
         
-        {filteredSuppliers.map(supplier => (
+        {suppliers.map(supplier => (
           <Card key={supplier.id} className="group hover:shadow-md transition-shadow min-w-0 w-full">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -709,7 +555,7 @@ export default function CadastroPage() {
         ))}
       </div>
     );
-  }, [filteredSuppliers]);
+  }, [suppliers]);
 
   // ===================================================
   // ✅ RENDER GRID RESPONSIVO PARA FORMAS DE PAGAMENTO
@@ -719,18 +565,14 @@ export default function CadastroPage() {
       return (
         <div className="text-center py-12">
           <CreditCard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">
-            {paymentSearchTerm ? 'Nenhuma forma de pagamento encontrada' : 'Nenhuma forma de pagamento cadastrada'}
-          </h3>
+          <h3 className="text-lg font-semibold mb-2">Nenhuma forma de pagamento cadastrada</h3>
           <p className="text-muted-foreground mb-6">
-            {paymentSearchTerm ? 'Tente ajustar o termo de busca.' : 'Adicione suas formas de pagamento para melhor controle financeiro.'}
+            Adicione suas formas de pagamento para melhor controle financeiro.
           </p>
-          {!paymentSearchTerm && (
-            <Button onClick={handleAddPaymentMethod} size="lg">
-              <Plus className="mr-2 h-5 w-5" />
-              Adicionar Primeira Forma de Pagamento
-            </Button>
-          )}
+          <Button onClick={handleAddPaymentMethod} size="lg">
+            <Plus className="mr-2 h-5 w-5" />
+            Adicionar Primeira Forma de Pagamento
+          </Button>
         </div>
       );
     }
@@ -961,7 +803,7 @@ export default function CadastroPage() {
           </TabsList>
 
           {/* ===================================================
-              ✅ TAB CATEGORIAS - COM BUSCA E DRAG & DROP
+              ✅ TAB CATEGORIAS
               =================================================== */}
           <TabsContent value="categorias" className="space-y-6">
             <Card>
@@ -980,41 +822,26 @@ export default function CadastroPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* ✅ NOVA: Barra de busca para categorias */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1 max-w-md">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar categorias..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Filtro por tipo com botões */}
-                  <div className="flex items-center gap-4">
-                    <Label className="text-sm font-medium">Visualizar:</Label>
-                    <div className="flex rounded-lg border p-1">
-                      <Button
-                        variant={categoryType === 'expense' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setCategoryType('expense')}
-                        className="rounded-md"
-                      >
-                        Despesas
-                      </Button>
-                      <Button
-                        variant={categoryType === 'income' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setCategoryType('income')}
-                        className="rounded-md"
-                      >
-                        Receitas
-                      </Button>
-                    </div>
+                {/* Filtro por tipo com botões */}
+                <div className="flex items-center gap-4">
+                  <Label className="text-sm font-medium">Visualizar:</Label>
+                  <div className="flex rounded-lg border p-1">
+                    <Button
+                      variant={categoryType === 'expense' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setCategoryType('expense')}
+                      className="rounded-md"
+                    >
+                      Despesas
+                    </Button>
+                    <Button
+                      variant={categoryType === 'income' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setCategoryType('income')}
+                      className="rounded-md"
+                    >
+                      Receitas
+                    </Button>
                   </div>
                 </div>
 
@@ -1032,7 +859,7 @@ export default function CadastroPage() {
           </TabsContent>
 
           {/* ===================================================
-              ✅ TAB FORNECEDORES/CLIENTES - COM BUSCA
+              ✅ TAB FORNECEDORES/CLIENTES
               =================================================== */}
           <TabsContent value="fornecedores" className="space-y-6">
             <Card>
@@ -1050,20 +877,7 @@ export default function CadastroPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* ✅ NOVA: Barra de busca para fornecedores */}
-                <div className="flex-1 max-w-md">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar fornecedores/clientes..."
-                      value={supplierSearchTerm}
-                      onChange={(e) => setSupplierSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
+              <CardContent>
                 {isLoading ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -1077,7 +891,7 @@ export default function CadastroPage() {
           </TabsContent>
 
           {/* ===================================================
-              ✅ TAB FORMAS DE PAGAMENTO - COM BUSCA
+              ✅ TAB FORMAS DE PAGAMENTO
               =================================================== */}
           <TabsContent value="pagamentos" className="space-y-6">
             <Card>
@@ -1095,20 +909,7 @@ export default function CadastroPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* ✅ NOVA: Barra de busca para formas de pagamento */}
-                <div className="flex-1 max-w-md">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar formas de pagamento..."
-                      value={paymentSearchTerm}
-                      onChange={(e) => setPaymentSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
+              <CardContent>
                 {isLoading ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -1139,6 +940,161 @@ export default function CadastroPage() {
 
         {/* Dialog de confirmação para deletar categoria */}
         <AlertDialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir a categoria "{categoryToDelete?.name}"? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteCategory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Modal de Forma de Pagamento */}
+        <AlertDialog open={paymentFormOpen} onOpenChange={setPaymentFormOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {editingPaymentMethod ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {editingPaymentMethod ? 'Edite os dados da forma de pagamento.' : 'Preencha os dados da nova forma de pagamento.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="payment-name" className="text-right">Nome</Label>
+                <Input
+                  id="payment-name"
+                  value={newPaymentMethodName}
+                  onChange={(e) => setNewPaymentMethodName(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Ex: Cartão de Crédito"
+                />
+              </div>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleSavePaymentMethod}>
+                {editingPaymentMethod ? 'Salvar' : 'Criar'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Dialog de confirmação para deletar forma de pagamento */}
+        <AlertDialog open={deletePaymentMethodDialogOpen} onOpenChange={setDeletePaymentMethodDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir a forma de pagamento "{paymentMethodToDelete?.name}"? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeletePaymentMethod} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Modal de Fornecedor/Cliente */}
+        <AlertDialog open={supplierFormOpen} onOpenChange={setSupplierFormOpen}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {editingSupplier ? 'Editar Fornecedor/Cliente' : 'Novo Fornecedor/Cliente'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {editingSupplier ? 'Edite os dados do fornecedor/cliente.' : 'Preencha os dados do novo fornecedor/cliente.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-name" className="text-right">Nome</Label>
+                <Input
+                  id="supplier-name"
+                  value={newSupplierName}
+                  onChange={(e) => setNewSupplierName(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Nome do fornecedor/cliente"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-type" className="text-right">Tipo</Label>
+                <Select value={newSupplierType} onValueChange={(value: 'supplier' | 'customer' | 'client' | 'both') => setNewSupplierType(value)}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="supplier">Fornecedor</SelectItem>
+                    <SelectItem value="customer">Cliente</SelectItem>
+                    <SelectItem value="client">Cliente</SelectItem>
+                    <SelectItem value="both">Ambos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-document" className="text-right">Documento</Label>
+                <Input
+                  id="supplier-document"
+                  value={newSupplierDocument}
+                  onChange={(e) => setNewSupplierDocument(e.target.value)}
+                  className="col-span-3"
+                  placeholder="CPF/CNPJ"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-email" className="text-right">Email</Label>
+                <Input
+                  id="supplier-email"
+                  type="email"
+                  value={newSupplierEmail}
+                  onChange={(e) => setNewSupplierEmail(e.target.value)}
+                  className="col-span-3"
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-phone" className="text-right">Telefone</Label>
+                <Input
+                  id="supplier-phone"
+                  value={newSupplierPhone}
+                  onChange={(e) => setNewSupplierPhone(e.target.value)}
+                  className="col-span-3"
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="supplier-address" className="text-right">Endereço</Label>
+                <Input
+                  id="supplier-address"
+                  value={newSupplierAddress}
+                  onChange={(e) => setNewSupplierAddress(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Endereço completo"
+                />
+              </div>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleSaveSupplier}>
+                {editingSupplier ? 'Salvar' : 'Criar'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Dialog de confirmação para deletar fornecedor/cliente */}
+        <AlertDialog open={deleteSupplierDialogOpen} onOpenChange={setDeleteSupplierDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
