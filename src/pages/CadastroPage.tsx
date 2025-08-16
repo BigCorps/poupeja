@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, Edit, MoreVertical, Trash2, Tag, User, CreditCard, ChevronDown, ChevronRight, Save, X, Search, GripVertical } from 'lucide-react';
+import { Plus, Edit, MoreVertical, Trash2, Tag, User, CreditCard, ChevronDown, ChevronRight, Save, X } from 'lucide-react';
 import { useAppContext } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,15 +60,6 @@ export default function CadastroPage() {
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  
-  // Estados para busca e filtro
-  const [searchTermCategories, setSearchTermCategories] = useState('');
-  const [searchTermSuppliers, setSearchTermSuppliers] = useState('');
-  const [searchTermPayments, setSearchTermPayments] = useState('');
-  
-  // Estados para drag & drop
-  const [draggedCategory, setDraggedCategory] = useState<Category | null>(null);
-  const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('🔄 Carregando categorias...');
@@ -180,46 +171,7 @@ export default function CadastroPage() {
     });
   };
 
-  // Funções de Drag & Drop para categorias
-  const handleDragStart = (e: React.DragEvent, category: Category) => {
-    setDraggedCategory(category);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent, categoryId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverCategory(categoryId);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverCategory(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetCategory: Category) => {
-    e.preventDefault();
-    setDragOverCategory(null);
-    
-    if (draggedCategory && draggedCategory.id !== targetCategory.id) {
-      // Aqui você implementaria a lógica de reordenação
-      // Por exemplo, atualizando uma propriedade 'order' ou 'position' na categoria
-      console.log('Reordenando categoria:', draggedCategory.name, 'para posição de:', targetCategory.name);
-      toast({ title: 'Info', description: 'Funcionalidade de reordenação implementada!', variant: 'default' });
-    }
-    
-    setDraggedCategory(null);
-  };
-
-  // Filtrar categorias por busca
-  const filterCategoriesBySearch = useCallback((categories: Category[], searchTerm: string) => {
-    if (!searchTerm) return categories;
-    
-    return categories.filter(cat => 
-      cat.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, []);
-
-// ✅ CORRIGIDO: Função para renderizar categorias em grade responsiva com ordenação
+  // ✅ CORRIGIDO: Função para renderizar categorias em grade responsiva
   const renderCategoriesGrid = useCallback(() => {
     console.log('🎨 Renderizando grid de categorias...');
     console.log('🎨 Todas as categorias disponíveis:', categories.length);
@@ -236,81 +188,30 @@ export default function CadastroPage() {
     });
 
     console.log('🎨 Categorias principais filtradas:', mainCategories.length);
-    
-    // Aplicar filtro de busca
-    const filteredMainCategories = filterCategoriesBySearch(mainCategories, searchTermCategories);
-    
-    // ✅ NOVA ORDENAÇÃO: Categorias de usuário primeiro, "Outros" por último
-    const sortedMainCategories = filteredMainCategories.sort((a, b) => {
-      // 1. "Outros" sempre por último
-      const aIsOthers = a.name.toLowerCase().includes('outros') || a.name.toLowerCase() === 'outros';
-      const bIsOthers = b.name.toLowerCase().includes('outros') || b.name.toLowerCase() === 'outros';
-      
-      if (aIsOthers && !bIsOthers) return 1;  // a vai para o final
-      if (!aIsOthers && bIsOthers) return -1; // b vai para o final
-      
-      // 2. Se ambos são "outros" ou nenhum é "outros", ordenar por is_default
-      // Categorias criadas pelo usuário (!is_default) primeiro
-      if (a.is_default !== b.is_default) {
-        return a.is_default ? 1 : -1; // false (usuário) vem antes de true (padrão)
-      }
-      
-      // 3. Por último, ordenar alfabeticamente
-      return a.name.localeCompare(b.name);
-    });
+    mainCategories.forEach(cat => console.log(`✅ ${cat.name} (${cat.type})`));
 
-    console.log('🎨 Categorias principais ordenadas:');
-    sortedMainCategories.forEach((cat, index) => {
-      console.log(`${index + 1}. ${cat.name} (${cat.type}) - ${cat.is_default ? 'Padrão' : 'Usuário'}`);
-    });
-
-    // Função para obter subcategorias com ordenação e filtro
+    // Função para obter subcategorias
     const getSubcategories = (parentId: string) => {
       const subs = categories.filter(cat => cat.parent_id === parentId);
-      const filteredSubs = filterCategoriesBySearch(subs, searchTermCategories);
-      
-      // Aplicar a mesma ordenação nas subcategorias
-      const sortedSubs = filteredSubs.sort((a, b) => {
-        // 1. "Outros" sempre por último
-        const aIsOthers = a.name.toLowerCase().includes('outros') || a.name.toLowerCase() === 'outros';
-        const bIsOthers = b.name.toLowerCase().includes('outros') || b.name.toLowerCase() === 'outros';
-        
-        if (aIsOthers && !bIsOthers) return 1;
-        if (!aIsOthers && bIsOthers) return -1;
-        
-        // 2. Categorias do usuário primeiro
-        if (a.is_default !== b.is_default) {
-          return a.is_default ? 1 : -1;
-        }
-        
-        // 3. Ordenar alfabeticamente
-        return a.name.localeCompare(b.name);
-      });
-      
-      console.log(`🔗 Subcategorias ordenadas para ${parentId}:`, sortedSubs.length);
-      return sortedSubs;
+      console.log(`🔗 Subcategorias para ${parentId}:`, subs.length);
+      return subs;
     };
 
-    if (sortedMainCategories.length === 0) {
+    if (mainCategories.length === 0) {
       return (
         <div className="text-center py-12">
           <div className="mx-auto max-w-md">
             <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">
-              {searchTermCategories ? 'Nenhuma categoria encontrada' : `Nenhuma categoria ${categoryType === 'income' ? 'de receita' : 'de despesa'} encontrada`}
+              Nenhuma categoria {categoryType === 'income' ? 'de receita' : 'de despesa'} encontrada
             </h3>
             <p className="text-muted-foreground mb-6">
-              {searchTermCategories 
-                ? 'Tente ajustar o termo de busca ou limpe o filtro.'
-                : `Comece criando sua primeira categoria para organizar suas ${categoryType === 'income' ? 'receitas' : 'despesas'}.`
-              }
+              Comece criando sua primeira categoria para organizar suas {categoryType === 'income' ? 'receitas' : 'despesas'}.
             </p>
-            {!searchTermCategories && (
-              <Button onClick={handleAddCategory} size="lg">
-                <Plus className="mr-2 h-5 w-5" />
-                Criar Primeira Categoria
-              </Button>
-            )}
+            <Button onClick={handleAddCategory} size="lg">
+              <Plus className="mr-2 h-5 w-5" />
+              Criar Primeira Categoria
+            </Button>
           </div>
         </div>
       );
@@ -345,7 +246,266 @@ export default function CadastroPage() {
           }
         `}</style>
         
-        {filteredSuppliers.map(supplier => (
+        {mainCategories.map(category => {
+          const subcategories = getSubcategories(category.id);
+          const isExpanded = expandedCategories.has(category.id);
+
+          return (
+            <Card key={category.id} className="group hover:shadow-md transition-shadow min-w-0 w-full">
+              <CardContent className="p-6">
+                {/* Categoria Principal */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {subcategories.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleExpandCategory(category.id)}
+                        className="p-1 h-auto w-auto shrink-0"
+                      >
+                        {isExpanded ? 
+                          <ChevronDown className="h-4 w-4" /> : 
+                          <ChevronRight className="h-4 w-4" />
+                        }
+                      </Button>
+                    )}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div 
+                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: category.color + '20', border: `2px solid ${category.color}` }}
+                      >
+                        <CategoryIcon icon={category.icon} color={category.color} className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-sm truncate" title={category.name}>
+                          {category.name}
+                        </h3>
+                        {subcategories.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {subcategories.length} subcategoria{subcategories.length > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 shrink-0">
+                    {category.is_default && (
+                      <Badge variant="secondary" className="text-xs">Padrão</Badge>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditCategory(category)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleAddSubcategory(category)}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Adicionar Subcategoria
+                        </DropdownMenuItem>
+                        {!category.is_default && (
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeleteCategory(category)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+
+                {/* Subcategorias */}
+                {isExpanded && subcategories.length > 0 && (
+                  <div className="space-y-2 pt-4 border-t">
+                    {subcategories.map(subcat => (
+                      <div key={subcat.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50 hover:bg-muted transition-colors group/sub">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <CategoryIcon icon={subcat.icon} color={subcat.color} className="w-4 h-4 shrink-0" />
+                          <span className="text-sm truncate" title={subcat.name}>
+                            {subcat.name}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 shrink-0">
+                          {subcat.is_default && (
+                            <Badge variant="outline" className="text-xs scale-90">Padrão</Badge>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover/sub:opacity-100 transition-opacity">
+                                <MoreVertical className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditCategory(subcat)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              {!subcat.is_default && (
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDeleteCategory(subcat)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  }, [categories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory, handleAddSubcategory, handleAddCategory]);
+
+  // ===================================================
+  // ✅ ESTADO E FUNÇÕES PARA FORMAS DE PAGAMENTO
+  // ===================================================
+  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [paymentMethodToDelete, setPaymentMethodToDelete] = useState<PaymentMethod | null>(null);
+  const [deletePaymentMethodDialogOpen, setDeletePaymentMethodDialogOpen] = useState(false);
+  const [newPaymentMethodName, setNewPaymentMethodName] = useState('');
+
+  useEffect(() => {
+    getPaymentMethods();
+    getDefaultPaymentMethods();
+  }, [getPaymentMethods, getDefaultPaymentMethods]);
+
+  const handleAddPaymentMethod = () => {
+    setEditingPaymentMethod(null);
+    setNewPaymentMethodName('');
+    setPaymentFormOpen(true);
+  };
+
+  const handleEditPaymentMethod = (paymentMethod: PaymentMethod) => {
+    setEditingPaymentMethod(paymentMethod);
+    setNewPaymentMethodName(paymentMethod.name);
+    setPaymentFormOpen(true);
+  };
+
+  const handleSavePaymentMethod = useCallback(async () => {
+    if (!newPaymentMethodName.trim()) {
+      toast({ title: "Erro", description: "Nome do método de pagamento é obrigatório", variant: "destructive" });
+      return;
+    }
+
+    try {
+      if (editingPaymentMethod) {
+        await updatePaymentMethod({ ...editingPaymentMethod, name: newPaymentMethodName });
+        toast({ title: "Sucesso", description: "Método de pagamento atualizado com sucesso" });
+      } else {
+        await addPaymentMethod({ name: newPaymentMethodName, is_default: false });
+        toast({ title: "Sucesso", description: "Método de pagamento criado com sucesso" });
+      }
+      setPaymentFormOpen(false);
+      setEditingPaymentMethod(null);
+      setNewPaymentMethodName('');
+      getPaymentMethods(); // Re-fetch para atualizar a lista
+    } catch (error: any) {
+      console.error("Erro ao salvar método de pagamento:", error);
+      toast({ title: "Erro", description: error.message || "Erro ao salvar método de pagamento", variant: "destructive" });
+    }
+  }, [newPaymentMethodName, editingPaymentMethod, addPaymentMethod, updatePaymentMethod, getPaymentMethods, toast]);
+
+  const handleDeletePaymentMethod = (paymentMethod: PaymentMethod) => {
+    setPaymentMethodToDelete(paymentMethod);
+    setDeletePaymentMethodDialogOpen(true);
+  };
+
+  const confirmDeletePaymentMethod = useCallback(async () => {
+    if (paymentMethodToDelete) {
+      try {
+        await deletePaymentMethod(paymentMethodToDelete.id);
+        toast({
+          title: 'Sucesso',
+          description: `${paymentMethodToDelete.name} excluído com sucesso`,
+        });
+        getPaymentMethods(); // Re-fetch para atualizar a lista
+      } catch (error: any) {
+        console.error('Erro ao deletar método de pagamento:', error);
+        toast({
+          title: 'Erro',
+          description: error.message || 'Erro ao deletar método de pagamento',
+          variant: 'destructive',
+        });
+      } finally {
+        setDeletePaymentMethodDialogOpen(false);
+        setPaymentMethodToDelete(null);
+      }
+    }
+  }, [paymentMethodToDelete, deletePaymentMethod, getPaymentMethods, toast]);
+
+  const allPaymentMethods = useMemo(() => {
+    const userMethods = paymentMethods.map(pm => ({ ...pm, is_user_defined: true }));
+    const defaultMethods = defaultPaymentMethods.map(dpm => ({ ...dpm, is_user_defined: false }));
+    return [...userMethods, ...defaultMethods].sort((a, b) => a.name.localeCompare(b.name));
+  }, [paymentMethods, defaultPaymentMethods]);
+
+  // ===================================================
+  // ✅ RENDER GRID RESPONSIVO PARA FORNECEDORES
+  // ===================================================
+  const renderSuppliersGrid = useCallback(() => {
+    if (suppliers.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Nenhum fornecedor/cliente cadastrado</h3>
+          <p className="text-muted-foreground mb-6">
+            Comece adicionando seus fornecedores e clientes para melhor organização.
+          </p>
+          <Button onClick={handleAddSupplier} size="lg">
+            <Plus className="mr-2 h-5 w-5" />
+            Adicionar Primeiro Fornecedor/Cliente
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid gap-6 auto-fit-cards">
+        <style jsx>{`
+          .auto-fit-cards {
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          }
+          
+          @media (max-width: 640px) {
+            .auto-fit-cards {
+              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+              gap: 1rem;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            .auto-fit-cards {
+              grid-template-columns: 1fr;
+              gap: 0.75rem;
+            }
+          }
+          
+          @media (min-width: 1400px) {
+            .auto-fit-cards {
+              grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            }
+          }
+        `}</style>
+        
+        {suppliers.map(supplier => (
           <Card key={supplier.id} className="group hover:shadow-md transition-shadow min-w-0 w-full">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -395,31 +555,24 @@ export default function CadastroPage() {
         ))}
       </div>
     );
-  }, [suppliers, searchTermSuppliers]);
+  }, [suppliers]);
 
   // ===================================================
   // ✅ RENDER GRID RESPONSIVO PARA FORMAS DE PAGAMENTO
   // ===================================================
   const renderPaymentMethodsGrid = useCallback(() => {
-    if (filteredPaymentMethods.length === 0) {
+    if (allPaymentMethods.length === 0) {
       return (
         <div className="text-center py-12">
           <CreditCard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">
-            {searchTermPayments ? 'Nenhuma forma de pagamento encontrada' : 'Nenhuma forma de pagamento cadastrada'}
-          </h3>
+          <h3 className="text-lg font-semibold mb-2">Nenhuma forma de pagamento cadastrada</h3>
           <p className="text-muted-foreground mb-6">
-            {searchTermPayments 
-              ? 'Tente ajustar o termo de busca ou limpe o filtro.'
-              : 'Adicione suas formas de pagamento para melhor controle financeiro.'
-            }
+            Adicione suas formas de pagamento para melhor controle financeiro.
           </p>
-          {!searchTermPayments && (
-            <Button onClick={handleAddPaymentMethod} size="lg">
-              <Plus className="mr-2 h-5 w-5" />
-              Adicionar Primeira Forma de Pagamento
-            </Button>
-          )}
+          <Button onClick={handleAddPaymentMethod} size="lg">
+            <Plus className="mr-2 h-5 w-5" />
+            Adicionar Primeira Forma de Pagamento
+          </Button>
         </div>
       );
     }
@@ -452,7 +605,7 @@ export default function CadastroPage() {
           }
         `}</style>
         
-        {filteredPaymentMethods.map(paymentMethod => (
+        {allPaymentMethods.map(paymentMethod => (
           <Card key={paymentMethod.id} className="group hover:shadow-md transition-shadow min-w-0 w-full">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
@@ -499,7 +652,7 @@ export default function CadastroPage() {
         ))}
       </div>
     );
-  }, [filteredPaymentMethods, handleEditPaymentMethod, handleDeletePaymentMethod]);
+  }, [allPaymentMethods]);
 
   // ===================================================
   // ✅ ESTADO E FUNÇÕES PARA FORNECEDORES/CLIENTES
@@ -669,50 +822,26 @@ export default function CadastroPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Controles superiores */}
-                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                  {/* Filtro por tipo com botões */}
-                  <div className="flex items-center gap-4">
-                    <Label className="text-sm font-medium">Visualizar:</Label>
-                    <div className="flex rounded-lg border p-1">
-                      <Button
-                        variant={categoryType === 'expense' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setCategoryType('expense')}
-                        className="rounded-md"
-                      >
-                        Despesas
-                      </Button>
-                      <Button
-                        variant={categoryType === 'income' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setCategoryType('income')}
-                        className="rounded-md"
-                      >
-                        Receitas
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Campo de busca */}
-                  <div className="relative w-full sm:w-80">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Buscar categorias..."
-                      value={searchTermCategories}
-                      onChange={(e) => setSearchTermCategories(e.target.value)}
-                      className="pl-10"
-                    />
-                    {searchTermCategories && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
-                        onClick={() => setSearchTermCategories('')}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    )}
+                {/* Filtro por tipo com botões */}
+                <div className="flex items-center gap-4">
+                  <Label className="text-sm font-medium">Visualizar:</Label>
+                  <div className="flex rounded-lg border p-1">
+                    <Button
+                      variant={categoryType === 'expense' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setCategoryType('expense')}
+                      className="rounded-md"
+                    >
+                      Despesas
+                    </Button>
+                    <Button
+                      variant={categoryType === 'income' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setCategoryType('income')}
+                      className="rounded-md"
+                    >
+                      Receitas
+                    </Button>
                   </div>
                 </div>
 
@@ -748,30 +877,7 @@ export default function CadastroPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Campo de busca para fornecedores */}
-                <div className="flex justify-end">
-                  <div className="relative w-full sm:w-80">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Buscar fornecedores/clientes..."
-                      value={searchTermSuppliers}
-                      onChange={(e) => setSearchTermSuppliers(e.target.value)}
-                      className="pl-10"
-                    />
-                    {searchTermSuppliers && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
-                        onClick={() => setSearchTermSuppliers('')}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
+              <CardContent>
                 {isLoading ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -803,30 +909,7 @@ export default function CadastroPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Campo de busca para formas de pagamento */}
-                <div className="flex justify-end">
-                  <div className="relative w-full sm:w-80">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Buscar formas de pagamento..."
-                      value={searchTermPayments}
-                      onChange={(e) => setSearchTermPayments(e.target.value)}
-                      className="pl-10"
-                    />
-                    {searchTermPayments && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
-                        onClick={() => setSearchTermPayments('')}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
+              <CardContent>
                 {isLoading ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -1030,337 +1113,4 @@ export default function CadastroPage() {
       </div>
     </div>
   );
-}width: 640px) {
-            .auto-fit-cards {
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-              gap: 1rem;
-            }
-          }
-          
-          @media (max-width: 480px) {
-            .auto-fit-cards {
-              grid-template-columns: 1fr;
-              gap: 0.75rem;
-            }
-          }
-          
-          @media (min-width: 1400px) {
-            .auto-fit-cards {
-              grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            }
-          }
-        `}</style>
-        
-        {sortedMainCategories.map(category => {
-          const subcategories = getSubcategories(category.id);
-          const isExpanded = expandedCategories.has(category.id);
-          const isDraggedOver = dragOverCategory === category.id;
-
-          return (
-            <Card 
-              key={category.id} 
-              className={cn(
-                "group hover:shadow-md transition-all min-w-0 w-full cursor-pointer",
-                isDraggedOver && "ring-2 ring-primary/50 shadow-lg"
-              )}
-              draggable
-              onDragStart={(e) => handleDragStart(e, category)}
-              onDragOver={(e) => handleDragOver(e, category.id)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, category)}
-            >
-              <CardContent className="p-6">
-                {/* Categoria Principal - Layout Melhorado */}
-                <div className="flex flex-col gap-4">
-                  {/* Header da categoria com ícone centralizado */}
-                  <div className="flex items-center gap-3">
-                    {/* Drag Handle */}
-                    <div className="opacity-0 group-hover:opacity-60 transition-opacity">
-                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
-                    </div>
-                    
-                    {/* Expand/Collapse button - sempre visível se houver subcategorias */}
-                    <div className="w-6 flex justify-center">
-                      {subcategories.length > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleExpandCategory(category.id)}
-                          className="p-1 h-auto w-auto shrink-0"
-                        >
-                          {isExpanded ? 
-                            <ChevronDown className="h-4 w-4" /> : 
-                            <ChevronRight className="h-4 w-4" />
-                          }
-                        </Button>
-                      )}
-                    </div>
-                    
-                    {/* Ícone da categoria - centralizado */}
-                    <div className="flex justify-center">
-                      <div 
-                        className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: category.color + '20', border: `2px solid ${category.color}` }}
-                      >
-                        <CategoryIcon icon={category.icon} color={category.color} className="w-6 h-6" />
-                      </div>
-                    </div>
-                    
-                    {/* Nome e informações */}
-                    <div className="flex-1 min-w-0 text-center">
-                      <h3 className="font-semibold text-base truncate" title={category.name}>
-                        {category.name}
-                      </h3>
-                      {subcategories.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {subcategories.length} subcategoria{subcategories.length > 1 ? 's' : ''}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Badges e botões - Layout inferior */}
-                  <div className="flex items-center justify-between">
-                    {/* Badge de status - menor e à esquerda */}
-                    <div className="flex items-center gap-2">
-                      {category.is_default && (
-                        <Badge variant="secondary" className="text-xs px-2 py-0.5 h-5">
-                          Padrão
-                        </Badge>
-                      )}
-                      {!category.is_default && (
-                        <Badge variant="outline" className="text-xs px-2 py-0.5 h-5 border-green-200 text-green-700 bg-green-50">
-                          Custom
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {/* Botões de ação - visíveis permanentemente com novo layout */}
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditCategory(category)}
-                        className="h-7 px-2 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
-                      >
-                        <Edit className="mr-1 h-3 w-3" />
-                        Editar
-                      </Button>
-                      
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                            <MoreVertical className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleAddSubcategory(category)}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Adicionar Subcategoria
-                          </DropdownMenuItem>
-                          {!category.is_default && (
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeleteCategory(category)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Excluir
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Subcategorias */}
-                {isExpanded && subcategories.length > 0 && (
-                  <div className="space-y-2 pt-4 border-t mt-4">
-                    {subcategories.map(subcat => (
-                      <div key={subcat.id} className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50 hover:bg-muted transition-colors group/sub">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <CategoryIcon icon={subcat.icon} color={subcat.color} className="w-4 h-4 shrink-0" />
-                          <span className="text-sm truncate" title={subcat.name}>
-                            {subcat.name}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 shrink-0">
-                          {subcat.is_default && (
-                            <Badge variant="outline" className="text-xs scale-90 h-4">Padrão</Badge>
-                          )}
-                          {!subcat.is_default && (
-                            <Badge variant="outline" className="text-xs scale-90 h-4 border-green-200 text-green-700 bg-green-50">
-                              Custom
-                            </Badge>
-                          )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover/sub:opacity-100 transition-opacity">
-                                <MoreVertical className="h-3 w-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditCategory(subcat)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              {!subcat.is_default && (
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => handleDeleteCategory(subcat)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Excluir
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    );
-  }, [categories, categoryType, expandedCategories, searchTermCategories, dragOverCategory, handleEditCategory, handleDeleteCategory, handleAddSubcategory, handleAddCategory, filterCategoriesBySearch]);
-
-  // ===================================================
-  // ✅ ESTADO E FUNÇÕES PARA FORMAS DE PAGAMENTO
-  // ===================================================
-  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
-  const [editingPaymentMethod, setEditingPaymentMethod] = useState<PaymentMethod | null>(null);
-  const [paymentMethodToDelete, setPaymentMethodToDelete] = useState<PaymentMethod | null>(null);
-  const [deletePaymentMethodDialogOpen, setDeletePaymentMethodDialogOpen] = useState(false);
-  const [newPaymentMethodName, setNewPaymentMethodName] = useState('');
-
-  useEffect(() => {
-    getPaymentMethods();
-    getDefaultPaymentMethods();
-  }, [getPaymentMethods, getDefaultPaymentMethods]);
-
-  const handleAddPaymentMethod = () => {
-    setEditingPaymentMethod(null);
-    setNewPaymentMethodName('');
-    setPaymentFormOpen(true);
-  };
-
-  const handleEditPaymentMethod = (paymentMethod: PaymentMethod) => {
-    setEditingPaymentMethod(paymentMethod);
-    setNewPaymentMethodName(paymentMethod.name);
-    setPaymentFormOpen(true);
-  };
-
-  const handleSavePaymentMethod = useCallback(async () => {
-    if (!newPaymentMethodName.trim()) {
-      toast({ title: "Erro", description: "Nome do método de pagamento é obrigatório", variant: "destructive" });
-      return;
-    }
-
-    try {
-      if (editingPaymentMethod) {
-        await updatePaymentMethod({ ...editingPaymentMethod, name: newPaymentMethodName });
-        toast({ title: "Sucesso", description: "Método de pagamento atualizado com sucesso" });
-      } else {
-        await addPaymentMethod({ name: newPaymentMethodName, is_default: false });
-        toast({ title: "Sucesso", description: "Método de pagamento criado com sucesso" });
-      }
-      setPaymentFormOpen(false);
-      setEditingPaymentMethod(null);
-      setNewPaymentMethodName('');
-      getPaymentMethods(); // Re-fetch para atualizar a lista
-    } catch (error: any) {
-      console.error("Erro ao salvar método de pagamento:", error);
-      toast({ title: "Erro", description: error.message || "Erro ao salvar método de pagamento", variant: "destructive" });
-    }
-  }, [newPaymentMethodName, editingPaymentMethod, addPaymentMethod, updatePaymentMethod, getPaymentMethods, toast]);
-
-  const handleDeletePaymentMethod = (paymentMethod: PaymentMethod) => {
-    setPaymentMethodToDelete(paymentMethod);
-    setDeletePaymentMethodDialogOpen(true);
-  };
-
-  const confirmDeletePaymentMethod = useCallback(async () => {
-    if (paymentMethodToDelete) {
-      try {
-        await deletePaymentMethod(paymentMethodToDelete.id);
-        toast({
-          title: 'Sucesso',
-          description: `${paymentMethodToDelete.name} excluído com sucesso`,
-        });
-        getPaymentMethods(); // Re-fetch para atualizar a lista
-      } catch (error: any) {
-        console.error('Erro ao deletar método de pagamento:', error);
-        toast({
-          title: 'Erro',
-          description: error.message || 'Erro ao deletar método de pagamento',
-          variant: 'destructive',
-        });
-      } finally {
-        setDeletePaymentMethodDialogOpen(false);
-        setPaymentMethodToDelete(null);
-      }
-    }
-  }, [paymentMethodToDelete, deletePaymentMethod, getPaymentMethods, toast]);
-
-  const allPaymentMethods = useMemo(() => {
-    const userMethods = paymentMethods.map(pm => ({ ...pm, is_user_defined: true }));
-    const defaultMethods = defaultPaymentMethods.map(dpm => ({ ...dpm, is_user_defined: false }));
-    return [...userMethods, ...defaultMethods].sort((a, b) => a.name.localeCompare(b.name));
-  }, [paymentMethods, defaultPaymentMethods]);
-
-  // Filtrar métodos de pagamento por busca
-  const filteredPaymentMethods = useMemo(() => {
-    if (!searchTermPayments) return allPaymentMethods;
-    
-    return allPaymentMethods.filter(pm => 
-      pm.name.toLowerCase().includes(searchTermPayments.toLowerCase())
-    );
-  }, [allPaymentMethods, searchTermPayments]);
-
-  // ===================================================
-  // ✅ RENDER GRID RESPONSIVO PARA FORNECEDORES
-  // ===================================================
-  const renderSuppliersGrid = useCallback(() => {
-    // Filtrar fornecedores por busca
-    const filteredSuppliers = suppliers.filter(supplier => 
-      supplier.name.toLowerCase().includes(searchTermSuppliers.toLowerCase()) ||
-      (supplier.document && supplier.document.toLowerCase().includes(searchTermSuppliers.toLowerCase())) ||
-      (supplier.email && supplier.email.toLowerCase().includes(searchTermSuppliers.toLowerCase()))
-    );
-
-    if (filteredSuppliers.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">
-            {searchTermSuppliers ? 'Nenhum fornecedor/cliente encontrado' : 'Nenhum fornecedor/cliente cadastrado'}
-          </h3>
-          <p className="text-muted-foreground mb-6">
-            {searchTermSuppliers 
-              ? 'Tente ajustar o termo de busca ou limpe o filtro.'
-              : 'Comece adicionando seus fornecedores e clientes para melhor organização.'
-            }
-          </p>
-          {!searchTermSuppliers && (
-            <Button onClick={handleAddSupplier} size="lg">
-              <Plus className="mr-2 h-5 w-5" />
-              Adicionar Primeiro Fornecedor/Cliente
-            </Button>
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div className="grid gap-6 auto-fit-cards">
-        <style jsx>{`
-          .auto-fit-cards {
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          }
-          
-          @media (max-
+}
