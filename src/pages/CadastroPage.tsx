@@ -1,4 +1,57 @@
-// ✅ CORRIGIDO: Função para renderizar categorias em grade responsiva com ordenação
+import React, { useState, useCallback, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { 
+  Plus, 
+  Edit, 
+  Trash2, 
+  MoreVertical, 
+  ChevronDown, 
+  ChevronRight, 
+  Tag 
+} from 'lucide-react';
+import { CategoryIcon } from '@/components/CategoryIcon';
+
+// Tipos (você pode mover para um arquivo types.ts se preferir)
+interface Category {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  type: 'income' | 'expense';
+  parent_id: string | null;
+  is_default: boolean;
+}
+
+interface CadastroPageProps {
+  categories: Category[];
+  categoryType: 'income' | 'expense';
+  expandedCategories: Set<string>;
+  toggleExpandCategory: (id: string) => void;
+  handleEditCategory: (category: Category) => void;
+  handleDeleteCategory: (category: Category) => void;
+  handleAddSubcategory: (category: Category) => void;
+  handleAddCategory: () => void;
+}
+
+const CadastroPage: React.FC<CadastroPageProps> = ({
+  categories,
+  categoryType,
+  expandedCategories,
+  toggleExpandCategory,
+  handleEditCategory,
+  handleDeleteCategory,
+  handleAddSubcategory,
+  handleAddCategory
+}) => {
+  // ✅ CORRIGIDO: Função para renderizar categorias em grade responsiva com ordenação
   const renderCategoriesGrid = useCallback(() => {
     console.log('🎨 Renderizando grid de categorias...');
     console.log('🎨 Todas as categorias disponíveis:', categories.length);
@@ -19,8 +72,8 @@
     // ✅ NOVA ORDENAÇÃO: Categorias de usuário primeiro, "Outros" por último
     const sortedMainCategories = mainCategories.sort((a, b) => {
       // 1. "Outros" sempre por último
-      const aIsOthers = a.name.toLowerCase().includes('outros') || a.name.toLowerCase() === 'outros';
-      const bIsOthers = b.name.toLowerCase().includes('outros') || b.name.toLowerCase() === 'outros';
+      const aIsOthers = a.name.toLowerCase().includes('outros');
+      const bIsOthers = b.name.toLowerCase().includes('outros');
       
       if (aIsOthers && !bIsOthers) return 1;  // a vai para o final
       if (!aIsOthers && bIsOthers) return -1; // b vai para o final
@@ -47,8 +100,8 @@
       // Aplicar a mesma ordenação nas subcategorias
       const sortedSubs = subs.sort((a, b) => {
         // 1. "Outros" sempre por último
-        const aIsOthers = a.name.toLowerCase().includes('outros') || a.name.toLowerCase() === 'outros';
-        const bIsOthers = b.name.toLowerCase().includes('outros') || b.name.toLowerCase() === 'outros';
+        const aIsOthers = a.name.toLowerCase().includes('outros');
+        const bIsOthers = b.name.toLowerCase().includes('outros');
         
         if (aIsOthers && !bIsOthers) return 1;
         if (!aIsOthers && bIsOthers) return -1;
@@ -250,4 +303,23 @@
         })}
       </div>
     );
-  }, [categories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory, handleAddSubcategory, handleAddCategory]);
+  }, [categories, categoryType, expandedCategories, handleEditCategory, handleDeleteCategory, handleAddSubcategory, handleAddCategory, toggleExpandCategory]);
+
+  return (
+    <div className="container mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-2">
+          Categorias {categoryType === 'income' ? 'de Receita' : 'de Despesa'}
+        </h1>
+        <p className="text-muted-foreground">
+          Gerencie suas categorias e subcategorias para organizar suas {categoryType === 'income' ? 'receitas' : 'despesas'}.
+        </p>
+      </div>
+      
+      {renderCategoriesGrid()}
+    </div>
+  );
+};
+
+// ✅ EXPORTAÇÃO DEFAULT CORRIGIDA
+export default CadastroPage;
