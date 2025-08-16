@@ -7,7 +7,7 @@ import {
   Shirt, Wrench, Baby, PiggyBank, CreditCard,
   // Novos ícones necessários
   BriefcaseBusiness, Headphones, ArrowLeftCircle,
-  Percent, Handshake, MedicalCross, GraduationCap,
+  Percent, Handshake, Cross, GraduationCap,
   MoreHorizontal, DollarSign, Package, Users,
   UserCheck, Settings, Building2, Megaphone,
   PlusCircle
@@ -55,7 +55,7 @@ const iconMap = {
   'arrow-left-circle': ArrowLeftCircle,
   percent: Percent,
   handshake: Handshake,
-  'medical-cross': MedicalCross,
+  'medical-cross': Cross,
   'graduation-cap': GraduationCap,
   'more-horizontal': MoreHorizontal,
   'dollar-sign': DollarSign,
